@@ -2,6 +2,13 @@ services:
   backend:
     build:
       context: ./backend
+    ports:
+      - "3000:3000"
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "8080:8080"
   db:
     image: mariadb:11.8
     environment:
