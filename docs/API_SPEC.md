@@ -78,6 +78,33 @@ Authorization: Bearer <access_token>
 }
 ```
 
+**400 VALIDATION_ERROR**
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid request data",
+    "details": [
+      { "field": "name", "issue": "required", "message": "Name is required" },
+      { "field": "name", "issue": "min_length", "message": "Name must be at least 1 character" },
+      { "field": "name", "issue": "max_length", "message": "Name must be at most 100 characters" },
+      { "field": "username", "issue": "required", "message": "Username is required" },
+      { "field": "username", "issue": "min_length", "message": "Username must be at least 3 characters" },
+      { "field": "username", "issue": "max_length", "message": "Username must be at most 20 characters" },
+      { "field": "username", "issue": "format", "message": "Username must contain only letters, numbers, and underscores" },
+      { "field": "email", "issue": "required", "message": "Email is required" },
+      { "field": "email", "issue": "format", "message": "Invalid email format" },
+      { "field": "phone", "issue": "required", "message": "Phone is required" },
+      { "field": "phone", "issue": "format", "message": "Phone must be in E.164 format (e.g., +1234567890)" },
+      { "field": "password", "issue": "required", "message": "Password is required" },
+      { "field": "password", "issue": "min_length", "message": "Password must be at least 8 characters" },
+      { "field": "password", "issue": "complexity", "message": "Password must contain uppercase, lowercase, number, and special character" }
+    ]
+  }
+}
+```
+
 </details>
 </details>
 
@@ -174,6 +201,24 @@ Header: `Authorization: Bearer <access_token>`
 }
 ```
 
+#### Errors
+
+<details>
+<summary>Show Errors</summary>
+
+**401 UNAUTHORIZED**
+
+```json
+{
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required: token is missing or invalid",
+    "details": []
+  }
+}
+```
+
+</details>
 </details>
 
 ---
@@ -227,7 +272,7 @@ Initiates passkey registration. The authenticated user's ID is extracted from th
 {
   "error": {
     "code": "UNAUTHORIZED",
-    "message": "Authentication required",
+    "message": "Authentication required: token is missing or invalid",
     "details": []
   }
 }
@@ -285,7 +330,7 @@ Completes passkey registration after the user completes the WebAuthn ceremony in
 {
   "error": {
     "code": "UNAUTHORIZED",
-    "message": "Authentication required",
+    "message": "Authentication required: token is missing or invalid",
     "details": []
   }
 }
@@ -504,6 +549,18 @@ Header: `Authorization: Bearer <access_token>`
 }
 ```
 
+**401 UNAUTHORIZED**
+
+```json
+{
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required: token is missing or invalid",
+    "details": []
+  }
+}
+```
+
 </details>
 </details>
 
@@ -550,7 +607,7 @@ Returns all passkeys registered for the authenticated user.
 {
   "error": {
     "code": "UNAUTHORIZED",
-    "message": "Authentication required",
+    "message": "Authentication required: token is missing or invalid",
     "details": []
   }
 }
@@ -627,7 +684,7 @@ Returns rooms the authenticated user is a member of.
 {
   "error": {
     "code": "UNAUTHORIZED",
-    "message": "Authentication required",
+    "message": "Authentication required: token is missing or invalid",
     "details": []
   }
 }
@@ -693,7 +750,7 @@ Returns all available rooms with optional filters.
 {
   "error": {
     "code": "UNAUTHORIZED",
-    "message": "Authentication required",
+    "message": "Authentication required: token is missing or invalid",
     "details": []
   }
 }
@@ -774,6 +831,18 @@ Header: `Authorization: Bearer <access_token>`
 }
 ```
 
+**401 UNAUTHORIZED**
+
+```json
+{
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required: token is missing or invalid",
+    "details": []
+  }
+}
+```
+
 </details>
 </details>
 
@@ -833,6 +902,18 @@ Header: `Authorization: Bearer <access_token>`
   "error": {
     "code": "ALREADY_JOINED",
     "message": "You are already a member of this room",
+    "details": []
+  }
+}
+```
+
+**401 UNAUTHORIZED**
+
+```json
+{
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required: token is missing or invalid",
     "details": []
   }
 }
@@ -902,6 +983,18 @@ Header: `Authorization: Bearer <access_token>`
 }
 ```
 
+**401 UNAUTHORIZED**
+
+```json
+{
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required: token is missing or invalid",
+    "details": []
+  }
+}
+```
+
 </details>
 </details>
 
@@ -949,6 +1042,18 @@ Header: `Authorization: Bearer <access_token>`
   "error": {
     "code": "NOT_OWNER",
     "message": "Only the room owner can dismiss this room",
+    "details": []
+  }
+}
+```
+
+**401 UNAUTHORIZED**
+
+```json
+{
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required: token is missing or invalid",
     "details": []
   }
 }
