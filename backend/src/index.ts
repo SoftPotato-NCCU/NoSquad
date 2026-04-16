@@ -1,5 +1,5 @@
 const server = Bun.serve({
-  port: 3000,
+  port: 5050,
   routes: {
     "/": () => new Response('Bun!'),
   }
