@@ -1,0 +1,11 @@
+node_modules
+.vscode
+.git
+.gitignore
+README.md
+*.md
+dist
+build
+coverage
+.eslintcache
+bun.lock.backup

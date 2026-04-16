@@ -1,0 +1,41 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/ubuntu
+{
+  "name": "NoSquad Database Dev Container",
+  "dockerComposeFile": [
+    "../../docker-compose.yml",
+    "./docker-compose.dev.yml"
+  ],
+  // "build": {
+  //   "dockerfile": "${localWorkspaceFolder}/frontend/Dockerfile",
+  //   "context": "../../frontend",
+  //   "target": "dev"
+  // },
+  "service": "db",
+  // "workspaceMount": "source=${localWorkspaceFolder},target=/NoSquad,type=bind",
+  "workspaceFolder": "/NoSquad/database",
+  // This tells Docker to load the .env file when starting the container
+  "overrideCommand": true,
+  // Variables used in all of the container. Rebuild is required if you want to modify
+  "containerEnv": {
+    "GIT_EDITOR": "vim"
+  },
+  // Variables used for the devcontainer.json supporting service / tool
+  //   "remoteEnv": {
+  //     "GIT_AUTH_TOKEN": "${localEnv:GIT_AUTH_TOKEN}"
+  //   },
+  // "onCreateCommand": "",
+  "postCreateCommand": "service mariadb start",
+  // "postStartCommand": "",
+  // "postAttachCommand": {}
+  // "runArgs": ["--env-file","${localWorkspaceFolder}/.env"],
+  "runServices": ["db", "cloudbeaver"],
+
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "git.openRepositoryInParentFolders": "always"
+      }
+    }
+  }
+}
