@@ -1,6 +1,42 @@
 # use the official Bun image
 # see all versions at https://hub.docker.com/r/oven/bun/tags
-FROM oven/bun:1 AS base
+
+ARG BUN_VERSION=1
+
+FROM oven/bun:${BUN_VERSION} AS dev
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    build-essential \
+    git \
+    curl \
+    vim \
+    tmux \
+    htop \
+    eslint \
+    && rm -rf /var/lib/apt/lists/*
+
+ARG NODE_VERSION=--lts
+# install nvm
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.4/install.sh | bash
+
+# set env
+ENV NVM_DIR=/root/.nvm
+
+# install node
+RUN bash -c "source $NVM_DIR/nvm.sh && nvm install $NODE_VERSION"
+
+# set ENTRYPOINT for reloading nvm-environment
+# ENTRYPOINT ["bash", "-c", "source $NVM_DIR/nvm.sh && exec \"$@\"", "--"]
+
+RUN . $NVM_DIR/nvm.sh && npm install -g eslint
+
+RUN echo 'source $NVM_DIR/nvm.sh' >> ~/.bashrc
+
+CMD ["/bin/bash"]
+
+FROM oven/bun:${BUN_VERSION} AS base
 WORKDIR /usr/src/app
 
 # install dependencies into temp directory

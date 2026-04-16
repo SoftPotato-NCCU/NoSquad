@@ -21,6 +21,15 @@ services:
     volumes:
       - mariadb_data:/var/lib/mysql
       - ./database/init:/docker-entrypoint-initdb.d/
+  cloudbeaver:
+    image: dbeaver/cloudbeaver:latest
+    profiles: [dev]
+    ports:
+      - "8978:8978"
+    volumes:
+      - cloudbeaver:/opt/cloudbeaver/workspace
+      - ./database/.dbeaver/data-sources.json:/opt/cloudbeaver/workspace/GlobalConfiguration/.dbeaver/data-sources.json
 
 volumes:
   mariadb_data:
+  cloudbeaver:

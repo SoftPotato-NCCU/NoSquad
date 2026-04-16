@@ -6,8 +6,23 @@
 # This Dockerfile uses Node.js 24.13.0-slim and Nginxinc image with alpine3.22, which was the latest LTS version at the time of writing.
 # To ensure security and compatibility, regularly validate and update the NODE_VERSION ARG and NGINXINC_IMAGE_TAG to the latest LTS versions.
 
-ARG NODE_VERSION=24.14.1-slim
+ARG NODE_VERSION=25.9-slim
 ARG NGINXINC_IMAGE_TAG=alpine3.22
+
+FROM node:${NODE_VERSION} AS dev
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    build-essential \
+    git \
+    curl \
+    vim \
+    tmux \
+    htop \
+    && rm -rf /var/lib/apt/lists/*
+
+CMD ["/bin/bash"]
 
 FROM node:${NODE_VERSION} AS dependencies
 

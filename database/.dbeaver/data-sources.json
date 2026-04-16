@@ -1,0 +1,42 @@
+{
+	"folders": {},
+	"connections": {
+		"mariaDB-19d948fd8f6-30b2e76e1d203c6c": {
+			"provider": "mysql",
+			"driver": "mariaDB",
+			"name": "nosquad@db",
+			"configuration": {
+				"host": "db",
+				"port": "3306",
+				"database": "nosquad",
+				"url": "jdbc:mariadb://db:3306/nosquad",
+				"configurationType": "MANUAL",
+				"type": "dev",
+				"closeIdleConnection": true,
+				"provider-properties": {
+					"@dbeaver-show-all-dbs@": "false"
+				},
+				"auth-model": "native",
+				"bootstrap": {
+					"autocommit": true
+				}
+			}
+		}
+	},
+	"connection-types": {
+		"dev": {
+			"name": "Development",
+			"color": "255,255,255",
+			"description": "Regular development database",
+			"auto-commit": true,
+			"confirm-execute": false,
+			"confirm-data-change": false,
+			"smart-commit": false,
+			"smart-commit-recover": true,
+			"auto-close-transactions": true,
+			"close-transactions-period": 1800,
+			"auto-close-connections": true,
+			"close-connections-period": 14400
+		}
+	}
+}

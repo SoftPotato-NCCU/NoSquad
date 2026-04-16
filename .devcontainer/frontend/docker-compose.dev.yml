@@ -1,0 +1,12 @@
+services:
+  frontend:
+    build:
+      target: dev
+    env_file:
+      - .env
+    restart: no
+    volumes:
+      - .:/NoSquad
+    stdin_open: true
+    tty: true
+    depends_on: []

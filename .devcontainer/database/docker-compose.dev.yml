@@ -1,0 +1,8 @@
+services:
+  db:
+    restart: no
+    volumes:
+      - .:/NoSquad
+    stdin_open: true
+    tty: true
+    depends_on: []
