@@ -6,7 +6,6 @@ CREATE TABLE user_tokens (
     user_id CHAR(36) NOT NULL,
     token VARCHAR(512) NOT NULL,
 
-    -- updated: store user agent and IP address for token management
     user_agent TEXT,
     ip_address VARCHAR(45),
 
