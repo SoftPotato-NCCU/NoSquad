@@ -1,11 +1,12 @@
 -- =========================================================
--- USER_TOKENS (updated)
+-- USER_TOKENS
 -- =========================================================
 CREATE TABLE user_tokens (
     uuid CHAR(36) NOT NULL,
     user_id CHAR(36) NOT NULL,
     token VARCHAR(512) NOT NULL,
 
+    -- updated: store user agent and IP address for token management
     user_agent TEXT,
     ip_address VARCHAR(45),
 
