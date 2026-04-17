@@ -21,6 +21,8 @@ All authenticated endpoints require the following header:
 Authorization: Bearer <access_token>
 ```
 
+Where `<access_token>` is a 64-character hex string (32 bytes of cryptographically secure random data) issued during login or registration.
+
 ---
 
 ## Authentication Service
@@ -138,7 +140,7 @@ Supports login via email, username, or phone number.
       "email": "john@example.com",
       "phone": "+1234567890"
     },
-    "access_token": "eyJhbGciOiJIUzI1..."
+    "access_token": "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456"
   }
 }
 ```
@@ -480,7 +482,7 @@ Completes passkey authentication after the user completes the WebAuthn assertion
 {
   "data": {
     "verified": true,
-    "access_token": "eyJhbGciOiJIUzI1...",
+    "access_token": "a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456",
     "user": {
       "id": "550e8400-e29b-41d4-a716-446655440000",
       "name": "John Doe",

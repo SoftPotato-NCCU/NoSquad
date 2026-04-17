@@ -15,5 +15,9 @@
   },
   "peerDependencies": {
     "typescript": "^5"
+  },
+  "dependencies": {
+    "hono": "^4.12.14",
+    "mysql2": "^3.22.1"
   }
 }
