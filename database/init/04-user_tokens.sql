@@ -1,13 +1,13 @@
 -- =========================================================
--- USER_TOKENS
+-- USER_TOKENS (updated)
 -- =========================================================
 CREATE TABLE user_tokens (
     uuid CHAR(36) NOT NULL,
     user_id CHAR(36) NOT NULL,
     token VARCHAR(512) NOT NULL,
 
-    device_type VARCHAR(50),
-    device_name VARCHAR(100),
+    user_agent TEXT,
+    ip_address VARCHAR(45),
 
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     last_used_at DATETIME,
