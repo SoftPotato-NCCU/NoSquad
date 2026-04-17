@@ -5,7 +5,7 @@ CREATE TABLE rooms (
     uuid CHAR(36) NOT NULL,
     title VARCHAR(200) NOT NULL,
     description TEXT,
-    status ENUM('open','full','closed','cancelled') DEFAULT 'open',
+    status ENUM('open','full','ended','cancelled') DEFAULT 'open',
 
     creator_id CHAR(36) NOT NULL,
     max_members INT DEFAULT 1,
