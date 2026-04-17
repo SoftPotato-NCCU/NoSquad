@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import type { RowDataPacket } from 'mysql2/promise';
-import { pool } from '../db/connection';
-import { apiError } from '../lib/errors';
-import { authMiddleware, type AuthVariables } from '../middleware/auth';
+import { pool } from '../../db/connection';
+import { apiError } from '../../lib/errors';
+import { authMiddleware, type AuthVariables } from './middleware/auth';
 
 const rooms = new Hono<{ Variables: AuthVariables }>();
 rooms.use('*', authMiddleware);
@@ -60,7 +60,7 @@ rooms.get('/', async (c) => {
      FROM rooms r
      JOIN room_members rm_me  ON rm_me.room_id  = r.uuid AND rm_me.user_id = ?
      LEFT JOIN room_members rm_all ON rm_all.room_id = r.uuid
-     WHERE r.status = 'active' ${cursorClause}
+     WHERE r.status = 'open' ${cursorClause}
      GROUP BY r.uuid
      ORDER BY r.created_at DESC
      LIMIT ?`,
@@ -112,7 +112,7 @@ rooms.get('/hall', async (c) => {
          MAX(CASE WHEN rm.user_id = ? THEN 1 ELSE 0 END) AS is_joined
        FROM rooms r
        LEFT JOIN room_members rm ON rm.room_id = r.uuid
-       WHERE r.status = 'active' ${cursorClause}
+       WHERE r.status = 'open' ${cursorClause}
        GROUP BY r.uuid
      ) AS sub
      ${outerWhere}
@@ -193,7 +193,7 @@ rooms.post('/:room_id/join', async (c) => {
     `SELECT r.*, COUNT(rm.user_id) AS member_count
      FROM rooms r
      LEFT JOIN room_members rm ON rm.room_id = r.uuid
-     WHERE r.uuid = ? AND r.status = 'active'
+     WHERE r.uuid = ? AND r.status = 'open'
      GROUP BY r.uuid`,
     [roomId],
   );
@@ -223,7 +223,7 @@ rooms.post('/:room_id/leave', async (c) => {
   const roomId = c.req.param('room_id');
 
   const [roomRows] = await pool.execute<RowDataPacket[]>(
-    "SELECT uuid, creator_id FROM rooms WHERE uuid = ? AND status = 'active'",
+    "SELECT uuid, creator_id FROM rooms WHERE uuid = ? AND status = 'open'",
     [roomId],
   );
   if (!roomRows[0]) return apiError(c, 404, 'ROOM_NOT_FOUND', 'The specified room does not exist');
@@ -249,7 +249,7 @@ rooms.delete('/:room_id', async (c) => {
   const roomId = c.req.param('room_id');
 
   const [roomRows] = await pool.execute<RowDataPacket[]>(
-    "SELECT uuid, creator_id FROM rooms WHERE uuid = ? AND status = 'active'",
+    "SELECT uuid, creator_id FROM rooms WHERE uuid = ? AND status = 'open'",
     [roomId],
   );
   if (!roomRows[0]) return apiError(c, 404, 'ROOM_NOT_FOUND', 'The specified room does not exist');
@@ -257,7 +257,7 @@ rooms.delete('/:room_id', async (c) => {
   if (roomRows[0].creator_id !== userId)
     return apiError(c, 403, 'NOT_OWNER', 'Only the room owner can dismiss this room');
 
-  await pool.execute("UPDATE rooms SET status = 'closed' WHERE uuid = ?", [roomId]);
+  await pool.execute("UPDATE rooms SET status = 'cancelled' WHERE uuid = ?", [roomId]);
 
   return c.json({ data: { success: true, room_id: roomId } });
 });

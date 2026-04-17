@@ -15,7 +15,7 @@ export interface RoomRow {
   uuid: string;
   title: string;
   description: string | null;
-  status: 'active' | 'closed';
+  status: 'open' | 'full' | 'ended' | 'cancelled';
   creator_id: string;
   max_members: number;
   event_time: Date | null;

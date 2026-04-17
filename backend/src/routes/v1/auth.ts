@@ -1,24 +1,24 @@
 import { Hono } from 'hono';
 import type { RowDataPacket } from 'mysql2/promise';
-import { pool } from '../db/connection';
-import { apiError, type ErrorDetail } from '../lib/errors';
-import { signToken } from '../lib/jwt';
-import { authMiddleware, type AuthVariables } from '../middleware/auth';
-import type { UserRow } from '../db/types';
+import { pool } from '../../db/connection';
+import { apiError, type ErrorDetail } from '../../lib/errors';
+import { generateToken } from '../../lib/token';
+import { authMiddleware, type AuthVariables } from './middleware/auth';
+import type { UserRow } from '../../db/types';
 
 const auth = new Hono<{ Variables: AuthVariables }>();
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
 async function issueToken(userId: string): Promise<string> {
+  const token = generateToken();
   const tokenId = crypto.randomUUID();
-  const jwt = await signToken({ sub: userId, jti: tokenId });
   await pool.execute(
     `INSERT INTO user_tokens (uuid, user_id, token, expires_at)
      VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))`,
-    [tokenId, userId, jwt],
+    [tokenId, userId, token],
   );
-  return jwt;
+  return token;
 }
 
 function publicUser(u: UserRow) {

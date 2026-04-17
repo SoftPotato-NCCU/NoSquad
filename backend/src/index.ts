@@ -1,16 +1,14 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
-import auth from './routes/auth';
-import rooms from './routes/rooms';
+import { v1 } from './routes/v1';
 
 const app = new Hono();
 
 app.use('*', logger());
 app.use('*', cors());
 
-app.route('/api/v1/auth', auth);
-app.route('/api/v1/rooms', rooms);
+app.route('/api/v1', v1);
 
 app.get('/health', (c) => c.json({ status: 'ok' }));
 

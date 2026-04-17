@@ -1,8 +1,7 @@
 import { createMiddleware } from 'hono/factory';
 import type { RowDataPacket } from 'mysql2/promise';
-import { verifyToken } from '../lib/jwt';
-import { pool } from '../db/connection';
-import { apiError } from '../lib/errors';
+import { pool } from '../../../db/connection';
+import { apiError } from '../../../lib/errors';
 
 export type AuthVariables = {
   userId: string;
@@ -18,16 +17,11 @@ export const authMiddleware = createMiddleware<{ Variables: AuthVariables }>(
       return apiError(c, 401, 'UNAUTHORIZED', UNAUTH);
     }
 
-    let payload;
-    try {
-      payload = await verifyToken(header.slice(7));
-    } catch {
-      return apiError(c, 401, 'UNAUTHORIZED', UNAUTH);
-    }
+    const token = header.slice(7);
 
     const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT revoked_at FROM user_tokens WHERE uuid = ? AND user_id = ?',
-      [payload.jti, payload.sub],
+      'SELECT uuid, user_id, revoked_at FROM user_tokens WHERE token = ?',
+      [token],
     );
 
     if (!rows[0] || (rows[0].revoked_at as Date | null) !== null) {
@@ -36,11 +30,11 @@ export const authMiddleware = createMiddleware<{ Variables: AuthVariables }>(
 
     await pool.execute(
       'UPDATE user_tokens SET last_used_at = NOW() WHERE uuid = ?',
-      [payload.jti],
+      [rows[0].uuid],
     );
 
-    c.set('userId', payload.sub);
-    c.set('tokenId', payload.jti);
+    c.set('userId', rows[0].user_id);
+    c.set('tokenId', rows[0].uuid);
     await next();
   },
 );
