@@ -1,4 +1,5 @@
 import { createMiddleware } from 'hono/factory';
+import { getConnInfo } from 'hono/bun';
 import type { RowDataPacket } from 'mysql2/promise';
 import { pool } from '../../../db/connection';
 import { apiError } from '../../../lib/errors';
@@ -28,9 +29,16 @@ export const authMiddleware = createMiddleware<{ Variables: AuthVariables }>(
       return apiError(c, 401, 'UNAUTHORIZED', UNAUTH);
     }
 
+    // Update last_used and IP address on each request (Bun direct connection)
+    // TODO: In production behind nginx - use: proxy_set_header X-Real-IP $remote_addr;
+    // TODO: In production behind nginx - use: proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    const userAgent = c.req.header('User-Agent');
+    const connInfo = getConnInfo(c);
+    const ipAddress = connInfo.remote.address ?? null;
+
     await pool.execute(
-      'UPDATE user_tokens SET last_used_at = NOW() WHERE uuid = ?',
-      [rows[0].uuid],
+      'UPDATE user_tokens SET last_used_at = NOW(), user_agent = ?, ip_address = ? WHERE uuid = ?',
+      [userAgent, ipAddress, rows[0].uuid],
     );
 
     c.set('userId', rows[0].user_id);
