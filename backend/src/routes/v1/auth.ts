@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { getConnInfo } from 'hono/bun';
 import type { RowDataPacket } from 'mysql2/promise';
 import { pool } from '../../db/connection';
 import { apiError, type ErrorDetail } from '../../lib/errors';
@@ -10,13 +11,13 @@ const auth = new Hono<{ Variables: AuthVariables }>();
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-async function issueToken(userId: string): Promise<string> {
+async function issueToken(userId: string, userAgent: string | null, ipAddress: string | null): Promise<string> {
   const token = generateToken();
   const tokenId = crypto.randomUUID();
   await pool.execute(
-    `INSERT INTO user_tokens (uuid, user_id, token, expires_at)
-     VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))`,
-    [tokenId, userId, token],
+    `INSERT INTO user_tokens (uuid, user_id, token, user_agent, ip_address, expires_at)
+     VALUES (?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))`,
+    [tokenId, userId, token, userAgent, ipAddress],
   );
   return token;
 }
@@ -86,7 +87,15 @@ auth.post('/register', async (c) => {
 
   const [rows] = await pool.execute<RowDataPacket[]>('SELECT * FROM users WHERE uuid = ?', [userId]);
   const user = rows[0] as UserRow;
-  const access_token = await issueToken(userId);
+
+  // IP address from direct connection (Bun)
+  // TODO: In production behind nginx - use: proxy_set_header X-Real-IP $remote_addr;
+  // TODO: In production behind nginx - use: proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  const userAgent = c.req.header('User-Agent');
+  const connInfo = getConnInfo(c);
+  const ipAddress = connInfo.remote.address ?? null;
+
+  const access_token = await issueToken(userId, userAgent, ipAddress);
 
   return c.json({ data: { user: publicUser(user), access_token } });
 });
@@ -118,7 +127,14 @@ auth.post('/login', async (c) => {
 
   await pool.execute('UPDATE users SET last_activity = NOW() WHERE uuid = ?', [user.uuid]);
 
-  const access_token = await issueToken(user.uuid);
+  // IP address from direct connection (Bun)
+  // TODO: In production behind nginx - use: proxy_set_header X-Real-IP $remote_addr;
+  // TODO: In production behind nginx - use: proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  const userAgent = c.req.header('User-Agent');
+  const connInfo = getConnInfo(c);
+  const ipAddress = connInfo.remote.address ?? null;
+
+  const access_token = await issueToken(user.uuid, userAgent, ipAddress);
   return c.json({ data: { user: publicUser(user), access_token } });
 });
 

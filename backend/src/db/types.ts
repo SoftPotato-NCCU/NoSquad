@@ -34,8 +34,8 @@ export interface UserTokenRow {
   uuid: string;
   user_id: string;
   token: string;
-  device_type: string | null;
-  device_name: string | null;
+  user_agent: string | null;
+  ip_address: string | null;
   created_at: Date;
   last_used_at: Date | null;
   expires_at: Date | null;
