@@ -16,7 +16,7 @@ async function issueToken(userId: string, userAgent: string | null, ipAddress: s
   const tokenId = crypto.randomUUID();
   await pool.execute(
     `INSERT INTO user_tokens (uuid, user_id, token, user_agent, ip_address, expires_at)
-     VALUES (?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 7 DAY))`,
+     VALUES (?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 1 YEAR))`,
     [tokenId, userId, token, userAgent, ipAddress],
   );
   return token;
