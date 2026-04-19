@@ -88,12 +88,8 @@ auth.post('/register', async (c) => {
   const [rows] = await pool.execute<RowDataPacket[]>('SELECT * FROM users WHERE uuid = ?', [userId]);
   const user = rows[0] as UserRow;
 
-  // IP address from direct connection (Bun)
-  // TODO: In production behind nginx - use: proxy_set_header X-Real-IP $remote_addr;
-  // TODO: In production behind nginx - use: proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-  const userAgent = c.req.header('User-Agent');
-  const connInfo = getConnInfo(c);
-  const ipAddress = connInfo.remote.address ?? null;
+  const userAgent = c.req.header('User-Agent') ?? null;
+  const ipAddress = c.req.header('X-Real-IP') || getConnInfo(c).remote.address || null;
 
   const access_token = await issueToken(userId, userAgent, ipAddress);
 
