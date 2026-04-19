@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { register } from "@/lib/api";
+import { useDictionary, t } from "@/lib/i18n/useDictionary";
 
 interface SignupFormData {
   name: string;
@@ -15,8 +16,9 @@ interface SignupFormData {
   agreeToTerms: boolean;
 }
 
-export default function SignupPage() {
+function SignupContent() {
   const router = useRouter();
+  const { dict } = useDictionary("auth");
   const [formData, setFormData] = useState<SignupFormData>({
     name: "",
     username: "",
@@ -28,6 +30,14 @@ export default function SignupPage() {
   });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  if (!dict) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse text-gray-400">Loading...</div>
+      </div>
+    );
+  }
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
@@ -52,41 +62,85 @@ export default function SignupPage() {
 
   const validateForm = (): boolean => {
     if (!formData.name.trim()) {
-      setError("請輸入姓名");
+      setError(
+        t(dict, "auth.signup.errors.nameRequired", "Please enter your name"),
+      );
       return false;
     }
     if (!formData.username.trim()) {
-      setError("請輸入用戶名");
+      setError(
+        t(
+          dict,
+          "auth.signup.errors.identifierRequired",
+          "Please enter a username",
+        ),
+      );
       return false;
     }
     if (formData.username.length < 3) {
-      setError("用戶名至少需要 3 個字符");
+      setError(
+        t(
+          dict,
+          "auth.signup.errors.usernameMinLength",
+          "Username must be at least 3 characters",
+        ),
+      );
       return false;
     }
     if (!formData.email.includes("@")) {
-      setError("請輸入有效的電子郵件");
+      setError(
+        t(
+          dict,
+          "auth.signup.errors.emailRequired",
+          "Please enter a valid email",
+        ),
+      );
       return false;
     }
     if (!formData.phone.startsWith("+")) {
-      setError("電話號碼需使用 E.164 格式 (例如: +886912345678)");
+      setError(
+        t(
+          dict,
+          "auth.signup.errors.phoneRequired",
+          "Phone must use E.164 format (e.g. +886912345678)",
+        ),
+      );
       return false;
     }
     if (formData.password.length < 8) {
-      setError("密碼至少需要 8 個字符");
+      setError(
+        t(
+          dict,
+          "auth.signup.errors.passwordRequired",
+          "Password must be at least 8 characters",
+        ),
+      );
       return false;
     }
     if (formData.password !== formData.confirmPassword) {
-      setError("兩次輸入的密碼不一致");
+      setError(
+        t(
+          dict,
+          "auth.signup.errors.passwordsNotMatch",
+          "Passwords do not match",
+        ),
+      );
       return false;
     }
     if (!formData.agreeToTerms) {
-      setError("請同意服務條款");
+      setError(
+        t(
+          dict,
+          "auth.signup.errors.termsRequired",
+          "Please agree to the terms",
+        ),
+      );
       return false;
     }
     return true;
   };
 
-  const handleSubmit = async (e: FormEventHandler<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!validateForm()) {
@@ -106,9 +160,19 @@ export default function SignupPage() {
       });
       router.push("/auth/login?registered=true");
     } catch (err: unknown) {
-      const message = err && typeof err === 'object' && 'error' in err
-        ? (err.error as { message?: string }).message || "註冊失敗，請重試"
-        : "註冊失敗，請重試";
+      const message =
+        err && typeof err === "object" && "error" in err
+          ? (err.error as { message?: string }).message ||
+            t(
+              dict,
+              "auth.signup.errors.signupFailed",
+              "Registration failed, please try again",
+            )
+          : t(
+              dict,
+              "auth.signup.errors.signupFailed",
+              "Registration failed, please try again",
+            );
       setError(message);
     } finally {
       setIsLoading(false);
@@ -119,7 +183,8 @@ export default function SignupPage() {
     <div
       className="min-h-screen relative overflow-x-hidden"
       style={{
-        background: "linear-gradient(135deg, #F8FAFC 0%, #EEF2F7 50%, #E5EAF0 100%)",
+        background:
+          "linear-gradient(135deg, #F8FAFC 0%, #EEF2F7 50%, #E5EAF0 100%)",
       }}
     >
       {/* ─── 左側品牌區域：fixed，桌面版才顯示 ─── */}
@@ -143,7 +208,7 @@ export default function SignupPage() {
               </svg>
             </div>
             <h1 className="text-5xl font-bold text-gray-900 leading-tight">
-              加入 NoSquad
+              {t(dict, "auth.signup.title", "Join NoSquad")}
             </h1>
           </div>
 
@@ -153,19 +218,27 @@ export default function SignupPage() {
               className="block opacity-0 animate-fadeInUp"
               style={{ animationDelay: "0.2s", animationFillMode: "forwards" }}
             >
-              在這裡，
+              {t(dict, "auth.signup.subtitle.line1", "In here,")}
             </span>
             <span
               className="block opacity-0 animate-fadeInUp"
               style={{ animationDelay: "0.4s", animationFillMode: "forwards" }}
             >
-              從沒被揪的人，
+              {t(
+                dict,
+                "auth.signup.subtitle.line2",
+                "from the one who's never invited,",
+              )}
             </span>
             <span
               className="block opacity-0 animate-fadeInUp"
               style={{ animationDelay: "0.6s", animationFillMode: "forwards" }}
             >
-              變成最會揪的人。
+              {t(
+                dict,
+                "auth.signup.subtitle.line3",
+                "to the one who hosts it all.",
+              )}
             </span>
           </p>
         </div>
@@ -202,15 +275,21 @@ export default function SignupPage() {
                 </svg>
               </div>
               <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
-                建立帳户
+                {t(dict, "auth.signup.title", "Join NoSquad")}
               </h1>
-              <p className="text-sm text-gray-600">加入 NoSquad 社區</p>
+              <p className="text-sm text-gray-600">
+                {t(
+                  dict,
+                  "auth.signup.subtitle.mobile",
+                  "Join the NoSquad community",
+                )}
+              </p>
             </div>
 
             {/* 桌面版標題 */}
             <div className="mb-6 sm:mb-8 hidden lg:block">
               <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                建立您的帳户
+                {t(dict, "auth.signup.form.title", "Create your account")}
               </h2>
             </div>
 
@@ -240,7 +319,7 @@ export default function SignupPage() {
                   htmlFor="name"
                   className="block text-sm font-semibold text-gray-700 mb-2"
                 >
-                  姓名
+                  {t(dict, "auth.signup.form.name", "Name")}
                 </label>
                 <div className="relative group">
                   <input
@@ -269,7 +348,7 @@ export default function SignupPage() {
                   htmlFor="username"
                   className="block text-sm font-semibold text-gray-700 mb-2"
                 >
-                  用戶名
+                  {t(dict, "auth.signup.form.username", "Username")}
                 </label>
                 <div className="relative group">
                   <input
@@ -298,7 +377,7 @@ export default function SignupPage() {
                   htmlFor="email"
                   className="block text-sm font-semibold text-gray-700 mb-2"
                 >
-                  電子郵件
+                  {t(dict, "auth.signup.form.email", "Email")}
                 </label>
                 <div className="relative group">
                   <input
@@ -328,7 +407,7 @@ export default function SignupPage() {
                   htmlFor="phone"
                   className="block text-sm font-semibold text-gray-700 mb-2"
                 >
-                  電話 (E.164 格式)
+                  {t(dict, "auth.signup.form.phone", "Phone (E.164 format)")}
                 </label>
                 <div className="relative group">
                   <input
@@ -357,7 +436,7 @@ export default function SignupPage() {
                   htmlFor="password"
                   className="block text-sm font-semibold text-gray-700 mb-2"
                 >
-                  密碼
+                  {t(dict, "auth.signup.form.password", "Password")}
                 </label>
                 <div className="relative group">
                   <input
@@ -382,7 +461,13 @@ export default function SignupPage() {
                     ></path>
                   </svg>
                 </div>
-                <p className="text-xs text-gray-500 mt-1">至少需要 8 個字符</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  {t(
+                    dict,
+                    "auth.signup.form.passwordHint",
+                    "At least 8 characters",
+                  )}
+                </p>
               </div>
 
               {/* 確認密碼字段 */}
@@ -391,7 +476,11 @@ export default function SignupPage() {
                   htmlFor="confirmPassword"
                   className="block text-sm font-semibold text-gray-700 mb-2"
                 >
-                  確認密碼
+                  {t(
+                    dict,
+                    "auth.signup.form.confirmPassword",
+                    "Confirm Password",
+                  )}
                 </label>
                 <div className="relative group">
                   <input
@@ -428,19 +517,19 @@ export default function SignupPage() {
                   className="w-4 h-4 mt-1 rounded bg-gray-100 border-gray-300 text-purple-600 focus:ring-2 focus:ring-purple-500 transition-all"
                 />
                 <span className="ml-3 text-sm text-gray-700 group-hover:text-gray-900 transition-colors">
-                  我同意{" "}
+                  {t(dict, "auth.signup.form.agreeTerms", "I agree to the")}{" "}
                   <Link
                     href="/terms"
                     className="text-purple-600 hover:text-purple-700 font-medium"
                   >
-                    服務條款{" "}
+                    {t(dict, "auth.signup.form.terms", "Terms of Service")}{" "}
                   </Link>
-                  和{" "}
+                  {t(dict, "auth.signup.form.and", "and")}{" "}
                   <Link
                     href="/privacy"
                     className="text-purple-600 hover:text-purple-700 font-medium"
                   >
-                    隱私政策
+                    {t(dict, "auth.signup.form.privacy", "Privacy Policy")}
                   </Link>
                 </span>
               </label>
@@ -454,10 +543,14 @@ export default function SignupPage() {
                 {isLoading ? (
                   <div className="flex items-center justify-center gap-2">
                     <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin"></div>
-                    建立中...
+                    {t(
+                      dict,
+                      "auth.signup.form.submitting",
+                      "Creating account...",
+                    )}
                   </div>
                 ) : (
-                  "建立帳户"
+                  t(dict, "auth.signup.form.submit", "Create Account")
                 )}
               </button>
             </form>
@@ -465,7 +558,9 @@ export default function SignupPage() {
             {/* 分割線 */}
             <div className="flex items-center gap-3 my-6">
               <div className="flex-1 h-px bg-gradient-to-r from-transparent to-gray-300"></div>
-              <span className="text-xs text-gray-400">或</span>
+              <span className="text-xs text-gray-400">
+                {t(dict, "auth.signup.divider", "OR")}
+              </span>
               <div className="flex-1 h-px bg-gradient-to-l from-transparent to-gray-300"></div>
             </div>
 
@@ -482,23 +577,31 @@ export default function SignupPage() {
                 >
                   <path d="M15.545 6.558a9.42 9.42 0 01.139 1.626c0 2.889-2.126 5.413-5.033 5.413-1.578 0-3.055-.643-4.118-1.713-.577.54-1.294 1.017-2.09 1.309 1.493 1.547 3.637 2.517 6.029 2.517 4.917 0 8.855-3.938 8.855-8.855 0-.55-.053-1.089-.156-1.617a5.148 5.148 0 001.597-3.68z"></path>
                 </svg>
-                使用 Google 註冊
+                {t(dict, "auth.signup.socialLogin", "Sign up with Google")}
               </button>
             </div>
 
             {/* 登入鏈接 */}
             <div className="mt-6 text-center text-sm text-gray-600">
-              已有帳戶？{" "}
+              {t(dict, "auth.signup.loginLink", "Already have an account?")}{" "}
               <Link
                 href="/auth/login"
                 className="text-purple-600 hover:text-purple-700 font-semibold transition-colors"
               >
-                立即登入
+                {t(dict, "auth.signup.loginAction", "Sign in now")}
               </Link>
             </div>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-pulse text-gray-400">Loading...</div></div>}>
+      <SignupContent />
+    </Suspense>
   );
 }

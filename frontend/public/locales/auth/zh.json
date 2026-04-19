@@ -1,0 +1,79 @@
+{
+  "login": {
+    "title": "登入 NoSquad",
+    "subtitle": {
+      "line1": "在這裡，",
+      "line2": "從沒被揪的人，",
+      "line3": "變成最會揪的人。"
+    },
+    "form": {
+      "identifier": "電子郵件 / 用戶名 / 電話",
+      "password": "密碼",
+      "rememberMe": "記住我",
+      "forgotPassword": "忘記密碼？",
+      "submit": "登入",
+      "submitting": "登入中..."
+    },
+    "divider": "或",
+    "socialLogin": "Google 登入",
+    "signupLink": "還沒有帳戶？",
+    "signupAction": "立即註冊"
+  },
+  "signup": {
+    "title": "加入 NoSquad",
+    "subtitle": {
+      "line1": "在這裡，",
+      "line2": "從沒被揪的人，",
+      "line3": "變成最會揪的人。",
+      "mobile": "加入 NoSquad 社區"
+    },
+    "form": {
+      "name": "姓名",
+      "username": "用戶名",
+      "email": "電子郵件",
+      "phone": "電話 (E.164 格式)",
+      "phonePlaceholder": "+886912345678",
+      "password": "密碼",
+      "confirmPassword": "確認密碼",
+      "agreeTerms": "同意服務條款",
+      "terms": "服務條款",
+      "privacy": "隱私政策",
+      "and": "和",
+      "title": "建立您的帳戶",
+      "passwordHint": "至少需要 8 個字符",
+      "submit": "建立帳戶",
+      "submitting": "建立中..."
+    },
+    "errors": {
+      "nameRequired": "請輸入姓名",
+      "identifierRequired": "請輸入用戶名",
+      "usernameMinLength": "用戶名至少需要 3 個字符",
+      "emailRequired": "請輸入有效的電子郵件",
+      "phoneRequired": "電話號碼需使用 E.164 格式 (例如: +886912345678)",
+      "passwordRequired": "密碼至少需要 8 個字符",
+      "passwordsNotMatch": "兩次輸入的密碼不一致",
+      "termsRequired": "請同意服務條款",
+      "signupFailed": "註冊失敗，請重試"
+    },
+    "divider": "或",
+    "socialLogin": "Google 註冊",
+    "loginLink": "已經有帳戶？",
+    "loginAction": "立即登入"
+  },
+  "errors": {
+    "identifierRequired": "請輸入電子郵件、用戶名或電話",
+    "passwordRequired": "密碼至少需要 8 個字符",
+    "passwordsNotMatch": "兩次輸入的密碼不一致",
+    "loginFailed": "登入失敗，請重試",
+    "signupFailed": "註冊失敗，請重試",
+    "usernameRequired": "請輸入用戶名",
+    "usernameMinLength": "用戶名至少需要 3 個字符",
+    "emailRequired": "請輸入有效的電子郵件",
+    "phoneRequired": "電話號碼需使用 E.164 格式 (例如: +886912345678)",
+    "termsRequired": "請同意服務條款",
+    "nameRequired": "請輸入姓名"
+  },
+  "success": {
+    "registered": "註冊成功！請登入"
+  }
+}

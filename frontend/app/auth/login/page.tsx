@@ -1,23 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { login, setToken } from "@/lib/api";
+import { useDictionary, t } from "@/lib/i18n/useDictionary";
 
 interface LoginFormData {
   identifier: string;
   password: string;
 }
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const { dict } = useDictionary("auth");
+  const [error, setError] = useState("");
   const [formData, setFormData] = useState<LoginFormData>({
     identifier: "",
     password: "",
   });
-  const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -28,9 +30,9 @@ export default function LoginPage() {
     setError("");
   };
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setIsLoading(true);
+    setIsSubmitting(true);
     setError("");
 
     try {
@@ -39,13 +41,21 @@ export default function LoginPage() {
       router.push("/rooms");
     } catch (err: unknown) {
       const message = err && typeof err === 'object' && 'error' in err
-        ? (err.error as { message?: string }).message || "登入失敗，請重試"
-        : "登入失敗，請重試";
+        ? (err.error as { message?: string }).message || t(dict, 'auth.errors.loginFailed', "Login failed, please try again")
+        : t(dict, 'auth.errors.loginFailed', "Login failed, please try again");
       setError(message);
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
+
+  if (!dict) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse text-gray-400">Loading...</div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -75,7 +85,7 @@ export default function LoginPage() {
               </svg>
             </div>
             <h1 className="text-5xl font-bold text-gray-900 leading-tight">
-              登入 NoSquad
+              {t(dict, 'auth.login.title', 'Login to NoSquad')}
             </h1>
           </div>
 
@@ -85,19 +95,19 @@ export default function LoginPage() {
               className="block opacity-0 animate-fadeInUp"
               style={{ animationDelay: "0.2s", animationFillMode: "forwards" }}
             >
-              在這裡，
+              {t(dict, 'auth.login.subtitle.line1', 'In here,')}
             </span>
             <span
               className="block opacity-0 animate-fadeInUp"
               style={{ animationDelay: "0.4s", animationFillMode: "forwards" }}
             >
-              從沒被揪的人，
+              {t(dict, 'auth.login.subtitle.line2', 'from the one who\'s never invited,')}
             </span>
             <span
               className="block opacity-0 animate-fadeInUp"
               style={{ animationDelay: "0.6s", animationFillMode: "forwards" }}
             >
-              變成最會揪的人。
+              {t(dict, 'auth.login.subtitle.line3', 'to the one who hosts it all.')}
             </span>
           </p>
         </div>
@@ -141,7 +151,7 @@ export default function LoginPage() {
             {/* 桌面版標題 */}
             <div className="mb-6 sm:mb-8 hidden lg:block">
               <h2 className="text-3xl font-bold text-gray-900 mb-2">
-                登入以繼續
+                {t(dict, 'auth.login.title', 'Login to continue')}
               </h2>
             </div>
 
@@ -171,7 +181,7 @@ export default function LoginPage() {
                   htmlFor="identifier"
                   className="block text-sm font-semibold text-gray-700 mb-2"
                 >
-                  電子郵件 / 用戶名 / 電話
+                  {t(dict, 'auth.login.form.identifier', 'Email / Username / Phone')}
                 </label>
                 <div className="relative group">
                   <input
@@ -201,7 +211,7 @@ export default function LoginPage() {
                   htmlFor="password"
                   className="block text-sm font-semibold text-gray-700 mb-2"
                 >
-                  密碼
+                  {t(dict, 'auth.login.form.password', 'Password')}
                 </label>
                 <div className="relative group">
                   <input
@@ -236,30 +246,30 @@ export default function LoginPage() {
                     className="w-4 h-4 rounded bg-gray-100 border-gray-300 text-purple-600 focus:ring-2 focus:ring-purple-500 transition-all"
                   />
                   <span className="ml-2 text-sm text-gray-700 group-hover:text-gray-900 transition-colors">
-                    記住我
+                    {t(dict, 'auth.login.form.rememberMe', 'Remember me')}
                   </span>
                 </label>
                 <Link
                   href="/auth/forgot-password"
                   className="text-sm text-purple-600 hover:text-purple-700 font-medium transition-colors"
                 >
-                  忘記密碼？
+                  {t(dict, 'auth.login.form.forgotPassword', 'Forgot password?')}
                 </Link>
               </div>
 
               {/* 登入按鈕 */}
               <button
                 type="submit"
-                disabled={isLoading}
+                disabled={isSubmitting}
                 className="w-full py-3 px-4 mt-6 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:from-purple-400 disabled:to-blue-400 text-white font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg disabled:shadow-none transform hover:translate-y-[-2px] disabled:translate-y-0 text-base sm:text-lg"
               >
-                {isLoading ? (
+                {isSubmitting ? (
                   <div className="flex items-center justify-center gap-2">
                     <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin"></div>
-                    登入中...
+                    {t(dict, 'auth.login.form.submitting', 'Logging in...')}
                   </div>
                 ) : (
-                  "登入"
+                  t(dict, 'auth.login.form.submit', 'Login')
                 )}
               </button>
             </form>
@@ -267,7 +277,7 @@ export default function LoginPage() {
             {/* 分割線 */}
             <div className="flex items-center gap-3 my-6">
               <div className="flex-1 h-px bg-gradient-to-r from-transparent to-gray-300"></div>
-              <span className="text-xs text-gray-400">或</span>
+              <span className="text-xs text-gray-400">{t(dict, 'auth.login.divider', 'OR')}</span>
               <div className="flex-1 h-px bg-gradient-to-l from-transparent to-gray-300"></div>
             </div>
 
@@ -284,23 +294,31 @@ export default function LoginPage() {
                 >
                   <path d="M15.545 6.558a9.42 9.42 0 01.139 1.626c0 2.889-2.126 5.413-5.033 5.413-1.578 0-3.055-.643-4.118-1.713-.577.54-1.294 1.017-2.09 1.309 1.493 1.547 3.637 2.517 6.029 2.517 4.917 0 8.855-3.938 8.855-8.855 0-.55-.053-1.089-.156-1.617a5.148 5.148 0 001.597-3.68z"></path>
                 </svg>
-                Google 登入
+                {t(dict, 'auth.login.socialLogin', 'Sign in with Google')}
               </button>
             </div>
 
             {/* 註冊鏈接 */}
             <div className="mt-6 text-center text-sm text-gray-600">
-              還沒有帳户？{" "}
+              {t(dict, 'auth.login.signupLink', "Don't have an account?")}{" "}
               <Link
                 href="/auth/signup"
                 className="text-purple-600 hover:text-purple-700 font-semibold transition-colors"
               >
-                立即註冊
+                {t(dict, 'auth.login.signupAction', 'Sign up now')}
               </Link>
             </div>
           </div>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-pulse text-gray-400">Loading...</div></div>}>
+      <LoginContent />
+    </Suspense>
   );
 }
