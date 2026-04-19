@@ -1,20 +1,27 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { register } from "@/lib/api";
 
 interface SignupFormData {
+  name: string;
   username: string;
   email: string;
+  phone: string;
   password: string;
   confirmPassword: string;
   agreeToTerms: boolean;
 }
 
 export default function SignupPage() {
+  const router = useRouter();
   const [formData, setFormData] = useState<SignupFormData>({
+    name: "",
     username: "",
     email: "",
+    phone: "",
     password: "",
     confirmPassword: "",
     agreeToTerms: false,
@@ -44,6 +51,10 @@ export default function SignupPage() {
   };
 
   const validateForm = (): boolean => {
+    if (!formData.name.trim()) {
+      setError("請輸入姓名");
+      return false;
+    }
     if (!formData.username.trim()) {
       setError("請輸入用戶名");
       return false;
@@ -54,6 +65,10 @@ export default function SignupPage() {
     }
     if (!formData.email.includes("@")) {
       setError("請輸入有效的電子郵件");
+      return false;
+    }
+    if (!formData.phone.startsWith("+")) {
+      setError("電話號碼需使用 E.164 格式 (例如: +886912345678)");
       return false;
     }
     if (formData.password.length < 8) {
@@ -71,7 +86,7 @@ export default function SignupPage() {
     return true;
   };
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEventHandler<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!validateForm()) {
@@ -82,12 +97,19 @@ export default function SignupPage() {
     setError("");
 
     try {
-      // TODO: 實現真實的註冊 API 調用
-      console.log("註冊表單數據:", formData);
-      // 模擬成功
-      alert("註冊成功！請登入");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "註冊失敗，請重試");
+      await register({
+        name: formData.name,
+        username: formData.username,
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password,
+      });
+      router.push("/auth/login?registered=true");
+    } catch (err: unknown) {
+      const message = err && typeof err === 'object' && 'error' in err
+        ? (err.error as { message?: string }).message || "註冊失敗，請重試"
+        : "註冊失敗，請重試";
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -97,17 +119,11 @@ export default function SignupPage() {
     <div
       className="min-h-screen relative overflow-x-hidden"
       style={{
-        backgroundImage: "url(/images/auth/auth_background.png)",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundAttachment: "fixed",
+        background: "linear-gradient(135deg, #F8FAFC 0%, #EEF2F7 50%, #E5EAF0 100%)",
       }}
     >
-      {/* 半透明覆蓋層 - 確保文本可讀性 */}
-      <div className="absolute inset-0 bg-white/30 backdrop-blur-sm"></div>
-
       {/* ─── 左側品牌區域：fixed，桌面版才顯示 ─── */}
-      <div className="hidden lg:flex fixed top-0 left-0 w-1/2 h-screen flex-col justify-start pt-16 px-12 z-20 pointer-events-none">
+      <div className="hidden lg:flex fixed top-0 left-0 w-1/2 h-screen flex-col justify-between pt-16 pb-12 px-12 z-20 pointer-events-none">
         <div className="max-w-md pointer-events-auto">
           {/* Logo 和標題行 */}
           <div className="flex items-center gap-4 mb-8">
@@ -154,16 +170,8 @@ export default function SignupPage() {
           </p>
         </div>
 
-        {/* 左下角裝飾圖片 — fixed 在左半邊底部 */}
-        <div
-          className="absolute pointer-events-none"
-          style={{
-            bottom: "-150px",
-            left: "190px",
-            width: "680px",
-            height: "680px",
-          }}
-        >
+        {/* 裝飾圖片 — 在左下角 */}
+        <div className="pointer-events-auto w-96 h-96 mx-auto pb-8">
           <img
             src="/images/auth/auth_pic.png"
             alt="decoration"
@@ -226,7 +234,36 @@ export default function SignupPage() {
 
             {/* 註冊表單 */}
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-              {/* 用戶名字段 */}
+              {/* 姓名 */}
+              <div>
+                <label
+                  htmlFor="name"
+                  className="block text-sm font-semibold text-gray-700 mb-2"
+                >
+                  姓名
+                </label>
+                <div className="relative group">
+                  <input
+                    id="name"
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    required
+                    placeholder="John Doe"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
+                  />
+                  <svg
+                    className="absolute right-3 top-3.5 w-5 h-5 text-gray-400 opacity-60"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"></path>
+                  </svg>
+                </div>
+              </div>
+
+              {/* 用戶名 */}
               <div>
                 <label
                   htmlFor="username"
@@ -281,6 +318,35 @@ export default function SignupPage() {
                   >
                     <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"></path>
                     <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"></path>
+                  </svg>
+                </div>
+              </div>
+
+              {/* 電話字段 */}
+              <div>
+                <label
+                  htmlFor="phone"
+                  className="block text-sm font-semibold text-gray-700 mb-2"
+                >
+                  電話 (E.164 格式)
+                </label>
+                <div className="relative group">
+                  <input
+                    id="phone"
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleChange}
+                    required
+                    placeholder="+886912345678"
+                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
+                  />
+                  <svg
+                    className="absolute right-3 top-3.5 w-5 h-5 text-gray-400 opacity-60"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.706 1.945a1 1 0 01-.54 1.06l-1.548.773a11.026 11.026 0 006.104 6.104l.774-1.548a1 1 0 011.059-.54l1.945.707a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"></path>
                   </svg>
                 </div>
               </div>

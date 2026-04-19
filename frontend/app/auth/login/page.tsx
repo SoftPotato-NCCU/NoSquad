@@ -1,16 +1,19 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { login, setToken } from "@/lib/api";
 
 interface LoginFormData {
-  email: string;
+  identifier: string;
   password: string;
 }
 
 export default function LoginPage() {
+  const router = useRouter();
   const [formData, setFormData] = useState<LoginFormData>({
-    email: "",
+    identifier: "",
     password: "",
   });
   const [error, setError] = useState("");
@@ -31,21 +34,14 @@ export default function LoginPage() {
     setError("");
 
     try {
-      // TODO: 實現真實的登入 API 調用
-      // const response = await fetch('/api/auth/login', {
-      //   method: 'POST',
-      //   headers: { 'Content-Type': 'application/json' },
-      //   body: JSON.stringify(formData),
-      // });
-      // if (!response.ok) {
-      //   throw new Error('登入失敗');
-      // }
-
-      console.log("登入表單數據:", formData);
-      // 模擬成功
-      alert("登入成功！");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "登入失敗，請重試");
+      const response = await login(formData.identifier, formData.password);
+      setToken(response.data.access_token);
+      router.push("/rooms");
+    } catch (err: unknown) {
+      const message = err && typeof err === 'object' && 'error' in err
+        ? (err.error as { message?: string }).message || "登入失敗，請重試"
+        : "登入失敗，請重試";
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -55,17 +51,11 @@ export default function LoginPage() {
     <div
       className="min-h-screen relative overflow-hidden"
       style={{
-        backgroundImage: "url(/images/auth/auth_background.png)",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundAttachment: "fixed",
+        background: "linear-gradient(135deg, #F8FAFC 0%, #EEF2F7 50%, #E5EAF0 100%)",
       }}
     >
-      {/* 半透明覆蓋層 - 確保文本可讀性 */}
-      <div className="absolute inset-0 bg-white/30 backdrop-blur-sm"></div>
-
       {/* ─── 左側品牌區域：fixed，桌面版才顯示 ─── */}
-      <div className="hidden lg:flex fixed top-0 left-0 w-1/2 h-screen flex-col justify-start pt-16 px-12 z-20 pointer-events-none">
+      <div className="hidden lg:flex fixed top-0 left-0 w-1/2 h-screen flex-col justify-between pt-16 pb-12 px-12 z-20 pointer-events-none">
         <div className="max-w-md pointer-events-auto">
           {/* Logo 和標題行 */}
           <div className="flex items-center gap-4 mb-8">
@@ -112,16 +102,8 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* 左下角裝飾圖片 — fixed 在左半邊底部 */}
-        <div
-          className="absolute pointer-events-none"
-          style={{
-            bottom: "-150px",
-            left: "190px",
-            width: "680px",
-            height: "680px",
-          }}
-        >
+        {/* 裝飾圖片 — 在左下角 */}
+        <div className="pointer-events-auto w-96 h-96 mx-auto pb-8">
           <img
             src="/images/auth/auth_pic.png"
             alt="decoration"
@@ -183,20 +165,20 @@ export default function LoginPage() {
 
             {/* 登入表單 */}
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-              {/* 電子郵件字段 */}
+              {/* 電子郵件/帳號字段 */}
               <div>
                 <label
-                  htmlFor="email"
+                  htmlFor="identifier"
                   className="block text-sm font-semibold text-gray-700 mb-2"
                 >
-                  電子郵件
+                  電子郵件 / 用戶名 / 電話
                 </label>
                 <div className="relative group">
                   <input
-                    id="email"
-                    type="email"
-                    name="email"
-                    value={formData.email}
+                    id="identifier"
+                    type="text"
+                    name="identifier"
+                    value={formData.identifier}
                     onChange={handleChange}
                     required
                     placeholder="name@example.com"
