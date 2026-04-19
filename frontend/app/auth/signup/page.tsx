@@ -160,19 +160,24 @@ function SignupContent() {
       });
       router.push("/auth/login?registered=true");
     } catch (err: unknown) {
-      const message =
-        err && typeof err === "object" && "error" in err
-          ? (err.error as { message?: string }).message ||
-            t(
-              dict,
-              "auth.signup.errors.signupFailed",
-              "Registration failed, please try again",
-            )
-          : t(
-              dict,
-              "auth.signup.errors.signupFailed",
-              "Registration failed, please try again",
-            );
+      let message = t(
+        dict,
+        "auth.signup.errors.signupFailed",
+        "Registration failed, please try again",
+      );
+
+      if (err && typeof err === "object" && "error" in err) {
+        const error = err.error as {
+          message?: string;
+          details?: Array<{ field: string; message: string }>;
+        };
+        if (error.details && error.details.length > 0) {
+          message = error.details.map((d) => d.message).join(", ");
+        } else if (error.message) {
+          message = error.message;
+        }
+      }
+
       setError(message);
     } finally {
       setIsLoading(false);
