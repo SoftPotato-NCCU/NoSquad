@@ -66,18 +66,13 @@ function LoginContent() {
   if (!dict) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-pulse text-gray-400">Loading...</div>
+        <div className="animate-pulse text-zinc-400 dark:text-zinc-400">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div
-      className="min-h-screen relative overflow-hidden"
-      style={{
-        background: "linear-gradient(135deg, #F8FAFC 0%, #EEF2F7 50%, #E5EAF0 100%)",
-      }}
-    >
+    <div className="min-h-screen relative overflow-hidden bg-zinc-50 dark:bg-zinc-950">
       {/* ─── 左側品牌區域：fixed，桌面版才顯示 ─── */}
       <div className="hidden lg:flex fixed top-0 left-0 w-1/2 h-screen flex-col justify-between pt-16 pb-12 px-12 z-20 pointer-events-none">
         <div className="max-w-md pointer-events-auto">
@@ -98,13 +93,13 @@ function LoginContent() {
                 />
               </svg>
             </div>
-            <h1 className="text-5xl font-bold text-gray-900 leading-tight">
+            <h1 className="text-5xl font-bold text-gray-900 dark:text-white leading-tight">
               {t(dict, 'auth.login.title', 'Login to NoSquad')}
             </h1>
           </div>
 
           {/* 說明文字 */}
-          <p className="text-xl text-gray-600 mb-8 leading-relaxed">
+          <p className="text-xl text-gray-600 dark:text-zinc-400 mb-8 leading-relaxed">
             <span
               className="block opacity-0 animate-fadeInUp"
               style={{ animationDelay: "0.2s", animationFillMode: "forwards" }}
@@ -139,7 +134,7 @@ function LoginContent() {
       {/* ─── 右側表單區域：正常文檔流，左半寬度留給 fixed 左欄 ─── */}
       <div className="relative z-10 min-h-screen flex items-center justify-center lg:justify-end px-4 sm:px-6 lg:pr-12 py-12 sm:py-16 lg:ml-[50%]">
         <div className="w-full max-w-lg">
-          <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-6 sm:p-8 md:p-10">
+          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-md border border-gray-200 dark:border-zinc-800 p-6 sm:p-8 md:p-10">
             {/* 手機版 Logo 區域 */}
             <div className="mb-6 sm:mb-8 text-center lg:hidden">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 mb-4">
@@ -157,21 +152,21 @@ function LoginContent() {
                   />
                 </svg>
               </div>
-              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-2">
-                NoSquad
+              <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
+                {t(dict, 'auth.login.title', 'Login to NoSquad')}
               </h1>
             </div>
 
             {/* 桌面版標題 */}
             <div className="mb-6 sm:mb-8 hidden lg:block">
-              <h2 className="text-3xl font-bold text-gray-900 mb-2">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
                 {t(dict, 'auth.login.title', 'Login to continue')}
               </h2>
             </div>
 
             {/* 錯誤提示 */}
             {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-300 rounded-lg text-red-700 text-sm flex items-start gap-3">
+              <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400 text-sm flex items-start gap-3">
                 <svg
                   className="w-5 h-5 flex-shrink-0 mt-0.5"
                   fill="currentColor"
@@ -193,7 +188,7 @@ function LoginContent() {
               <div>
                 <label
                   htmlFor="identifier"
-                  className="block text-sm font-semibold text-gray-700 mb-2"
+                  className="block text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-2"
                 >
                   {t(dict, 'auth.login.form.identifier', 'Email / Username / Phone')}
                 </label>
@@ -206,10 +201,10 @@ function LoginContent() {
                     onChange={handleChange}
                     required
                     placeholder="name@example.com"
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
                   />
                   <svg
-                    className="absolute right-3 top-3.5 w-5 h-5 text-gray-400 opacity-60"
+                    className="absolute right-3 top-3.5 w-5 h-5 text-gray-400 dark:text-zinc-500 opacity-60"
                     fill="currentColor"
                     viewBox="0 0 20 20"
                   >
@@ -223,7 +218,7 @@ function LoginContent() {
               <div>
                 <label
                   htmlFor="password"
-                  className="block text-sm font-semibold text-gray-700 mb-2"
+                  className="block text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-2"
                 >
                   {t(dict, 'auth.login.form.password', 'Password')}
                 </label>
@@ -236,10 +231,10 @@ function LoginContent() {
                     onChange={handleChange}
                     required
                     placeholder="••••••••"
-                    className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
                   />
                   <svg
-                    className="absolute right-3 top-3.5 w-5 h-5 text-gray-400 opacity-60"
+                    className="absolute right-3 top-3.5 w-5 h-5 text-gray-400 dark:text-zinc-500 opacity-60"
                     fill="currentColor"
                     viewBox="0 0 20 20"
                   >
@@ -257,15 +252,15 @@ function LoginContent() {
                 <label className="flex items-center group cursor-pointer">
                   <input
                     type="checkbox"
-                    className="w-4 h-4 rounded bg-gray-100 border-gray-300 text-purple-600 focus:ring-2 focus:ring-purple-500 transition-all"
+                    className="w-4 h-4 rounded bg-gray-100 dark:bg-zinc-700 border-gray-300 dark:border-zinc-600 text-purple-600 focus:ring-2 focus:ring-purple-500 transition-all"
                   />
-                  <span className="ml-2 text-sm text-gray-700 group-hover:text-gray-900 transition-colors">
+                  <span className="ml-2 text-sm text-gray-700 dark:text-zinc-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
                     {t(dict, 'auth.login.form.rememberMe', 'Remember me')}
                   </span>
                 </label>
                 <Link
                   href="/auth/forgot-password"
-                  className="text-sm text-purple-600 hover:text-purple-700 font-medium transition-colors"
+                  className="text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium transition-colors"
                 >
                   {t(dict, 'auth.login.form.forgotPassword', 'Forgot password?')}
                 </Link>
@@ -290,16 +285,16 @@ function LoginContent() {
 
             {/* 分割線 */}
             <div className="flex items-center gap-3 my-6">
-              <div className="flex-1 h-px bg-gradient-to-r from-transparent to-gray-300"></div>
-              <span className="text-xs text-gray-400">{t(dict, 'auth.login.divider', 'OR')}</span>
-              <div className="flex-1 h-px bg-gradient-to-l from-transparent to-gray-300"></div>
+              <div className="flex-1 h-px bg-gradient-to-r from-transparent to-gray-300 dark:to-zinc-700"></div>
+              <span className="text-xs text-gray-400 dark:text-zinc-500">{t(dict, 'auth.login.divider', 'OR')}</span>
+              <div className="flex-1 h-px bg-gradient-to-l from-transparent to-gray-300 dark:to-zinc-700"></div>
             </div>
 
             {/* 社交登入 */}
             <div className="space-y-2">
               <button
                 type="button"
-                className="w-full py-2.5 px-4 bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-2 text-sm sm:text-base shadow-sm hover:shadow-md"
+                className="w-full py-2.5 px-4 bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 border border-gray-300 dark:border-zinc-700 text-gray-700 dark:text-zinc-300 font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-2 text-sm sm:text-base shadow-sm hover:shadow-md"
               >
                 <svg
                   className="w-5 h-5"
@@ -313,7 +308,7 @@ function LoginContent() {
             </div>
 
             {/* 註冊鏈接 */}
-            <div className="mt-6 text-center text-sm text-gray-600">
+            <div className="mt-6 text-center text-sm text-gray-600 dark:text-zinc-400">
               {t(dict, 'auth.login.signupLink', "Don't have an account?")}{" "}
               <Link
                 href="/auth/signup"
