@@ -37,8 +37,11 @@ function LoginContent() {
 
     try {
       const response = await login(formData.identifier, formData.password);
+      console.log("[Login] Got response, setting token");
       setToken(response.data.access_token);
-      router.push("/rooms");
+      localStorage.setItem("user", JSON.stringify(response.data.user));
+      console.log("[Login] Token set, redirecting to /");
+      window.location.href = "/";
     } catch (err: unknown) {
       let message = t(dict, 'auth.errors.loginFailed', "Login failed, please try again");
 

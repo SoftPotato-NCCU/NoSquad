@@ -1,5 +1,30 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BACKEND_URL || "";
 
+const AUTH_ERROR_CODES = ["UNAUTHORIZED", "INVALID_TOKEN", "TOKEN_EXPIRED", "USER_NOT_FOUND"];
+
+function isAuthError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "error" in error &&
+    typeof error.error === "object" &&
+    error.error !== null &&
+    "code" in error.error &&
+    typeof error.error.code === "string" &&
+    AUTH_ERROR_CODES.includes(error.error.code)
+  );
+}
+
+export function handleAuthError(error: unknown): boolean {
+  if (isAuthError(error)) {
+    clearToken();
+    localStorage.removeItem("user");
+    window.location.href = "/";
+    return true;
+  }
+  return false;
+}
+
 async function fetchApi<T>(
   endpoint: string,
   options: RequestInit = {},

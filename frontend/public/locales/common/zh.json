@@ -1,5 +1,8 @@
 {
   "common": {
+    "home": "首頁",
+    "explore": "探索",
+    "profile": "個人資料",
     "loading": "載入中...",
     "error": "錯誤",
     "success": "成功",
