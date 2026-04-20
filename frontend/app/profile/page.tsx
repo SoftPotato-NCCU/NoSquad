@@ -17,7 +17,7 @@ function ProfileContent() {
     } finally {
       clearToken();
       localStorage.removeItem("user");
-      window.location.href = "/auth/login";
+      window.location.href = "/";
     }
   };
 
@@ -36,7 +36,7 @@ function ProfileContent() {
 
   return (
     <div className="flex flex-col flex-1 p-4">
-      <h1 className="text-xl font-semibold mb-6">{t(dict, "profile.title", "Profile")}</h1>
+      <h1 className="text-xl font-semibold mb-6">{t(dict, "profile.profile.title", "Profile")}</h1>
       
       <div className="space-y-4">
         <div className="flex flex-col gap-1">
