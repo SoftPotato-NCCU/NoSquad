@@ -1,6 +1,14 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,8 +23,14 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "NoSquad",
   description: "A platform for organizing group activities",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "NoSquad",
+  },
   icons: {
     icon: "/favicon.ico",
+    apple: [{ url: "/icon-180x180.png", sizes: "180x180", type: "image/png" }],
   },
 };
 
@@ -30,7 +44,10 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <ServiceWorkerRegistration />
+        {children}
+      </body>
     </html>
   );
 }

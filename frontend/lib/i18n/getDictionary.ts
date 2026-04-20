@@ -7,7 +7,9 @@ export type Dictionary = Record<string, unknown>;
 const dictionaryCache = new Map<string, Dictionary>();
 
 // 3 days TTL
-const TTL = 3 * 24 * 60 * 60 * 1000;
+// const TTL = 3 * 24 * 60 * 60 * 1000;
+// 30 seconds TTL for testing
+const TTL = 30 * 1000;
 
 type CachedEntry = {
   data: Dictionary;
