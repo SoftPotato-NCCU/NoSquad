@@ -34,7 +34,7 @@ function SignupContent() {
   if (!dict) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-<div className="animate-pulse text-zinc-400">Loading...</div>
+        <div className="animate-pulse text-zinc-400">Loading...</div>
       </div>
     );
   }
@@ -185,10 +185,10 @@ function SignupContent() {
   };
 
   return (
-<div className="min-h-screen relative overflow-hidden bg-zinc-50 dark:bg-zinc-950">
+    <div className="min-h-screen relative overflow-hidden bg-zinc-50 dark:bg-zinc-950">
       {/* ─── 左側品牌區域：fixed，桌面版才顯示 ─── */}
       <div className="hidden lg:flex fixed top-0 left-0 w-1/2 h-screen flex-col justify-between pt-16 pb-12 px-12 z-20 pointer-events-none">
-        <div className="max-w-md pointer-events-auto">
+        <div className="max-w-[clamp(28rem,30vw,42rem)] pointer-events-auto">
           {/* Logo 和標題行 */}
           <div className="flex items-center gap-4 mb-8">
             <div className="inline-flex flex-shrink-0 items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-blue-600 shadow-lg shadow-purple-400/20">
@@ -206,13 +206,13 @@ function SignupContent() {
                 />
               </svg>
             </div>
-            <h1 className="text-5xl font-bold text-gray-900 dark:text-white leading-tight">
+            <h1 className="text-[clamp(3rem,3vw,6rem)] font-bold text-gray-900 dark:text-white leading-tight">
               {t(dict, "auth.signup.title", "Join NoSquad")}
             </h1>
           </div>
 
           {/* 說明文字 */}
-          <p className="text-xl text-gray-600 dark:text-zinc-400 mb-8 leading-relaxed">
+          <p className="text-[clamp(1.25rem,1.35vw,2.2rem)] text-gray-600 dark:text-zinc-400 mb-8 leading-relaxed">
             <span
               className="block opacity-0 animate-fadeInUp"
               style={{ animationDelay: "0.2s", animationFillMode: "forwards" }}
@@ -243,7 +243,7 @@ function SignupContent() {
         </div>
 
         {/* 裝飾圖片 — 在左下角 */}
-        <div className="pointer-events-auto w-96 h-96 mx-auto pb-8">
+        <div className="pointer-events-auto w-[clamp(20rem,24vw,40rem)] h-[clamp(20rem,24vw,40rem)] mx-auto pb-8">
           <img
             src="/images/auth/auth_pic.png"
             alt="decoration"
@@ -254,7 +254,7 @@ function SignupContent() {
 
       {/* ─── 右側表單區域：正常文檔流，左半寬度留給 fixed 左欄 ─── */}
       <div className="relative z-10 min-h-screen flex items-center justify-center lg:justify-end px-4 sm:px-6 lg:pr-12 py-12 sm:py-16 lg:ml-[50%]">
-        <div className="w-full max-w-lg">
+        <div className="w-full max-w-[clamp(32rem,34vw,52rem)]">
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-md border border-gray-200 dark:border-zinc-800 p-6 sm:p-8 md:p-10">
             {/* 手機版 Logo 區域 */}
             <div className="mb-6 sm:mb-8 text-center lg:hidden">
@@ -276,7 +276,7 @@ function SignupContent() {
               <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
                 {t(dict, "auth.signup.title", "Join NoSquad")}
               </h1>
-              <p className="text-sm text-gray-600 dark:text-zinc-400">
+              <p className="text-[clamp(0.95rem,1.1vw,1.25rem)] text-gray-600 dark:text-zinc-400">
                 {t(
                   dict,
                   "auth.signup.subtitle.mobile",
@@ -287,14 +287,14 @@ function SignupContent() {
 
             {/* 桌面版標題 */}
             <div className="mb-6 sm:mb-8 hidden lg:block">
-              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              <h2 className="text-[clamp(2rem,2.2vw,3.75rem)] font-bold text-gray-900 dark:text-white mb-2">
                 {t(dict, "auth.signup.form.title", "Create your account")}
               </h2>
             </div>
 
             {/* 錯誤提示 */}
             {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-300 rounded-lg text-red-700 text-sm flex items-start gap-3">
+              <div className="mb-6 p-4 bg-red-50 border border-red-300 rounded-lg text-red-700 text-[clamp(0.95rem,1.1vw,1.25rem)] flex items-start gap-3">
                 <svg
                   className="w-5 h-5 flex-shrink-0 mt-0.5"
                   fill="currentColor"
@@ -316,7 +316,7 @@ function SignupContent() {
               <div>
                 <label
                   htmlFor="name"
-                  className="block text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-2"
+                  className="block text-[clamp(0.95rem,1.1vw,1.25rem)] font-semibold text-gray-700 dark:text-zinc-300 mb-2"
                 >
                   {t(dict, "auth.signup.form.name", "Name")}
                 </label>
@@ -329,7 +329,7 @@ function SignupContent() {
                     onChange={handleChange}
                     required
                     placeholder="John Doe"
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-[clamp(0.95rem,1.1vw,1.25rem)]"
                   />
                   <svg
                     className="absolute right-3 top-3.5 w-5 h-5 text-gray-400 opacity-60"
@@ -345,7 +345,7 @@ function SignupContent() {
               <div>
                 <label
                   htmlFor="username"
-                  className="block text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-2"
+                  className="block text-[clamp(0.95rem,1.1vw,1.25rem)] font-semibold text-gray-700 dark:text-zinc-300 mb-2"
                 >
                   {t(dict, "auth.signup.form.username", "Username")}
                 </label>
@@ -358,7 +358,7 @@ function SignupContent() {
                     onChange={handleChange}
                     required
                     placeholder="example_user"
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-[clamp(0.95rem,1.1vw,1.25rem)]"
                   />
                   <svg
                     className="absolute right-3 top-3.5 w-5 h-5 text-gray-400 opacity-60"
@@ -374,7 +374,7 @@ function SignupContent() {
               <div>
                 <label
                   htmlFor="email"
-                  className="block text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-2"
+                  className="block text-[clamp(0.95rem,1.1vw,1.25rem)] font-semibold text-gray-700 dark:text-zinc-300 mb-2"
                 >
                   {t(dict, "auth.signup.form.email", "Email")}
                 </label>
@@ -387,7 +387,7 @@ function SignupContent() {
                     onChange={handleChange}
                     required
                     placeholder="name@example.com"
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-[clamp(0.95rem,1.1vw,1.25rem)]"
                   />
                   <svg
                     className="absolute right-3 top-3.5 w-5 h-5 text-gray-400 opacity-60"
@@ -404,7 +404,7 @@ function SignupContent() {
               <div>
                 <label
                   htmlFor="phone"
-                  className="block text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-2"
+                  className="block text-[clamp(0.95rem,1.1vw,1.25rem)] font-semibold text-gray-700 dark:text-zinc-300 mb-2"
                 >
                   {t(dict, "auth.signup.form.phone", "Phone (E.164 format)")}
                 </label>
@@ -417,7 +417,7 @@ function SignupContent() {
                     onChange={handleChange}
                     required
                     placeholder="+886912345678"
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-[clamp(0.95rem,1.1vw,1.25rem)]"
                   />
                   <svg
                     className="absolute right-3 top-3.5 w-5 h-5 text-gray-400 opacity-60"
@@ -433,7 +433,7 @@ function SignupContent() {
               <div>
                 <label
                   htmlFor="password"
-                  className="block text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-2"
+                  className="block text-[clamp(0.95rem,1.1vw,1.25rem)] font-semibold text-gray-700 dark:text-zinc-300 mb-2"
                 >
                   {t(dict, "auth.signup.form.password", "Password")}
                 </label>
@@ -446,7 +446,7 @@ function SignupContent() {
                     onChange={handleChange}
                     required
                     placeholder="••••••••"
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-[clamp(0.95rem,1.1vw,1.25rem)]"
                   />
                   <svg
                     className="absolute right-3 top-3.5 w-5 h-5 text-gray-400 opacity-60"
@@ -473,7 +473,7 @@ function SignupContent() {
               <div>
                 <label
                   htmlFor="confirmPassword"
-                  className="block text-sm font-semibold text-gray-700 dark:text-zinc-300 mb-2"
+                  className="block text-[clamp(0.95rem,1.1vw,1.25rem)] font-semibold text-gray-700 dark:text-zinc-300 mb-2"
                 >
                   {t(
                     dict,
@@ -490,7 +490,7 @@ function SignupContent() {
                     onChange={handleChange}
                     required
                     placeholder="••••••••"
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-sm sm:text-base"
+                    className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-[clamp(0.95rem,1.1vw,1.25rem)]"
                   />
                   <svg
                     className="absolute right-3 top-3.5 w-5 h-5 text-gray-400 opacity-60"
@@ -515,7 +515,7 @@ function SignupContent() {
                   onChange={handleChange}
                   className="w-4 h-4 mt-1 rounded bg-gray-100 dark:bg-zinc-700 border-gray-300 dark:border-zinc-600 text-purple-600 focus:ring-2 focus:ring-purple-500 transition-all"
                 />
-                <span className="ml-3 text-sm text-gray-700 dark:text-zinc-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
+                <span className="ml-3 text-[clamp(0.95rem,1.1vw,1.25rem)] text-gray-700 dark:text-zinc-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
                   {t(dict, "auth.signup.form.agreeTerms", "I agree to the")}{" "}
                   <Link
                     href="/terms"
@@ -537,7 +537,7 @@ function SignupContent() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3 px-4 mt-6 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:from-purple-400 disabled:to-blue-400 text-white font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg disabled:shadow-none transform hover:translate-y-[-2px] disabled:translate-y-0 text-base sm:text-lg"
+                className="w-full py-3 px-4 mt-6 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:from-purple-400 disabled:to-blue-400 text-white font-semibold rounded-lg transition-all duration-200 shadow-md hover:shadow-lg disabled:shadow-none transform hover:translate-y-[-2px] disabled:translate-y-0 text-[clamp(1rem,1.1vw,1.6rem)]"
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center gap-2">
@@ -567,7 +567,7 @@ function SignupContent() {
             <div className="space-y-2">
               <button
                 type="button"
-                className="w-full py-2.5 px-4 bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 border border-gray-300 dark:border-zinc-700 text-gray-700 dark:text-zinc-300 font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-2 text-sm sm:text-base shadow-sm hover:shadow-md"
+                className="w-full py-2.5 px-4 bg-white dark:bg-zinc-800 hover:bg-gray-50 dark:hover:bg-zinc-700 border border-gray-300 dark:border-zinc-700 text-gray-700 dark:text-zinc-300 font-medium rounded-lg transition-all duration-200 flex items-center justify-center gap-2 text-[clamp(0.95rem,1.1vw,1.25rem)] shadow-sm hover:shadow-md"
               >
                 <svg
                   className="w-5 h-5"
@@ -581,7 +581,7 @@ function SignupContent() {
             </div>
 
             {/* 登入鏈接 */}
-            <div className="mt-6 text-center text-sm text-gray-600">
+            <div className="mt-6 text-center text-[clamp(0.95rem,1.1vw,1.25rem)] text-gray-600">
               {t(dict, "auth.signup.loginLink", "Already have an account?")}{" "}
               <Link
                 href="/auth/login"
