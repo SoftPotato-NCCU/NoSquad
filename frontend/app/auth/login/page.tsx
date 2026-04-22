@@ -72,7 +72,7 @@ function LoginContent() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden bg-zinc-50 dark:bg-zinc-950">
+    <div className="min-h-screen relative overflow-hidden auth-bg">
       {/* ─── 左側品牌區域：fixed，桌面版才顯示 ─── */}
       <div className="hidden lg:flex fixed top-0 left-0 w-1/2 h-screen flex-col justify-between pt-16 pb-12 px-12 z-20 pointer-events-none">
         <div className="max-w-[clamp(28rem,30vw,42rem)] pointer-events-auto">
