@@ -52,7 +52,10 @@ function SignupContent() {
         [name]: checkboxElement.checked,
       }));
     } else {
-      const { value } = e.target;
+      let { value } = e.target;
+      if (name === "phone" && value.startsWith("0")) {
+        value = "+886" + value.slice(1);
+      }
       setFormData((prev) => ({
         ...prev,
         [name]: value,
@@ -98,16 +101,16 @@ function SignupContent() {
       );
       return false;
     }
-    if (!formData.phone.startsWith("+")) {
-      setError(
-        t(
-          dict,
-          "auth.signup.errors.phoneRequired",
-          "Phone must use E.164 format (e.g. +886912345678)",
-        ),
-      );
-      return false;
-    }
+    // if (!formData.phone.startsWith("+")) {
+    //   setError(
+    //     t(
+    //       dict,
+    //       "auth.signup.errors.phoneRequired",
+    //       "Phone must use E.164 format (e.g. +886912345678)",
+    //     ),
+    //   );
+    //   return false;
+    // }
     if (formData.password.length < 8) {
       setError(
         t(
@@ -401,7 +404,7 @@ function SignupContent() {
                   htmlFor="phone"
                   className="block text-[clamp(0.95rem,1.1vw,1.25rem)] font-semibold text-gray-700 dark:text-zinc-300 mb-2"
                 >
-                  {t(dict, "auth.signup.form.phone", "Phone (E.164 format)")}
+                  {t(dict, "auth.signup.form.phone", "Phone")}
                 </label>
                 <div className="relative group">
                   <input
@@ -411,7 +414,7 @@ function SignupContent() {
                     value={formData.phone}
                     onChange={handleChange}
                     required
-                    placeholder="+886912345678"
+                    placeholder="0912345678"
                     className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-[clamp(0.95rem,1.1vw,1.25rem)]"
                   />
                   <svg
