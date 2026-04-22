@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { login, setToken } from "@/lib/api";
 import { useDictionary, t } from "@/lib/i18n/useDictionary";
+import SettingsMenu from "@/components/SettingsMenu";
 
 interface LoginFormData {
   identifier: string;
@@ -73,6 +74,7 @@ function LoginContent() {
 
   return (
     <div className="min-h-screen relative overflow-hidden auth-bg">
+      <SettingsMenu />
       {/* ─── 左側品牌區域：fixed，桌面版才顯示 ─── */}
       <div className="hidden lg:flex fixed top-0 left-0 w-1/2 h-screen flex-col justify-between pt-16 pb-12 px-12 z-20 pointer-events-none">
         <div className="max-w-[clamp(28rem,30vw,42rem)] pointer-events-auto">
@@ -122,7 +124,7 @@ function LoginContent() {
         </div>
 
         {/* 裝飾圖片 — 在左下角 */}
-        <div className="pointer-events-auto w-[clamp(20rem,24vw,40rem)] h-[clamp(20rem,24vw,40rem)] mx-auto pb-8">
+        <div className="pointer-events-auto w-[clamp(22rem,32vw,46rem)] h-[clamp(22rem,32vw,46rem)] ml-auto -mr-30 pb-8">
           <img
             src="/images/auth/auth_pic.png"
             alt="decoration"

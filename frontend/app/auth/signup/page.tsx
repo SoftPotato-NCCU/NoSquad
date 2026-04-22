@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { register } from "@/lib/api";
 import { useDictionary, t } from "@/lib/i18n/useDictionary";
+import SettingsMenu from "@/components/SettingsMenu";
 
 interface SignupFormData {
   name: string;
@@ -186,6 +187,7 @@ function SignupContent() {
 
   return (
     <div className="min-h-screen relative overflow-hidden auth-bg">
+      <SettingsMenu />
       {/* ─── 左側品牌區域：fixed，桌面版才顯示 ─── */}
       <div className="hidden lg:flex fixed top-0 left-0 w-1/2 h-screen flex-col justify-between pt-16 pb-12 px-12 z-20 pointer-events-none">
         <div className="max-w-[clamp(28rem,30vw,42rem)] pointer-events-auto">
@@ -243,7 +245,7 @@ function SignupContent() {
         </div>
 
         {/* 裝飾圖片 — 在左下角 */}
-        <div className="pointer-events-auto w-[clamp(20rem,24vw,40rem)] h-[clamp(20rem,24vw,40rem)] mx-auto pb-8">
+        <div className="pointer-events-auto w-[clamp(22rem,32vw,46rem)] h-[clamp(22rem,32vw,46rem)] ml-auto -mr-30 pb-8 -mb-25">
           <img
             src="/images/auth/auth_pic.png"
             alt="decoration"
@@ -276,13 +278,6 @@ function SignupContent() {
               <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
                 {t(dict, "auth.signup.title", "Join NoSquad")}
               </h1>
-              <p className="text-[clamp(0.95rem,1.1vw,1.25rem)] text-gray-600 dark:text-zinc-400">
-                {t(
-                  dict,
-                  "auth.signup.subtitle.mobile",
-                  "Join the NoSquad community",
-                )}
-              </p>
             </div>
 
             {/* 桌面版標題 */}
