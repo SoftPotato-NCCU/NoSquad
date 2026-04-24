@@ -1,16 +1,14 @@
 import { useState, useEffect } from 'react';
-import { useLang, type Lang } from './useLang';
+import { useLang } from './useLang';
 import { getDictionary, type Dictionary } from './getDictionary';
 
 export function useDictionary(page: string = 'common') {
   const lang = useLang();
   const [dict, setDict] = useState<Dictionary>({});
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     let isMounted = true;
-    setIsLoading(true);
-
     getDictionary(lang, page).then((data) => {
       if (isMounted) {
         setDict(data);

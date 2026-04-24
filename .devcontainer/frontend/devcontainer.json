@@ -19,7 +19,7 @@
   // Variables used in all of the container. Rebuild is required if you want to modify
   "containerEnv": {
     "GIT_EDITOR": "vim",
-    "NEXT_PUBLIC_API_BACKEND_URL": "http://backend:5050"
+    "NEXT_PUBLIC_API_BACKEND_URL": "http://localhost:5050"
   },
   // Variables used for the devcontainer.json supporting service / tool
   //   "remoteEnv": {

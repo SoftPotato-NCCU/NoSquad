@@ -1,23 +1,37 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { type Lang, supported } from "@/lib/i18n/useLang";
+import { langConfigs } from "@/lib/i18n/langConfig";
 
 export default function SettingsMenu() {
   const [open, setOpen] = useState(false);
-  const [lang, setLang] = useState<"en" | "zh">("en");
-  const [isDark, setIsDark] = useState(false);
+  const [lang, setLang] = useState<Lang>("en");
+  const [isDark, setIsDark] = useState<boolean>(false);
   const ref = useRef<HTMLDivElement>(null);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
-    const stored = localStorage.getItem("lang") as "en" | "zh" | null;
-    if (stored === "en" || stored === "zh") {
-      setLang(stored);
+    const storedLang = localStorage.getItem("lang") as Lang | null;
+    if (storedLang && (supported as readonly string[]).includes(storedLang)) {
+      setLang(storedLang);
     } else {
-      const browser = navigator.language?.slice(0, 2);
-      if (browser === "zh") setLang("zh");
+      const browser = navigator.language?.slice(0, 2) as Lang | undefined;
+      if (browser && (supported as readonly string[]).includes(browser)) {
+        setLang(browser);
+      }
     }
-    setIsDark(document.documentElement.classList.contains("dark"));
+
+    const storedTheme = localStorage.getItem("theme");
+    if (storedTheme === "dark") {
+      setIsDark(true);
+    } else if (storedTheme === "light") {
+      setIsDark(false);
+    } else {
+      setIsDark(window.matchMedia("(prefers-color-scheme: dark)").matches);
+    }
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -27,7 +41,7 @@ export default function SettingsMenu() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const switchLang = (next: "en" | "zh") => {
+  const switchLang = (next: Lang) => {
     localStorage.setItem("lang", next);
     setLang(next);
     window.location.reload();
@@ -53,38 +67,29 @@ export default function SettingsMenu() {
 
       {open && (
         <div className="absolute top-11 right-0 w-52 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-gray-200 dark:border-zinc-700 p-3 space-y-3">
-          {/* 語言 */}
           <div>
             <p className="text-[10px] font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">
               Language
             </p>
             <div className="flex p-0.5 bg-gray-100 dark:bg-zinc-800 rounded-lg">
-              <button
-                onClick={() => switchLang("zh")}
-                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
-                  lang === "zh"
-                    ? "bg-white dark:bg-zinc-700 shadow-sm text-gray-900 dark:text-white"
-                    : "text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300"
-                }`}
-              >
-                中文
-              </button>
-              <button
-                onClick={() => switchLang("en")}
-                className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
-                  lang === "en"
-                    ? "bg-white dark:bg-zinc-700 shadow-sm text-gray-900 dark:text-white"
-                    : "text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300"
-                }`}
-              >
-                English
-              </button>
+              {supported.map((code) => (
+                <button
+                  key={code}
+                  onClick={() => switchLang(code)}
+                  className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-all ${
+                    lang === code
+                      ? "bg-white dark:bg-zinc-700 shadow-sm text-gray-900 dark:text-white"
+                      : "text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300"
+                  }`}
+                >
+                  {langConfigs[code]?.nativeName || code}
+                </button>
+              ))}
             </div>
           </div>
 
           <div className="h-px bg-gray-100 dark:bg-zinc-800" />
 
-          {/* 主題 */}
           <div>
             <p className="text-[10px] font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">
               Theme
@@ -101,7 +106,7 @@ export default function SettingsMenu() {
                 <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
                   <path fillRule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clipRule="evenodd" />
                 </svg>
-                淺色
+                Light
               </button>
               <button
                 onClick={() => switchTheme(true)}
@@ -114,7 +119,7 @@ export default function SettingsMenu() {
                 <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
                   <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
                 </svg>
-                深色
+                Dark
               </button>
             </div>
           </div>

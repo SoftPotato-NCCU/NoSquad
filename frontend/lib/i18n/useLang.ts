@@ -1,9 +1,10 @@
 import { useSearchParams } from 'next/navigation';
 import { useMemo } from 'react';
 
+export const defaultLang = 'en';
+
 export const supported = ['en', 'zh'] as const;
-export type Lang = (typeof supported)[number];
-export const defaultLang: Lang = 'en';
+export type Lang = typeof supported[number];
 
 export function useLang(): Lang {
   const searchParams = useSearchParams();

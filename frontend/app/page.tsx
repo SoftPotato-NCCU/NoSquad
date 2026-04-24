@@ -85,7 +85,9 @@ function HomeContent() {
 
 export default function Home() {
   return (
-    <Suspense fallback={<div className="flex flex-1 items-center justify-center"><div className="animate-spin w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full" /></div>}>
+    <Suspense fallback={<div className="flex flex-col flex-1 items-center justify-center p-4">
+      <div className="animate-spin w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full" />
+    </div>}>
       <HomeContent />
     </Suspense>
   );

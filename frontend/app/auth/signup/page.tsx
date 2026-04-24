@@ -3,6 +3,9 @@
 import { Suspense, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { PhoneInput } from "react-international-phone";
+import "react-international-phone/style.css";
+import "./phone-input.css";
 import { register } from "@/lib/api";
 import { useDictionary, t } from "@/lib/i18n/useDictionary";
 import SettingsMenu from "@/components/SettingsMenu";
@@ -20,7 +23,7 @@ interface SignupFormData {
 function SignupContent() {
   const router = useRouter();
   const { dict } = useDictionary("auth");
-  const [formData, setFormData] = useState<SignupFormData>({
+const [formData, setFormData] = useState<SignupFormData>({
     name: "",
     username: "",
     email: "",
@@ -29,6 +32,7 @@ function SignupContent() {
     confirmPassword: "",
     agreeToTerms: false,
   });
+  const [phoneError, setPhoneError] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -52,15 +56,21 @@ function SignupContent() {
         [name]: checkboxElement.checked,
       }));
     } else {
-      let { value } = e.target;
-      if (name === "phone" && value.startsWith("0")) {
-        value = "+886" + value.slice(1);
-      }
+      const { value } = e.target;
       setFormData((prev) => ({
         ...prev,
         [name]: value,
       }));
     }
+    setError("");
+  };
+
+  const handlePhoneChange = (phone: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      phone,
+    }));
+    setPhoneError("");
     setError("");
   };
 
@@ -404,19 +414,18 @@ function SignupContent() {
                   htmlFor="phone"
                   className="block text-[clamp(0.95rem,1.1vw,1.25rem)] font-semibold text-gray-700 dark:text-zinc-300 mb-2"
                 >
-                  {t(dict, "auth.signup.form.phone", "Phone")}
+                  {t(dict, "auth.signup.form.phone", "Phone (E.164 format)")}
                 </label>
-                <div className="relative group">
-                  <input
-                    id="phone"
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleChange}
-                    required
-                    placeholder="0912345678"
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-[clamp(0.95rem,1.1vw,1.25rem)]"
-                  />
+                <div className="relative">
+                  <div className="bg-gray-50 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg flex items-center h-[clamp(3rem,3.2vw,3.75rem)]">
+                    <PhoneInput
+                      defaultCountry="tw"
+                      value={formData.phone}
+                      onChange={handlePhoneChange}
+                      placeholder="912345678"
+                      className="phone-input"
+                    />
+                  </div>
                   <svg
                     className="absolute right-3 top-3.5 w-5 h-5 text-gray-400 opacity-60"
                     fill="currentColor"
@@ -425,6 +434,9 @@ function SignupContent() {
                     <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.706 1.945a1 1 0 01-.54 1.06l-1.548.773a11.026 11.026 0 006.104 6.104l.774-1.548a1 1 0 011.059-.54l1.945.707a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"></path>
                   </svg>
                 </div>
+                {phoneError && (
+                  <p className="mt-1 text-sm text-red-500">{phoneError}</p>
+                )}
               </div>
 
               {/* 密碼字段 */}
@@ -597,7 +609,13 @@ function SignupContent() {
 
 export default function SignupPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><div className="animate-pulse text-gray-400">Loading...</div></div>}>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-pulse text-gray-400">Loading...</div>
+        </div>
+      }
+    >
       <SignupContent />
     </Suspense>
   );

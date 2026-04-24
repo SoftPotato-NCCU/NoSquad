@@ -26,8 +26,9 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     const token = getToken();
     if (token) {
@@ -42,6 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setIsLoading(false);
   }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return (
     <AuthContext.Provider value={{ user, isLoading }}>
