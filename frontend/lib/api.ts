@@ -1,6 +1,11 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_BACKEND_URL || "";
 
-const AUTH_ERROR_CODES = ["UNAUTHORIZED", "INVALID_TOKEN", "TOKEN_EXPIRED", "USER_NOT_FOUND"];
+const AUTH_ERROR_CODES = [
+  "UNAUTHORIZED",
+  "INVALID_TOKEN",
+  "TOKEN_EXPIRED",
+  "USER_NOT_FOUND",
+];
 
 function isAuthError(error: unknown): boolean {
   return (
@@ -39,7 +44,9 @@ async function fetchApi<T>(
   if (requireAuth) {
     const token = getToken();
     if (!token) {
-      throw { error: { code: "UNAUTHORIZED", message: "Authentication required" } };
+      throw {
+        error: { code: "UNAUTHORIZED", message: "Authentication required" },
+      };
     }
     headers["Authorization"] = `Bearer ${token}`;
   }
@@ -59,7 +66,10 @@ async function fetchApi<T>(
   return response.json();
 }
 
-export async function publicFetch<T>(endpoint: string, options: RequestInit = {}) {
+export async function publicFetch<T>(
+  endpoint: string,
+  options: RequestInit = {},
+) {
   return fetchApi<T>(endpoint, options, false);
 }
 
@@ -125,10 +135,9 @@ export async function register(data: {
 }
 
 export async function logout() {
-  const result = await apiFetch<{ data: { success: boolean; message: string } }>(
-    "/auth/logout",
-    { method: "POST" },
-  );
+  const result = await apiFetch<{
+    data: { success: boolean; message: string };
+  }>("/auth/logout", { method: "POST" });
   clearToken();
   return result;
 }

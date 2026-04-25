@@ -25,15 +25,25 @@ function ExploreContent() {
 
   return (
     <div className="flex flex-col flex-1 p-4">
-      <h1 className="text-xl font-semibold mb-4">{t(dict, "explore.explore.title", "Explore")}</h1>
-      <p className="text-zinc-500">{t(dict, "explore.explore.roomHall", "Room Hall")}</p>
+      <h1 className="text-xl font-semibold mb-4">
+        {t(dict, "explore.explore.title", "Explore")}
+      </h1>
+      <p className="text-zinc-500">
+        {t(dict, "explore.explore.roomHall", "Room Hall")}
+      </p>
     </div>
   );
 }
 
 export default function ExplorePage() {
   return (
-    <Suspense fallback={<div className="flex flex-col flex-1 p-4"><div className="animate-pulse h-8 w-24 bg-zinc-200 rounded" /></div>}>
+    <Suspense
+      fallback={
+        <div className="flex flex-col flex-1 p-4">
+          <div className="animate-pulse h-8 w-24 bg-zinc-200 rounded" />
+        </div>
+      }
+    >
       <ExploreContent />
     </Suspense>
   );

@@ -22,7 +22,7 @@ interface SignupFormData {
 
 function SignupContent() {
   const { dict } = useDictionary("auth");
-const [formData, setFormData] = useState<SignupFormData>({
+  const [formData, setFormData] = useState<SignupFormData>({
     name: "",
     username: "",
     email: "",

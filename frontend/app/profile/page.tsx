@@ -36,21 +36,29 @@ function ProfileContent() {
 
   return (
     <div className="flex flex-col flex-1 p-4">
-      <h1 className="text-xl font-semibold mb-6">{t(dict, "profile.profile.title", "Profile")}</h1>
-      
+      <h1 className="text-xl font-semibold mb-6">
+        {t(dict, "profile.profile.title", "Profile")}
+      </h1>
+
       <div className="space-y-4">
         <div className="flex flex-col gap-1">
-          <span className="text-sm text-zinc-500">{t(dict, "profile.name", "Name")}</span>
+          <span className="text-sm text-zinc-500">
+            {t(dict, "profile.name", "Name")}
+          </span>
           <span className="font-medium">{user.name}</span>
         </div>
-        
+
         <div className="flex flex-col gap-1">
-          <span className="text-sm text-zinc-500">{t(dict, "profile.username", "Username")}</span>
+          <span className="text-sm text-zinc-500">
+            {t(dict, "profile.username", "Username")}
+          </span>
           <span className="font-medium">@{user.username}</span>
         </div>
-        
+
         <div className="flex flex-col gap-1">
-          <span className="text-sm text-zinc-500">{t(dict, "profile.email", "Email")}</span>
+          <span className="text-sm text-zinc-500">
+            {t(dict, "profile.email", "Email")}
+          </span>
           <span className="font-medium">{user.email}</span>
         </div>
       </div>
@@ -67,7 +75,13 @@ function ProfileContent() {
 
 export default function ProfilePage() {
   return (
-    <Suspense fallback={<div className="flex flex-col flex-1 p-4"><div className="animate-pulse h-8 w-24 bg-zinc-200 rounded" /></div>}>
+    <Suspense
+      fallback={
+        <div className="flex flex-col flex-1 p-4">
+          <div className="animate-pulse h-8 w-24 bg-zinc-200 rounded" />
+        </div>
+      }
+    >
       <ProfileContent />
     </Suspense>
   );

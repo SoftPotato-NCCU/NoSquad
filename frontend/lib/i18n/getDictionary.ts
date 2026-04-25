@@ -79,11 +79,9 @@ export async function getDictionary(
         : Promise.resolve({}),
     ]);
 
-    const common =
-      commonRes.status === "fulfilled" ? commonRes.value : {};
+    const common = commonRes.status === "fulfilled" ? commonRes.value : {};
 
-    const pageDict =
-      pageRes.status === "fulfilled" ? pageRes.value : {};
+    const pageDict = pageRes.status === "fulfilled" ? pageRes.value : {};
 
     dictionary = {
       common,
