@@ -6,3 +6,13 @@ test-backend:
     - bun install
     - bun test
   coverage: '/(\d+) pass/'
+
+test-frontend:
+  stage: test
+  image: node:25.9
+  script:
+    - cd frontend
+    - npm install
+    - npm run lint
+    - npm test
+  coverage: '/(\d+) passed/'
