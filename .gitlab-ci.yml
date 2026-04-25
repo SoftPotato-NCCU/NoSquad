@@ -1,0 +1,8 @@
+test-backend:
+  stage: test
+  image: oven/bun:1
+  script:
+    - cd backend
+    - bun install
+    - bun test
+  coverage: '/(\d+) pass/'
