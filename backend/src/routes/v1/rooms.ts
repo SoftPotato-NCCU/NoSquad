@@ -1,11 +1,11 @@
-import { Hono } from "hono";
-import type { RowDataPacket } from "mysql2/promise";
-import { pool } from "../../db/connection";
-import { apiError } from "../../lib/errors";
-import { authMiddleware, type AuthVariables } from "./middleware/auth";
+import { Hono } from 'hono';
+import type { RowDataPacket } from 'mysql2/promise';
+import { pool } from '../../db/connection';
+import { apiError } from '../../lib/errors';
+import { authMiddleware, type AuthVariables } from './middleware/auth';
 
 const rooms = new Hono<{ Variables: AuthVariables }>();
-rooms.use("*", authMiddleware);
+rooms.use('*', authMiddleware);
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -42,15 +42,15 @@ function formatHallRoom(r: RowDataPacket) {
 
 // ── GET /api/v1/rooms  (user's rooms) ─────────────────────────────────────────
 
-rooms.get("/", async (c) => {
-  const userId = c.get("userId");
-  const limit = Math.min(Number(c.req.query("limit") ?? 20), 50);
-  const cursor = c.req.query("cursor");
+rooms.get('/', async (c) => {
+  const userId = c.get('userId');
+  const limit = Math.min(Number(c.req.query('limit') ?? 20), 50);
+  const cursor = c.req.query('cursor');
 
   const params: (string | number)[] = [userId];
-  let cursorClause = "";
+  let cursorClause = '';
   if (cursor) {
-    cursorClause = "AND r.created_at < ?";
+    cursorClause = 'AND r.created_at < ?';
     params.push(cursor);
   }
   params.push(limit + 1);
@@ -75,9 +75,7 @@ rooms.get("/", async (c) => {
       rooms: items.map((r) => formatMyRoom(r, userId)),
       pagination: {
         has_next: hasNext,
-        next_cursor: hasNext
-          ? toISO((items.at(-1)?.created_at as Date) ?? null)
-          : null,
+        next_cursor: hasNext ? toISO(items.at(-1)?.created_at as Date ?? null) : null,
         limit,
       },
     },
@@ -86,26 +84,24 @@ rooms.get("/", async (c) => {
 
 // ── GET /api/v1/rooms/hall  (public listing) ──────────────────────────────────
 
-rooms.get("/hall", async (c) => {
-  const userId = c.get("userId");
-  const limit = Math.min(Number(c.req.query("limit") ?? 20), 50);
-  const cursor = c.req.query("cursor");
-  const includeJoined = c.req.query("include_joined") === "true";
-  const includeFull = c.req.query("include_full") === "true";
+rooms.get('/hall', async (c) => {
+  const userId = c.get('userId');
+  const limit = Math.min(Number(c.req.query('limit') ?? 20), 50);
+  const cursor = c.req.query('cursor');
+  const includeJoined = c.req.query('include_joined') === 'true';
+  const includeFull = c.req.query('include_full') === 'true';
 
   const params: (string | number)[] = [userId];
-  let cursorClause = "";
+  let cursorClause = '';
   if (cursor) {
-    cursorClause = "AND r.created_at < ?";
+    cursorClause = 'AND r.created_at < ?';
     params.push(cursor);
   }
 
   const outerConds: string[] = [];
-  if (!includeJoined) outerConds.push("sub.is_joined = 0");
-  if (!includeFull) outerConds.push("sub.member_count < sub.max_members");
-  const outerWhere = outerConds.length
-    ? `WHERE ${outerConds.join(" AND ")}`
-    : "";
+  if (!includeJoined) outerConds.push('sub.is_joined = 0');
+  if (!includeFull) outerConds.push('sub.member_count < sub.max_members');
+  const outerWhere = outerConds.length ? `WHERE ${outerConds.join(' AND ')}` : '';
 
   params.push(limit + 1);
 
@@ -133,9 +129,7 @@ rooms.get("/hall", async (c) => {
       rooms: items.map(formatHallRoom),
       pagination: {
         has_next: hasNext,
-        next_cursor: hasNext
-          ? toISO((items.at(-1)?.created_at as Date) ?? null)
-          : null,
+        next_cursor: hasNext ? toISO(items.at(-1)?.created_at as Date ?? null) : null,
         limit,
       },
     },
@@ -144,44 +138,32 @@ rooms.get("/hall", async (c) => {
 
 // ── POST /api/v1/rooms  (create) ──────────────────────────────────────────────
 
-rooms.post("/", async (c) => {
-  const userId = c.get("userId");
-  const body = (await c.req.json().catch(() => null)) as Record<
-    string,
-    unknown
-  > | null;
-  if (!body)
-    return apiError(c, 400, "VALIDATION_ERROR", "Invalid request data");
+rooms.post('/', async (c) => {
+  const userId = c.get('userId');
+  const body = await c.req.json().catch(() => null) as Record<string, unknown> | null;
+  if (!body) return apiError(c, 400, 'VALIDATION_ERROR', 'Invalid request data');
 
   if (!body.name)
-    return apiError(c, 400, "VALIDATION_ERROR", "Invalid request data", [
-      { field: "name", issue: "required", message: "Room name is required" },
+    return apiError(c, 400, 'VALIDATION_ERROR', 'Invalid request data', [
+      { field: 'name', issue: 'required', message: 'Room name is required' },
     ]);
 
   const maxCapacity = Number(body.max_capacity ?? 10);
   if (maxCapacity > 50)
-    return apiError(c, 400, "CAPACITY_EXCEEDED", "Maximum room capacity is 50");
+    return apiError(c, 400, 'CAPACITY_EXCEEDED', 'Maximum room capacity is 50');
   if (maxCapacity < 1)
-    return apiError(c, 400, "VALIDATION_ERROR", "Invalid request data", [
-      {
-        field: "max_capacity",
-        issue: "min_value",
-        message: "Capacity must be at least 1",
-      },
+    return apiError(c, 400, 'VALIDATION_ERROR', 'Invalid request data', [
+      { field: 'max_capacity', issue: 'min_value', message: 'Capacity must be at least 1' },
     ]);
 
   const roomId = crypto.randomUUID();
-  const description =
-    typeof body.description === "string" ? body.description : null;
+  const description = typeof body.description === 'string' ? body.description : null;
 
   await pool.execute(
-    "INSERT INTO rooms (uuid, title, description, creator_id, max_members) VALUES (?, ?, ?, ?, ?)",
+    'INSERT INTO rooms (uuid, title, description, creator_id, max_members) VALUES (?, ?, ?, ?, ?)',
     [roomId, body.name as string, description, userId, maxCapacity],
   );
-  await pool.execute(
-    "INSERT INTO room_members (room_id, user_id) VALUES (?, ?)",
-    [roomId, userId],
-  );
+  await pool.execute('INSERT INTO room_members (room_id, user_id) VALUES (?, ?)', [roomId, userId]);
 
   return c.json(
     {
@@ -203,9 +185,9 @@ rooms.post("/", async (c) => {
 
 // ── POST /api/v1/rooms/:room_id/join ──────────────────────────────────────────
 
-rooms.post("/:room_id/join", async (c) => {
-  const userId = c.get("userId");
-  const roomId = c.req.param("room_id");
+rooms.post('/:room_id/join', async (c) => {
+  const userId = c.get('userId');
+  const roomId = c.req.param('room_id');
 
   const [roomRows] = await pool.execute<RowDataPacket[]>(
     `SELECT r.*, COUNT(rm.user_id) AS member_count
@@ -215,122 +197,69 @@ rooms.post("/:room_id/join", async (c) => {
      GROUP BY r.uuid`,
     [roomId],
   );
-  if (!roomRows[0])
-    return apiError(
-      c,
-      404,
-      "ROOM_NOT_FOUND",
-      "The specified room does not exist",
-    );
+  if (!roomRows[0]) return apiError(c, 404, 'ROOM_NOT_FOUND', 'The specified room does not exist');
 
   const room = roomRows[0];
 
   const [memberRows] = await pool.execute<RowDataPacket[]>(
-    "SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ?",
+    'SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ?',
     [roomId, userId],
   );
   if (memberRows.length > 0)
-    return apiError(
-      c,
-      409,
-      "ALREADY_JOINED",
-      "You are already a member of this room",
-    );
+    return apiError(c, 409, 'ALREADY_JOINED', 'You are already a member of this room');
 
   if (Number(room.member_count) >= (room.max_members as number))
-    return apiError(
-      c,
-      400,
-      "ROOM_FULL",
-      "This room has reached its maximum capacity",
-    );
+    return apiError(c, 400, 'ROOM_FULL', 'This room has reached its maximum capacity');
 
-  await pool.execute(
-    "INSERT INTO room_members (room_id, user_id) VALUES (?, ?)",
-    [roomId, userId],
-  );
+  await pool.execute('INSERT INTO room_members (room_id, user_id) VALUES (?, ?)', [roomId, userId]);
 
   return c.json({ data: { success: true, room_id: roomId } });
 });
 
 // ── POST /api/v1/rooms/:room_id/leave ─────────────────────────────────────────
 
-rooms.post("/:room_id/leave", async (c) => {
-  const userId = c.get("userId");
-  const roomId = c.req.param("room_id");
+rooms.post('/:room_id/leave', async (c) => {
+  const userId = c.get('userId');
+  const roomId = c.req.param('room_id');
 
   const [roomRows] = await pool.execute<RowDataPacket[]>(
     "SELECT uuid, creator_id FROM rooms WHERE uuid = ? AND status = 'open'",
     [roomId],
   );
-  if (!roomRows[0])
-    return apiError(
-      c,
-      404,
-      "ROOM_NOT_FOUND",
-      "The specified room does not exist",
-    );
+  if (!roomRows[0]) return apiError(c, 404, 'ROOM_NOT_FOUND', 'The specified room does not exist');
 
   if (roomRows[0].creator_id === userId)
-    return apiError(
-      c,
-      403,
-      "OWNER_CANNOT_LEAVE",
-      "Room owner cannot leave. Please dismiss the room instead.",
-    );
+    return apiError(c, 403, 'OWNER_CANNOT_LEAVE', 'Room owner cannot leave. Please dismiss the room instead.');
 
   const [memberRows] = await pool.execute<RowDataPacket[]>(
-    "SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ?",
+    'SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ?',
     [roomId, userId],
   );
-  if (!memberRows[0])
-    return apiError(
-      c,
-      403,
-      "NOT_A_MEMBER",
-      "You are not a member of this room",
-    );
+  if (!memberRows[0]) return apiError(c, 403, 'NOT_A_MEMBER', 'You are not a member of this room');
 
-  await pool.execute(
-    "DELETE FROM room_members WHERE room_id = ? AND user_id = ?",
-    [roomId, userId],
-  );
+  await pool.execute('DELETE FROM room_members WHERE room_id = ? AND user_id = ?', [roomId, userId]);
 
   return c.json({ data: { success: true, room_id: roomId } });
 });
 
 // ── DELETE /api/v1/rooms/:room_id  (dismiss) ──────────────────────────────────
 
-rooms.delete("/:room_id", async (c) => {
-  const userId = c.get("userId");
-  const roomId = c.req.param("room_id");
+rooms.delete('/:room_id', async (c) => {
+  const userId = c.get('userId');
+  const roomId = c.req.param('room_id');
 
   const [roomRows] = await pool.execute<RowDataPacket[]>(
     "SELECT uuid, creator_id FROM rooms WHERE uuid = ? AND status = 'open'",
     [roomId],
   );
-  if (!roomRows[0])
-    return apiError(
-      c,
-      404,
-      "ROOM_NOT_FOUND",
-      "The specified room does not exist",
-    );
+  if (!roomRows[0]) return apiError(c, 404, 'ROOM_NOT_FOUND', 'The specified room does not exist');
 
   if (roomRows[0].creator_id !== userId)
-    return apiError(
-      c,
-      403,
-      "NOT_OWNER",
-      "Only the room owner can dismiss this room",
-    );
+    return apiError(c, 403, 'NOT_OWNER', 'Only the room owner can dismiss this room');
 
-  await pool.execute("UPDATE rooms SET status = 'cancelled' WHERE uuid = ?", [
-    roomId,
-  ]);
+  await pool.execute("UPDATE rooms SET status = 'cancelled' WHERE uuid = ?", [roomId]);
 
   return c.json({ data: { success: true, room_id: roomId } });
 });
 
 export default rooms;
-export { toISO, formatMyRoom, formatHallRoom };
