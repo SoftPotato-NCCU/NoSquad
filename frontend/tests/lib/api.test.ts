@@ -30,7 +30,7 @@ const localStorageMock = (() => {
     get length() { return Object.keys(store).length; },
     key: vi.fn((i: number) => Object.keys(store)[i] ?? null),
   };
-})();
+})() as unknown as Storage;
 
 describe('api.ts', () => {
   beforeEach(() => {
