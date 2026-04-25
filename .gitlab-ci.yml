@@ -9,7 +9,7 @@ test-backend:
 
 test-frontend:
   stage: test
-  image: node:25.9
+  image: node:24
   script:
     - cd frontend
     - npm install

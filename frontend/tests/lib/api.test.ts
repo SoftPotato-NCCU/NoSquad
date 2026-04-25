@@ -90,7 +90,7 @@ describe('api.ts', () => {
 
     it('returns null on server-side (no window)', () => {
       const originalWindow = globalThis.window;
-      // @ts-ignore
+      // @ts-expect-error - intentionally removing window to test SSR behavior
       delete globalThis.window;
       expect(getToken()).toBeNull();
       globalThis.window = originalWindow;
@@ -105,7 +105,7 @@ describe('api.ts', () => {
 
     it('does nothing on server-side', () => {
       const originalWindow = globalThis.window;
-      // @ts-ignore
+      // @ts-expect-error - intentionally removing window to test SSR behavior
       delete globalThis.window;
       expect(() => setToken('token')).not.toThrow();
       globalThis.window = originalWindow;

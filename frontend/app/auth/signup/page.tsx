@@ -1,8 +1,8 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { PhoneInput } from "react-international-phone";
 import "react-international-phone/style.css";
 import "./phone-input.css";
@@ -21,7 +21,6 @@ interface SignupFormData {
 }
 
 function SignupContent() {
-  const router = useRouter();
   const { dict } = useDictionary("auth");
 const [formData, setFormData] = useState<SignupFormData>({
     name: "",
@@ -172,7 +171,7 @@ const [formData, setFormData] = useState<SignupFormData>({
         phone: formData.phone,
         password: formData.password,
       });
-      router.push("/auth/login?registered=true");
+      window.location.href = "/auth/login?registered=true";
     } catch (err: unknown) {
       let message = t(
         dict,
@@ -258,11 +257,13 @@ const [formData, setFormData] = useState<SignupFormData>({
         </div>
 
         {/* 裝飾圖片 — 在左下角 */}
-        <div className="pointer-events-auto w-[clamp(22rem,32vw,46rem)] h-[clamp(22rem,32vw,46rem)] ml-auto -mr-30 pb-8 -mb-25">
-          <img
+        <div className="relative pointer-events-auto w-[clamp(22rem,32vw,46rem)] h-[clamp(22rem,32vw,46rem)] ml-auto -mr-30 pb-8 -mb-25">
+          <Image
             src="/images/auth/auth_pic.png"
             alt="decoration"
-            className="w-full h-full object-contain"
+            fill
+            sizes="(max-width: 1024px) 0vw, 50vw"
+            className="object-contain"
           />
         </div>
       </div>

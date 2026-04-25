@@ -1,8 +1,8 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { login, setToken } from "@/lib/api";
 import { useDictionary, t } from "@/lib/i18n/useDictionary";
 import SettingsMenu from "@/components/SettingsMenu";
@@ -13,7 +13,6 @@ interface LoginFormData {
 }
 
 function LoginContent() {
-  const router = useRouter();
   const { dict } = useDictionary("auth");
   const [error, setError] = useState("");
   const [formData, setFormData] = useState<LoginFormData>({
@@ -124,11 +123,13 @@ function LoginContent() {
         </div>
 
         {/* 裝飾圖片 — 在左下角 */}
-        <div className="pointer-events-auto w-[clamp(22rem,32vw,46rem)] h-[clamp(22rem,32vw,46rem)] ml-auto -mr-30 pb-8">
-          <img
+        <div className="relative pointer-events-auto w-[clamp(22rem,32vw,46rem)] h-[clamp(22rem,32vw,46rem)] ml-auto -mr-30 pb-8">
+          <Image
             src="/images/auth/auth_pic.png"
             alt="decoration"
-            className="w-full h-full object-contain"
+            fill
+            sizes="(max-width: 1024px) 0vw, 50vw"
+            className="object-contain"
           />
         </div>
       </div>
