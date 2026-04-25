@@ -18,6 +18,8 @@ services:
       context: ./frontend
     ports:
       - "3000:3000"
+    depends_on:
+      - backend # TODO: Remove this dependency once we have a dedicated nginx service independent of the backend for the route proxying
   db:
     image: mariadb:11.8
     environment:

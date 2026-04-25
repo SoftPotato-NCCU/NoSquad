@@ -1,0 +1,32 @@
+{
+  "common": {
+    "home": "首頁",
+    "explore": "探索",
+    "profile": "個人資料",
+    "loading": "載入中...",
+    "error": "錯誤",
+    "success": "成功",
+    "cancel": "取消",
+    "confirm": "確認",
+    "submit": "送出",
+    "back": "返回",
+    "next": "下一步",
+    "save": "儲存",
+    "delete": "刪除",
+    "edit": "編輯",
+    "close": "關閉",
+    "yes": "是",
+    "no": "否"
+  },
+  "validation": {
+    "required": "此欄位為必填",
+    "minLength": "最少需要 {min} 個字符",
+    "maxLength": "最多允許 {max} 個字符",
+    "invalidEmail": "無效的電子郵件格式",
+    "invalidPhone": "無效的電話格式"
+  },
+  "errors": {
+    "networkError": "網路錯誤，請重試",
+    "unknownError": "發生未知錯誤"
+  }
+}

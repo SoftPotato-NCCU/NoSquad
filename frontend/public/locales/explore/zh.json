@@ -1,0 +1,11 @@
+{
+  "explore": {
+    "title": "探索",
+    "roomHall": "房間大廳",
+    "createRoom": "創建房間",
+    "search": "搜尋房間...",
+    "noRooms": "暫無可用房間",
+    "join": "加入",
+    "full": "已滿"
+  }
+}
