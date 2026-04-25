@@ -7,8 +7,15 @@ import { langConfigs } from "@/lib/i18n/langConfig";
 export default function SettingsMenu() {
   const [open, setOpen] = useState(false);
   const [lang, setLang] = useState<Lang>("en");
-  const [isDark, setIsDark] = useState<boolean>(false);
+  const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
   const ref = useRef<HTMLDivElement>(null);
+
+  const applyTheme = (theme: "light" | "dark" | "system") => {
+    const isDark = theme === "system"
+      ? window.matchMedia("(prefers-color-scheme: dark)").matches
+      : theme === "dark";
+    document.documentElement.classList.toggle("dark", isDark);
+  };
 
   /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
@@ -22,16 +29,21 @@ export default function SettingsMenu() {
       }
     }
 
-    const storedTheme = localStorage.getItem("theme");
-    if (storedTheme === "dark") {
-      setIsDark(true);
-    } else if (storedTheme === "light") {
-      setIsDark(false);
-    } else {
-      setIsDark(window.matchMedia("(prefers-color-scheme: dark)").matches);
-    }
+    const storedTheme = localStorage.getItem("theme") as "light" | "dark" | "system" | null;
+    const initialTheme = storedTheme || "system";
+    setTheme(initialTheme);
+    applyTheme(initialTheme);
   }, []);
   /* eslint-enable react-hooks/set-state-in-effect */
+
+  useEffect(() => {
+    if (theme !== "system") return;
+
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = () => applyTheme("system");
+    mediaQuery.addEventListener("change", handler);
+    return () => mediaQuery.removeEventListener("change", handler);
+  }, [theme]);
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -47,10 +59,10 @@ export default function SettingsMenu() {
     window.location.reload();
   };
 
-  const switchTheme = (dark: boolean) => {
-    setIsDark(dark);
-    localStorage.setItem("theme", dark ? "dark" : "light");
-    document.documentElement.classList.toggle("dark", dark);
+  const switchTheme = (next: "light" | "dark" | "system") => {
+    setTheme(next);
+    localStorage.setItem("theme", next);
+    applyTheme(next);
   };
 
   return (
@@ -66,7 +78,7 @@ export default function SettingsMenu() {
       </button>
 
       {open && (
-        <div className="absolute top-11 right-0 w-52 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-gray-200 dark:border-zinc-700 p-3 space-y-3">
+        <div className="absolute top-11 right-0 w-60 bg-white dark:bg-zinc-900 rounded-xl shadow-xl border border-gray-200 dark:border-zinc-700 p-3 space-y-3">
           <div>
             <p className="text-[10px] font-semibold text-gray-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5">
               Language
@@ -96,9 +108,9 @@ export default function SettingsMenu() {
             </p>
             <div className="flex p-0.5 bg-gray-100 dark:bg-zinc-800 rounded-lg">
               <button
-                onClick={() => switchTheme(false)}
+                onClick={() => switchTheme("light")}
                 className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-sm font-medium rounded-md transition-all ${
-                  !isDark
+                  theme === "light"
                     ? "bg-white dark:bg-zinc-700 shadow-sm text-gray-900 dark:text-white"
                     : "text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300"
                 }`}
@@ -109,9 +121,9 @@ export default function SettingsMenu() {
                 Light
               </button>
               <button
-                onClick={() => switchTheme(true)}
+                onClick={() => switchTheme("dark")}
                 className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-sm font-medium rounded-md transition-all ${
-                  isDark
+                  theme === "dark"
                     ? "bg-white dark:bg-zinc-700 shadow-sm text-gray-900 dark:text-white"
                     : "text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300"
                 }`}
@@ -120,6 +132,19 @@ export default function SettingsMenu() {
                   <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
                 </svg>
                 Dark
+              </button>
+              <button
+                onClick={() => switchTheme("system")}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 text-sm font-medium rounded-md transition-all ${
+                  theme === "system"
+                    ? "bg-white dark:bg-zinc-700 shadow-sm text-gray-900 dark:text-white"
+                    : "text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-300"
+                }`}
+              >
+                <svg className="w-3.5 h-3.5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2h-2.22l.123.489.804.804A1 1 0 0113 18H7a1 1 0 01-.707-1.707l.804-.804L7.22 15H5a2 2 0 01-2-2V5zm5.771 7H5a1 1 0 00-1 1v3h10v-3a1 1 0 00-1-1h-4.771z" clipRule="evenodd" />
+                </svg>
+                System
               </button>
             </div>
           </div>
