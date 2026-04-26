@@ -4,6 +4,9 @@
 CREATE TABLE room_members (
     room_id CHAR(36) NOT NULL,
     user_id CHAR(36) NOT NULL,
+
+    approval_status ENUM('approved','pending','rejected') DEFAULT 'pending',
+
     joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY (room_id, user_id),
