@@ -55,6 +55,7 @@ describe("room formatters", () => {
         description: "Description here",
         member_count: 3,
         max_capacity: 10,
+        join_approval_required: false,
         created_at: "2024-06-15T10:30:00.000Z",
         is_owner: false,
       });
@@ -161,6 +162,7 @@ describe("room formatters", () => {
         description: "Public room",
         member_count: 7,
         max_capacity: 20,
+        join_approval_required: false,
         created_at: "2024-03-20T08:00:00.000Z",
         is_joined: true,
         is_full: false,

@@ -15,9 +15,10 @@ export interface RoomRow {
   uuid: string;
   title: string;
   description: string | null;
-  status: 'open' | 'full' | 'ended' | 'cancelled';
+  status: "open" | "full" | "ended" | "cancelled";
   creator_id: string;
   max_members: number;
+  join_approval_required: boolean;
   event_time: Date | null;
   event_end_time: Date | null;
   location: string | null;
@@ -27,6 +28,7 @@ export interface RoomRow {
 export interface RoomMemberRow {
   room_id: string;
   user_id: string;
+  approval_status: "approved" | "pending" | "rejected";
   joined_at: Date;
 }
 

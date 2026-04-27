@@ -662,6 +662,7 @@ Returns rooms the authenticated user is a member of.
         "description": "For SE class",
         "member_count": 5,
         "max_capacity": 10,
+        "join_approval_required": false,
         "created_at": "2026-04-14T10:00:00Z",
         "is_owner": true
       }
@@ -727,6 +728,7 @@ Returns all available rooms with optional filters.
         "description": "Help with calculus",
         "member_count": 3,
         "max_capacity": 10,
+        "join_approval_required": false,
         "created_at": "2026-04-14T08:00:00Z",
         "is_joined": false,
         "is_full": false
@@ -776,9 +778,17 @@ Header: `Authorization: Bearer <access_token>`
 {
   "name": "Study Group",
   "description": "For SE class",
-  "max_capacity": 10
+  "max_capacity": 10,
+  "join_approval_required": false
 }
 ```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| name | string | Yes | Room name (max 200 chars) |
+| description | string | No | Room description |
+| max_capacity | integer | No | Max members (default 10, max 50) |
+| join_approval_required | boolean | No | If true, join requests need owner approval (default false) |
 
 #### Response (201 Created)
 
@@ -791,6 +801,7 @@ Header: `Authorization: Bearer <access_token>`
       "description": "For SE class",
       "member_count": 1,
       "max_capacity": 10,
+      "join_approval_required": false,
       "created_at": "2026-04-14T10:00:00Z",
       "is_owner": true
     }
@@ -859,11 +870,26 @@ Header: `Authorization: Bearer <access_token>`
 
 #### Response (200 OK)
 
+If room does not require approval:
+
 ```json
 {
   "data": {
     "success": true,
-    "room_id": "550e8400-e29b-41d4-a716-446655440002"
+    "room_id": "550e8400-e29b-41d4-a716-446655440002",
+    "status": "approved"
+  }
+}
+```
+
+If room requires approval:
+
+```json
+{
+  "data": {
+    "success": true,
+    "room_id": "550e8400-e29b-41d4-a716-446655440002",
+    "status": "pending"
   }
 }
 ```
@@ -880,6 +906,18 @@ Header: `Authorization: Bearer <access_token>`
   "error": {
     "code": "ROOM_NOT_FOUND",
     "message": "The specified room does not exist",
+    "details": []
+  }
+}
+```
+
+**400 ROOM_CLOSED**
+
+```json
+{
+  "error": {
+    "code": "ROOM_CLOSED",
+    "message": "This room is no longer active",
     "details": []
   }
 }
@@ -904,6 +942,18 @@ Header: `Authorization: Bearer <access_token>`
   "error": {
     "code": "ALREADY_JOINED",
     "message": "You are already a member of this room",
+    "details": []
+  }
+}
+```
+
+**409 PENDING_REQUEST**
+
+```json
+{
+  "error": {
+    "code": "PENDING_REQUEST",
+    "message": "You already have a pending join request",
     "details": []
   }
 }
@@ -1037,6 +1087,18 @@ Header: `Authorization: Bearer <access_token>`
 }
 ```
 
+**400 ROOM_CLOSED**
+
+```json
+{
+  "error": {
+    "code": "ROOM_CLOSED",
+    "message": "This room is no longer active",
+    "details": []
+  }
+}
+```
+
 **403 NOT_OWNER**
 
 ```json
@@ -1066,12 +1128,766 @@ Header: `Authorization: Bearer <access_token>`
 
 ---
 
+### Get Room Details
+
+<details>
+<summary><strong>GET</strong> `/api/v1/rooms/{room_id}` | Auth: Yes</summary>
+
+Header: `Authorization: Bearer <access_token>`
+
+Returns detailed information about a room, including the user's membership status.
+
+#### Response (200 OK)
+
+```json
+{
+  "data": {
+    "room": {
+      "id": "550e8400-e29b-41d4-a716-446655440002",
+      "name": "Study Group",
+      "description": "For SE class",
+      "status": "open",
+      "member_count": 5,
+      "max_capacity": 10,
+      "join_approval_required": false,
+      "event_time": "2026-04-20T14:00:00Z",
+      "event_end_time": "2026-04-20T16:00:00Z",
+      "location": "Library Room 301",
+      "created_at": "2026-04-14T10:00:00Z",
+      "is_owner": true,
+      "is_member": true,
+      "membership_status": "approved"
+    }
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| is_member | boolean | Whether the user is in the room (any status) |
+| membership_status | string | One of: `approved`, `pending`, `rejected`, `null` |
+
+#### Errors
+
+<details>
+<summary>Show Errors</summary>
+
+**404 ROOM_NOT_FOUND**
+
+```json
+{
+  "error": {
+    "code": "ROOM_NOT_FOUND",
+    "message": "The specified room does not exist",
+    "details": []
+  }
+}
+```
+
+**401 UNAUTHORIZED**
+
+```json
+{
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required: token is missing or invalid",
+    "details": []
+  }
+}
+```
+
+</details>
+</details>
+
+---
+
+### Update Room
+
+<details>
+<summary><strong>PATCH</strong> `/api/v1/rooms/{room_id}` | Auth: Yes (Owner only)</summary>
+
+Header: `Authorization: Bearer <access_token>`
+
+#### Request
+
+```json
+{
+  "name": "Updated Room Name",
+  "description": "Updated description",
+  "max_capacity": 15,
+  "join_approval_required": true,
+  "event_time": "2026-04-20T14:00:00Z",
+  "event_end_time": "2026-04-20T16:00:00Z",
+  "location": "Library Room 301"
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| name | string | Room name (max 200 chars) |
+| description | string | Room description (null to remove) |
+| max_capacity | integer | Max members (1-50) |
+| join_approval_required | boolean | Require approval for new members |
+| event_time | string | Event start time (ISO 8601, null to remove) |
+| event_end_time | string | Event end time (ISO 8601, null to remove) |
+| location | string | Event location (null to remove) |
+
+#### Response (200 OK)
+
+```json
+{
+  "data": {
+    "success": true,
+    "room_id": "550e8400-e29b-41d4-a716-446655440002"
+  }
+}
+```
+
+#### Errors
+
+<details>
+<summary>Show Errors</summary>
+
+**404 ROOM_NOT_FOUND**
+
+```json
+{
+  "error": {
+    "code": "ROOM_NOT_FOUND",
+    "message": "The specified room does not exist",
+    "details": []
+  }
+}
+```
+
+**400 ROOM_CLOSED**
+
+```json
+{
+  "error": {
+    "code": "ROOM_CLOSED",
+    "message": "This room is no longer active",
+    "details": []
+  }
+}
+```
+
+**403 NOT_OWNER**
+
+```json
+{
+  "error": {
+    "code": "NOT_OWNER",
+    "message": "Only the room owner can update this room",
+    "details": []
+  }
+}
+```
+
+**400 CAPACITY_EXCEEDED**
+
+```json
+{
+  "error": {
+    "code": "CAPACITY_EXCEEDED",
+    "message": "Maximum room capacity is 50",
+    "details": []
+  }
+}
+```
+
+**400 VALIDATION_ERROR**
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "No valid fields to update",
+    "details": []
+  }
+}
+```
+
+**401 UNAUTHORIZED**
+
+```json
+{
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required: token is missing or invalid",
+    "details": []
+  }
+}
+```
+
+</details>
+</details>
+
+---
+
+### List Room Members
+
+<details>
+<summary><strong>GET</strong> `/api/v1/rooms/{room_id}/members` | Auth: Yes</summary>
+
+Header: `Authorization: Bearer <access_token>`
+
+Returns all approved members of a room.
+
+#### Response (200 OK)
+
+```json
+{
+  "data": {
+    "members": [
+      {
+        "user_id": "550e8400-e29b-41d4-a716-446655440001",
+        "name": "John Doe",
+        "username": "johndoe",
+        "approval_status": "approved",
+        "joined_at": "2026-04-14T10:00:00Z",
+        "is_owner": true
+      },
+      {
+        "user_id": "550e8400-e29b-41d4-a716-446655440002",
+        "name": "Jane Smith",
+        "username": "janesmith",
+        "approval_status": "approved",
+        "joined_at": "2026-04-14T10:30:00Z",
+        "is_owner": false
+      }
+    ],
+    "room_owner_id": "550e8400-e29b-41d4-a716-446655440001"
+  }
+}
+```
+
+#### Errors
+
+<details>
+<summary>Show Errors</summary>
+
+**404 ROOM_NOT_FOUND**
+
+```json
+{
+  "error": {
+    "code": "ROOM_NOT_FOUND",
+    "message": "The specified room does not exist",
+    "details": []
+  }
+}
+```
+
+**400 ROOM_CLOSED**
+
+```json
+{
+  "error": {
+    "code": "ROOM_CLOSED",
+    "message": "This room is no longer active",
+    "details": []
+  }
+}
+```
+
+**401 UNAUTHORIZED**
+
+```json
+{
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required: token is missing or invalid",
+    "details": []
+  }
+}
+```
+
+</details>
+</details>
+
+---
+
+### List Join Requests
+
+<details>
+<summary><strong>GET</strong> `/api/v1/rooms/{room_id}/requests` | Auth: Yes (Owner only)</summary>
+
+Header: `Authorization: Bearer <access_token>`
+
+Returns pending join requests for a room.
+
+#### Response (200 OK)
+
+```json
+{
+  "data": {
+    "requests": [
+      {
+        "user_id": "550e8400-e29b-41d4-a716-446655440003",
+        "name": "Bob Wilson",
+        "username": "bobwilson",
+        "approval_status": "pending",
+        "joined_at": "2026-04-14T11:00:00Z",
+        "is_owner": false
+      }
+    ]
+  }
+}
+```
+
+#### Errors
+
+<details>
+<summary>Show Errors</summary>
+
+**404 ROOM_NOT_FOUND**
+
+```json
+{
+  "error": {
+    "code": "ROOM_NOT_FOUND",
+    "message": "The specified room does not exist",
+    "details": []
+  }
+}
+```
+
+**400 ROOM_CLOSED**
+
+```json
+{
+  "error": {
+    "code": "ROOM_CLOSED",
+    "message": "This room is no longer active",
+    "details": []
+  }
+}
+```
+
+**403 NOT_OWNER**
+
+```json
+{
+  "error": {
+    "code": "NOT_OWNER",
+    "message": "Only the room owner can view join requests",
+    "details": []
+  }
+}
+```
+
+**401 UNAUTHORIZED**
+
+```json
+{
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required: token is missing or invalid",
+    "details": []
+  }
+}
+```
+
+</details>
+</details>
+
+---
+
+### Approve All Join Requests
+
+<details>
+<summary><strong>POST</strong> `/api/v1/rooms/{room_id}/requests/approve-all` | Auth: Yes (Owner only)</summary>
+
+Header: `Authorization: Bearer <access_token>`
+
+Approves all pending join requests. If there are more pending requests than available slots, only approves up to the number of available slots.
+
+#### Response (200 OK)
+
+```json
+{
+  "data": {
+    "success": true,
+    "approved_count": 2
+  }
+}
+```
+
+If no pending requests:
+
+```json
+{
+  "data": {
+    "success": true,
+    "approved_count": 0
+  }
+}
+```
+
+#### Errors
+
+<details>
+<summary>Show Errors</summary>
+
+**404 ROOM_NOT_FOUND**
+
+```json
+{
+  "error": {
+    "code": "ROOM_NOT_FOUND",
+    "message": "The specified room does not exist",
+    "details": []
+  }
+}
+```
+
+**400 ROOM_CLOSED**
+
+```json
+{
+  "error": {
+    "code": "ROOM_CLOSED",
+    "message": "This room is no longer active",
+    "details": []
+  }
+}
+```
+
+**403 NOT_OWNER**
+
+```json
+{
+  "error": {
+    "code": "NOT_OWNER",
+    "message": "Only the room owner can approve requests",
+    "details": []
+  }
+}
+```
+
+**400 ROOM_FULL**
+
+```json
+{
+  "error": {
+    "code": "ROOM_FULL",
+    "message": "Room is at maximum capacity",
+    "details": []
+  }
+}
+```
+
+**401 UNAUTHORIZED**
+
+```json
+{
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required: token is missing or invalid",
+    "details": []
+  }
+}
+```
+
+</details>
+</details>
+
+---
+
+### Approve Join Request
+
+<details>
+<summary><strong>POST</strong> `/api/v1/rooms/{room_id}/requests/{user_id}/approve` | Auth: Yes (Owner only)</summary>
+
+Header: `Authorization: Bearer <access_token>`
+
+Approves a pending join request.
+
+#### Response (200 OK)
+
+```json
+{
+  "data": {
+    "success": true,
+    "user_id": "550e8400-e29b-41d4-a716-446655440003",
+    "status": "approved"
+  }
+}
+```
+
+#### Errors
+
+<details>
+<summary>Show Errors</summary>
+
+**404 ROOM_NOT_FOUND**
+
+```json
+{
+  "error": {
+    "code": "ROOM_NOT_FOUND",
+    "message": "The specified room does not exist",
+    "details": []
+  }
+}
+```
+
+**403 NOT_OWNER**
+
+```json
+{
+  "error": {
+    "code": "NOT_OWNER",
+    "message": "Only the room owner can approve requests",
+    "details": []
+  }
+}
+```
+
+**404 REQUEST_NOT_FOUND**
+
+```json
+{
+  "error": {
+    "code": "REQUEST_NOT_FOUND",
+    "message": "No pending request found for this user",
+    "details": []
+  }
+}
+```
+
+**400 ROOM_FULL**
+
+```json
+{
+  "error": {
+    "code": "ROOM_FULL",
+    "message": "Room is at maximum capacity",
+    "details": []
+  }
+}
+```
+
+**401 UNAUTHORIZED**
+
+```json
+{
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required: token is missing or invalid",
+    "details": []
+  }
+}
+```
+
+</details>
+</details>
+
+---
+
+### Reject Join Request
+
+<details>
+<summary><strong>POST</strong> `/api/v1/rooms/{room_id}/requests/{user_id}/reject` | Auth: Yes (Owner only)</summary>
+
+Header: `Authorization: Bearer <access_token>`
+
+Rejects a pending join request.
+
+#### Response (200 OK)
+
+```json
+{
+  "data": {
+    "success": true,
+    "user_id": "550e8400-e29b-41d4-a716-446655440003",
+    "status": "rejected"
+  }
+}
+```
+
+#### Errors
+
+<details>
+<summary>Show Errors</summary>
+
+**404 ROOM_NOT_FOUND**
+
+```json
+{
+  "error": {
+    "code": "ROOM_NOT_FOUND",
+    "message": "The specified room does not exist",
+    "details": []
+  }
+}
+```
+
+**400 ROOM_CLOSED**
+
+```json
+{
+  "error": {
+    "code": "ROOM_CLOSED",
+    "message": "This room is no longer active",
+    "details": []
+  }
+}
+```
+
+**403 NOT_OWNER**
+
+```json
+{
+  "error": {
+    "code": "NOT_OWNER",
+    "message": "Only the room owner can reject requests",
+    "details": []
+  }
+}
+```
+
+**404 REQUEST_NOT_FOUND**
+
+```json
+{
+  "error": {
+    "code": "REQUEST_NOT_FOUND",
+    "message": "No pending request found for this user",
+    "details": []
+  }
+}
+```
+
+**401 UNAUTHORIZED**
+
+```json
+{
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required: token is missing or invalid",
+    "details": []
+  }
+}
+```
+
+</details>
+</details>
+
+---
+
+### Remove Member
+
+<details>
+<summary><strong>DELETE</strong> `/api/v1/rooms/{room_id}/members/{user_id}` | Auth: Yes (Owner only)</summary>
+
+Header: `Authorization: Bearer <access_token>`
+
+Removes a member from the room. Cannot remove the room owner.
+
+#### Response (200 OK)
+
+```json
+{
+  "data": {
+    "success": true,
+    "user_id": "550e8400-e29b-41d4-a716-446655440002"
+  }
+}
+```
+
+#### Errors
+
+<details>
+<summary>Show Errors</summary>
+
+**404 ROOM_NOT_FOUND**
+
+```json
+{
+  "error": {
+    "code": "ROOM_NOT_FOUND",
+    "message": "The specified room does not exist",
+    "details": []
+  }
+}
+```
+
+**400 ROOM_CLOSED**
+
+```json
+{
+  "error": {
+    "code": "ROOM_CLOSED",
+    "message": "This room is no longer active",
+    "details": []
+  }
+}
+```
+
+**403 NOT_OWNER**
+
+```json
+{
+  "error": {
+    "code": "NOT_OWNER",
+    "message": "Only the room owner can remove members",
+    "details": []
+  }
+}
+```
+
+**400 CANNOT_REMOVE_OWNER**
+
+```json
+{
+  "error": {
+    "code": "CANNOT_REMOVE_OWNER",
+    "message": "Cannot remove the room owner",
+    "details": []
+  }
+}
+```
+
+**404 MEMBER_NOT_FOUND**
+
+```json
+{
+  "error": {
+    "code": "MEMBER_NOT_FOUND",
+    "message": "Member not found in this room",
+    "details": []
+  }
+}
+```
+
+**401 UNAUTHORIZED**
+
+```json
+{
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required: token is missing or invalid",
+    "details": []
+  }
+}
+```
+
+</details>
+</details>
+
+---
+
 ### Room Design Rules
 
-- Owner is automatically counted as a member
+- Owner is automatically counted as a member and is auto-approved
 - Owner cannot leave - must dismiss the room
 - Room hall excludes joined rooms and full rooms by default
 - Maximum room capacity: 50
+- Joining a room may require approval based on `join_approval_required` setting
+- If rejected, user can re-apply to join
+- When owner changes `join_approval_required` from `true` to `false`, all pending requests are auto-approved if they can all fit within max capacity. Otherwise, none are approved.
 
 ---
 

@@ -10,6 +10,8 @@ CREATE TABLE rooms (
     creator_id CHAR(36) NOT NULL,
     max_members INT DEFAULT 1,
 
+    join_approval_required BOOLEAN DEFAULT FALSE,
+
     event_time DATETIME,
     event_end_time DATETIME,
     location VARCHAR(255),
