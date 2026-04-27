@@ -1,11 +1,13 @@
 {
-  "explore": {
-    "title": "Explore",
-    "roomHall": "Room Hall",
-    "createRoom": "Create Room",
-    "search": "Search rooms...",
-    "noRooms": "No rooms available",
-    "join": "Join",
-    "full": "Full"
-  }
+  "title": "Explore",
+  "roomHall": "Room Hall",
+  "createRoom": "Create Room",
+  "search": "Search rooms...",
+  "noRooms": "No rooms available",
+  "join": "Join",
+  "full": "Full",
+  "loading": "Loading...",
+  "loadMore": "Load More",
+  "retry": "Retry",
+  "error": "Failed to load rooms"
 }

@@ -83,9 +83,12 @@ export async function getDictionary(
 
     const pageDict = pageRes.status === "fulfilled" ? pageRes.value : {};
 
+    console.log("common:", JSON.stringify(common));
+    console.log("pageDict:", JSON.stringify(pageDict));
+
     dictionary = {
-      common,
-      [page]: pageDict,
+      ...common,
+      ...pageDict,
     };
   } catch (error) {
     console.error("Failed to load dictionary:", error);

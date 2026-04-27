@@ -45,7 +45,7 @@ function LoginContent() {
     } catch (err: unknown) {
       let message = t(
         dict,
-        "auth.errors.loginFailed",
+        "errors.loginFailed",
         "Login failed, please try again",
       );
 
@@ -101,7 +101,7 @@ function LoginContent() {
               </svg>
             </div>
             <h1 className="text-[clamp(3rem,3vw,6rem)] font-bold text-gray-900 dark:text-white leading-tight">
-              {t(dict, "auth.login.title", "Login to NoSquad")}
+              {t(dict, "login.title", "Login to NoSquad")}
             </h1>
           </div>
 
@@ -111,7 +111,7 @@ function LoginContent() {
               className="block opacity-0 animate-fadeInUp"
               style={{ animationDelay: "0.2s", animationFillMode: "forwards" }}
             >
-              {t(dict, "auth.login.subtitle.line1", "In here,")}
+              {t(dict, "login.subtitle.line1", "In here,")}
             </span>
             <span
               className="block opacity-0 animate-fadeInUp"
@@ -119,7 +119,7 @@ function LoginContent() {
             >
               {t(
                 dict,
-                "auth.login.subtitle.line2",
+                "login.subtitle.line2",
                 "from the one who's never invited,",
               )}
             </span>
@@ -129,7 +129,7 @@ function LoginContent() {
             >
               {t(
                 dict,
-                "auth.login.subtitle.line3",
+                "login.subtitle.line3",
                 "to the one who hosts it all.",
               )}
             </span>
@@ -170,14 +170,14 @@ function LoginContent() {
                 </svg>
               </div>
               <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
-                {t(dict, "auth.login.title", "Login to NoSquad")}
+{t(dict, "login.title", "Login to NoSquad")}
               </h1>
             </div>
 
             {/* 桌面版標題 */}
             <div className="mb-6 sm:mb-8 hidden lg:block">
               <h2 className="text-[clamp(2rem,2.2vw,3.75rem)] font-bold text-gray-900 dark:text-white mb-2">
-                {t(dict, "auth.login.title", "Login to continue")}
+                {t(dict, "login.title", "Login to continue")}
               </h2>
             </div>
 
@@ -209,7 +209,7 @@ function LoginContent() {
                 >
                   {t(
                     dict,
-                    "auth.login.form.identifier",
+                    "loginForm.identifier",
                     "Email / Username / Phone",
                   )}
                 </label>
@@ -241,7 +241,7 @@ function LoginContent() {
                   htmlFor="password"
                   className="block text-[clamp(0.95rem,1.1vw,1.25rem)] font-semibold text-gray-700 dark:text-zinc-300 mb-2"
                 >
-                  {t(dict, "auth.login.form.password", "Password")}
+                  {t(dict, "loginForm.password", "Password")}
                 </label>
                 <div className="relative group">
                   <input
@@ -276,7 +276,7 @@ function LoginContent() {
                     className="w-4 h-4 rounded bg-gray-100 dark:bg-zinc-700 border-gray-300 dark:border-zinc-600 text-purple-600 focus:ring-2 focus:ring-purple-500 transition-all"
                   />
                   <span className="ml-2 text-[clamp(0.95rem,1.1vw,1.25rem)] text-gray-700 dark:text-zinc-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
-                    {t(dict, "auth.login.form.rememberMe", "Remember me")}
+                    {t(dict, "loginForm.rememberMe", "Remember me")}
                   </span>
                 </label>
                 <Link
@@ -285,7 +285,7 @@ function LoginContent() {
                 >
                   {t(
                     dict,
-                    "auth.login.form.forgotPassword",
+                    "loginForm.forgotPassword",
                     "Forgot password?",
                   )}
                 </Link>
@@ -300,10 +300,10 @@ function LoginContent() {
                 {isSubmitting ? (
                   <div className="flex items-center justify-center gap-2">
                     <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin"></div>
-                    {t(dict, "auth.login.form.submitting", "Logging in...")}
+                    {t(dict, "loginForm.submitting", "Logging in...")}
                   </div>
                 ) : (
-                  t(dict, "auth.login.form.submit", "Login")
+                  t(dict, "loginForm.submit", "Login")
                 )}
               </button>
             </form>
@@ -312,7 +312,7 @@ function LoginContent() {
             <div className="flex items-center gap-3 my-6">
               <div className="flex-1 h-px bg-gradient-to-r from-transparent to-gray-300 dark:to-zinc-700"></div>
               <span className="text-xs text-gray-400 dark:text-zinc-500">
-                {t(dict, "auth.login.divider", "OR")}
+                {t(dict, "divider", "OR")}
               </span>
               <div className="flex-1 h-px bg-gradient-to-l from-transparent to-gray-300 dark:to-zinc-700"></div>
             </div>
@@ -330,18 +330,18 @@ function LoginContent() {
                 >
                   <path d="M15.545 6.558a9.42 9.42 0 01.139 1.626c0 2.889-2.126 5.413-5.033 5.413-1.578 0-3.055-.643-4.118-1.713-.577.54-1.294 1.017-2.09 1.309 1.493 1.547 3.637 2.517 6.029 2.517 4.917 0 8.855-3.938 8.855-8.855 0-.55-.053-1.089-.156-1.617a5.148 5.148 0 001.597-3.68z"></path>
                 </svg>
-                {t(dict, "auth.login.socialLogin", "Sign in with Google")}
+                {t(dict, "socialLogin", "Sign in with Google")}
               </button>
             </div>
 
             {/* 註冊鏈接 */}
             <div className="mt-6 text-center text-[clamp(0.95rem,1.1vw,1.25rem)] text-gray-600 dark:text-zinc-400">
-              {t(dict, "auth.login.signupLink", "Don't have an account?")}{" "}
+              {t(dict, "signupLink", "Don't have an account?")}{" "}
               <Link
                 href="/auth/signup"
                 className="text-purple-600 hover:text-purple-700 font-semibold transition-colors"
               >
-                {t(dict, "auth.login.signupAction", "Sign up now")}
+                {t(dict, "signupAction", "Sign up now")}
               </Link>
             </div>
           </div>

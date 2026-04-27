@@ -1,15 +1,15 @@
 {
-  "home": {
-    "title": "首頁",
-    "myRooms": "我的房間",
-    "empty": "還沒有房間",
-    "findRooms": "到大廳找房間",
-    "createRoom": "創建房間",
-    "roomHall": "房間大廳",
-    "loading": "載入房間中...",
-    "noRooms": "暫無可用房間",
-    "tagline": "尋找與組織團體活動",
-    "login": "登入",
-    "signup": "註冊"
-  }
+  "title": "首頁",
+  "myRooms": "我的房間",
+  "empty": "還沒有房間",
+  "findRooms": "到大廳找房間",
+  "createRoom": "創建房間",
+  "roomHall": "房間大廳",
+  "loading": "載入房間中...",
+  "noRooms": "暫無可用房間",
+  "tagline": "尋找與組織團體活動",
+  "login": "登入",
+  "signup": "註冊",
+  "pendingApproval": "待審核",
+  "yourRooms": "您的房間"
 }

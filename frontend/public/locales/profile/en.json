@@ -1,14 +1,12 @@
 {
-  "profile": {
-    "title": "Profile",
-    "settings": "Settings",
-    "logout": "Log Out",
-    "deleteAccount": "Delete Account",
-    "name": "Name",
-    "username": "Username",
-    "email": "Email",
-    "phone": "Phone",
-    "passkeys": "Passkeys",
-    "noPasskeys": "No passkeys registered"
-  }
+  "title": "Profile",
+  "settings": "Settings",
+  "logout": "Log Out",
+  "deleteAccount": "Delete Account",
+  "name": "Name",
+  "username": "Username",
+  "email": "Email",
+  "phone": "Phone",
+  "passkeys": "Passkeys",
+  "noPasskeys": "No passkeys registered"
 }

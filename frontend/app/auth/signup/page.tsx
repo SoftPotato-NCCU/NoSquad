@@ -76,7 +76,7 @@ function SignupContent() {
   const validateForm = (): boolean => {
     if (!formData.name.trim()) {
       setError(
-        t(dict, "auth.signup.errors.nameRequired", "Please enter your name"),
+        t(dict, "errors.nameRequired", "Please enter your name"),
       );
       return false;
     }
@@ -84,7 +84,7 @@ function SignupContent() {
       setError(
         t(
           dict,
-          "auth.signup.errors.identifierRequired",
+          "errors.identifierRequired",
           "Please enter a username",
         ),
       );
@@ -94,7 +94,7 @@ function SignupContent() {
       setError(
         t(
           dict,
-          "auth.signup.errors.usernameMinLength",
+          "errors.usernameMinLength",
           "Username must be at least 3 characters",
         ),
       );
@@ -104,7 +104,7 @@ function SignupContent() {
       setError(
         t(
           dict,
-          "auth.signup.errors.emailRequired",
+          "errors.emailRequired",
           "Please enter a valid email",
         ),
       );
@@ -124,7 +124,7 @@ function SignupContent() {
       setError(
         t(
           dict,
-          "auth.signup.errors.passwordRequired",
+          "errors.passwordRequired",
           "Password must be at least 8 characters",
         ),
       );
@@ -134,7 +134,7 @@ function SignupContent() {
       setError(
         t(
           dict,
-          "auth.signup.errors.passwordsNotMatch",
+          "errors.passwordsNotMatch",
           "Passwords do not match",
         ),
       );
@@ -144,7 +144,7 @@ function SignupContent() {
       setError(
         t(
           dict,
-          "auth.signup.errors.termsRequired",
+          "errors.termsRequired",
           "Please agree to the terms",
         ),
       );
@@ -175,7 +175,7 @@ function SignupContent() {
     } catch (err: unknown) {
       let message = t(
         dict,
-        "auth.signup.errors.signupFailed",
+        "errors.signupFailed",
         "Registration failed, please try again",
       );
 
@@ -221,7 +221,7 @@ function SignupContent() {
               </svg>
             </div>
             <h1 className="text-[clamp(3rem,3vw,6rem)] font-bold text-gray-900 dark:text-white leading-tight">
-              {t(dict, "auth.signup.title", "Join NoSquad")}
+              {t(dict, "signup.title", "Join NoSquad")}
             </h1>
           </div>
 
@@ -231,7 +231,7 @@ function SignupContent() {
               className="block opacity-0 animate-fadeInUp"
               style={{ animationDelay: "0.2s", animationFillMode: "forwards" }}
             >
-              {t(dict, "auth.signup.subtitle.line1", "In here,")}
+              {t(dict, "signup.subtitle.line1", "In here,")}
             </span>
             <span
               className="block opacity-0 animate-fadeInUp"
@@ -239,7 +239,7 @@ function SignupContent() {
             >
               {t(
                 dict,
-                "auth.signup.subtitle.line2",
+                "signup.subtitle.line2",
                 "from the one who's never invited,",
               )}
             </span>
@@ -249,7 +249,7 @@ function SignupContent() {
             >
               {t(
                 dict,
-                "auth.signup.subtitle.line3",
+                "signup.subtitle.line3",
                 "to the one who hosts it all.",
               )}
             </span>
@@ -290,14 +290,14 @@ function SignupContent() {
                 </svg>
               </div>
               <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
-                {t(dict, "auth.signup.title", "Join NoSquad")}
+                {t(dict, "signup.title", "Join NoSquad")}
               </h1>
             </div>
 
             {/* 桌面版標題 */}
             <div className="mb-6 sm:mb-8 hidden lg:block">
               <h2 className="text-[clamp(2rem,2.2vw,3.75rem)] font-bold text-gray-900 dark:text-white mb-2">
-                {t(dict, "auth.signup.form.title", "Create your account")}
+                {t(dict, "signupForm.formTitle", "Create your account")}
               </h2>
             </div>
 
@@ -327,7 +327,7 @@ function SignupContent() {
                   htmlFor="name"
                   className="block text-[clamp(0.95rem,1.1vw,1.25rem)] font-semibold text-gray-700 dark:text-zinc-300 mb-2"
                 >
-                  {t(dict, "auth.signup.form.name", "Name")}
+                  {t(dict, "signupForm.name", "Name")}
                 </label>
                 <div className="relative group">
                   <input
@@ -356,7 +356,7 @@ function SignupContent() {
                   htmlFor="username"
                   className="block text-[clamp(0.95rem,1.1vw,1.25rem)] font-semibold text-gray-700 dark:text-zinc-300 mb-2"
                 >
-                  {t(dict, "auth.signup.form.username", "Username")}
+                  {t(dict, "signupForm.username", "Username")}
                 </label>
                 <div className="relative group">
                   <input
@@ -385,7 +385,7 @@ function SignupContent() {
                   htmlFor="email"
                   className="block text-[clamp(0.95rem,1.1vw,1.25rem)] font-semibold text-gray-700 dark:text-zinc-300 mb-2"
                 >
-                  {t(dict, "auth.signup.form.email", "Email")}
+                  {t(dict, "signupForm.email", "Email")}
                 </label>
                 <div className="relative group">
                   <input
@@ -415,7 +415,7 @@ function SignupContent() {
                   htmlFor="phone"
                   className="block text-[clamp(0.95rem,1.1vw,1.25rem)] font-semibold text-gray-700 dark:text-zinc-300 mb-2"
                 >
-                  {t(dict, "auth.signup.form.phone", "Phone (E.164 format)")}
+                  {t(dict, "signupForm.phone", "Phone (E.164 format)")}
                 </label>
                 <div className="relative">
                   <div className="bg-gray-50 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg flex items-center h-[clamp(3rem,3.2vw,3.75rem)]">
@@ -446,7 +446,7 @@ function SignupContent() {
                   htmlFor="password"
                   className="block text-[clamp(0.95rem,1.1vw,1.25rem)] font-semibold text-gray-700 dark:text-zinc-300 mb-2"
                 >
-                  {t(dict, "auth.signup.form.password", "Password")}
+                  {t(dict, "signupForm.password", "Password")}
                 </label>
                 <div className="relative group">
                   <input
@@ -474,7 +474,7 @@ function SignupContent() {
                 <p className="text-xs text-gray-500 mt-1">
                   {t(
                     dict,
-                    "auth.signup.form.passwordHint",
+                    "signupForm.passwordHint",
                     "At least 8 characters",
                   )}
                 </p>
@@ -488,7 +488,7 @@ function SignupContent() {
                 >
                   {t(
                     dict,
-                    "auth.signup.form.confirmPassword",
+                    "signupForm.confirmPassword",
                     "Confirm Password",
                   )}
                 </label>
@@ -527,19 +527,19 @@ function SignupContent() {
                   className="w-4 h-4 mt-1 rounded bg-gray-100 dark:bg-zinc-700 border-gray-300 dark:border-zinc-600 text-purple-600 focus:ring-2 focus:ring-purple-500 transition-all"
                 />
                 <span className="ml-3 text-[clamp(0.95rem,1.1vw,1.25rem)] text-gray-700 dark:text-zinc-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors">
-                  {t(dict, "auth.signup.form.agreeTerms", "I agree to the")}{" "}
+                  {t(dict, "signupForm.agreeTerms", "I agree to the")}{" "}
                   <Link
                     href="/terms"
                     className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium"
                   >
-                    {t(dict, "auth.signup.form.terms", "Terms of Service")}{" "}
+                    {t(dict, "signupForm.terms", "Terms of Service")}{" "}
                   </Link>
-                  {t(dict, "auth.signup.form.and", "and")}{" "}
+                  {t(dict, "signupForm.and", "and")}{" "}
                   <Link
                     href="/privacy"
                     className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium"
                   >
-                    {t(dict, "auth.signup.form.privacy", "Privacy Policy")}
+                    {t(dict, "signupForm.privacy", "Privacy Policy")}
                   </Link>
                 </span>
               </label>
@@ -555,12 +555,12 @@ function SignupContent() {
                     <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin"></div>
                     {t(
                       dict,
-                      "auth.signup.form.submitting",
+                      "signupForm.submitting",
                       "Creating account...",
                     )}
                   </div>
                 ) : (
-                  t(dict, "auth.signup.form.submit", "Create Account")
+                  t(dict, "signupForm.submit", "Create Account")
                 )}
               </button>
             </form>
@@ -569,7 +569,7 @@ function SignupContent() {
             <div className="flex items-center gap-3 my-6">
               <div className="flex-1 h-px bg-gradient-to-r from-transparent to-gray-300"></div>
               <span className="text-xs text-gray-400">
-                {t(dict, "auth.signup.divider", "OR")}
+                {t(dict, "divider", "OR")}
               </span>
               <div className="flex-1 h-px bg-gradient-to-l from-transparent to-gray-300"></div>
             </div>
@@ -587,18 +587,18 @@ function SignupContent() {
                 >
                   <path d="M15.545 6.558a9.42 9.42 0 01.139 1.626c0 2.889-2.126 5.413-5.033 5.413-1.578 0-3.055-.643-4.118-1.713-.577.54-1.294 1.017-2.09 1.309 1.493 1.547 3.637 2.517 6.029 2.517 4.917 0 8.855-3.938 8.855-8.855 0-.55-.053-1.089-.156-1.617a5.148 5.148 0 001.597-3.68z"></path>
                 </svg>
-                {t(dict, "auth.signup.socialLogin", "Sign up with Google")}
+                {t(dict, "socialSignup", "Sign up with Google")}
               </button>
             </div>
 
             {/* 登入鏈接 */}
             <div className="mt-6 text-center text-[clamp(0.95rem,1.1vw,1.25rem)] text-gray-600">
-              {t(dict, "auth.signup.loginLink", "Already have an account?")}{" "}
+              {t(dict, "loginLink", "Already have an account?")}{" "}
               <Link
                 href="/auth/login"
                 className="text-purple-600 hover:text-purple-700 font-semibold transition-colors"
               >
-                {t(dict, "auth.signup.loginAction", "Sign in now")}
+                {t(dict, "loginAction", "Sign in now")}
               </Link>
             </div>
           </div>

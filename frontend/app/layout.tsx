@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
 import { AuthProvider } from "@/lib/auth-context";
+import { RoomsProvider } from "@/lib/rooms-context";
 import AppShell from "@/components/AppShell";
 
 export const viewport: Viewport = {
@@ -58,7 +59,9 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <ServiceWorkerRegistration />
         <AuthProvider>
-          <AppShell>{children}</AppShell>
+          <RoomsProvider>
+            <AppShell>{children}</AppShell>
+          </RoomsProvider>
         </AuthProvider>
       </body>
     </html>

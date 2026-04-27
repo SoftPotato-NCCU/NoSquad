@@ -1,13 +1,40 @@
 "use client";
 
-import { Suspense } from "react";
-import { useAuth } from "@/lib/auth-context";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useDictionary, t } from "@/lib/i18n/useDictionary";
-import { logout, clearToken } from "@/lib/api";
+import { logout, clearToken, getMe } from "@/lib/api";
+import SettingsMenu from "@/components/SettingsMenu";
+
+interface UserData {
+  id: string;
+  name: string;
+  username: string;
+  email: string;
+  phone: string;
+}
 
 function ProfileContent() {
-  const { user, isLoading: authLoading } = useAuth();
-  const { dict, isLoading } = useDictionary("profile");
+  const { dict, isLoading: dictLoading } = useDictionary("profile");
+  const router = useRouter();
+  const [user, setUser] = useState<UserData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const response = await getMe();
+        setUser(response.data.user);
+      } catch {
+        clearToken();
+        localStorage.removeItem("user");
+        router.push("/auth/login");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchUser();
+  }, [router]);
 
   const handleLogout = async () => {
     try {
@@ -21,7 +48,7 @@ function ProfileContent() {
     }
   };
 
-  if (authLoading || isLoading) {
+  if (isLoading || dictLoading) {
     return (
       <div className="flex flex-col flex-1 p-4">
         <div className="animate-pulse h-8 w-24 bg-zinc-200 rounded" />
@@ -30,36 +57,43 @@ function ProfileContent() {
   }
 
   if (!user) {
-    window.location.href = "/auth/login";
     return null;
   }
 
   return (
     <div className="flex flex-col flex-1 p-4">
+      <SettingsMenu />
       <h1 className="text-xl font-semibold mb-6">
-        {t(dict, "profile.profile.title", "Profile")}
+        {t(dict, "title", "Profile")}
       </h1>
 
       <div className="space-y-4">
         <div className="flex flex-col gap-1">
           <span className="text-sm text-zinc-500">
-            {t(dict, "profile.name", "Name")}
+            {t(dict, "name", "Name")}
           </span>
           <span className="font-medium">{user.name}</span>
         </div>
 
         <div className="flex flex-col gap-1">
           <span className="text-sm text-zinc-500">
-            {t(dict, "profile.username", "Username")}
+            {t(dict, "username", "Username")}
           </span>
           <span className="font-medium">@{user.username}</span>
         </div>
 
         <div className="flex flex-col gap-1">
           <span className="text-sm text-zinc-500">
-            {t(dict, "profile.email", "Email")}
+            {t(dict, "email", "Email")}
           </span>
           <span className="font-medium">{user.email}</span>
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <span className="text-sm text-zinc-500">
+            {t(dict, "phone", "Phone")}
+          </span>
+          <span className="font-medium">{user.phone}</span>
         </div>
       </div>
 
@@ -67,7 +101,7 @@ function ProfileContent() {
         onClick={handleLogout}
         className="mt-8 w-full py-3 px-4 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-400 font-medium rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
       >
-        {t(dict, "profile.logout", "Log Out")}
+        {t(dict, "logout", "Log Out")}
       </button>
     </div>
   );
