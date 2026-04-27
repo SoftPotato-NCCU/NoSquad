@@ -4,10 +4,12 @@ import { pool } from "../../db/connection";
 import { apiError } from "../../lib/errors";
 import { authMiddleware, type AuthVariables } from "./middleware/auth";
 
+// ── ROUTES: /api/v1/rooms ───────────────────────────────────────────────────────
+
 const rooms = new Hono<{ Variables: AuthVariables }>();
 rooms.use("*", authMiddleware);
 
-// ── helpers ───────────────────────────────────────────────────────────────────
+// ── HELPERS ─────────────────────────────────────────────────────────────────────
 
 function toISO(d: Date | string | null): string | null {
   if (!d) return null;
@@ -21,6 +23,7 @@ function formatMyRoom(r: RowDataPacket, userId: string) {
     description: r.description ?? null,
     member_count: Number(r.member_count),
     max_capacity: r.max_members,
+    join_approval_required: Boolean(r.join_approval_required),
     created_at: toISO(r.created_at as Date),
     is_owner: r.creator_id === userId,
   };
@@ -34,14 +37,45 @@ function formatHallRoom(r: RowDataPacket) {
     description: r.description ?? null,
     member_count: memberCount,
     max_capacity: r.max_members,
+    join_approval_required: Boolean(r.join_approval_required),
     created_at: toISO(r.created_at as Date),
     is_joined: !!Number(r.is_joined),
     is_full: memberCount >= (r.max_members as number),
   };
 }
 
-// ── GET /api/v1/rooms  (user's rooms) ─────────────────────────────────────────
+function formatRoomDetails(r: RowDataPacket, userId: string) {
+  return {
+    id: r.uuid,
+    name: r.title,
+    description: r.description ?? null,
+    status: r.status,
+    member_count: Number(r.member_count),
+    max_capacity: r.max_members,
+    join_approval_required: Boolean(r.join_approval_required),
+    event_time: toISO(r.event_time),
+    event_end_time: toISO(r.event_end_time),
+    location: r.location ?? null,
+    created_at: toISO(r.created_at as Date),
+    is_owner: r.creator_id === userId,
+    is_member: !!Number(r.is_member),
+    membership_status: r.membership_status ?? null,
+  };
+}
 
+function formatMember(r: RowDataPacket) {
+  return {
+    user_id: r.user_id,
+    name: r.name,
+    username: r.username,
+    approval_status: r.approval_status,
+    joined_at: toISO(r.joined_at as Date),
+    is_owner: !!Number(r.is_owner),
+  };
+}
+
+// ── LIST MY ROOMS ─────────────────────────────────────────────────────────────────
+// GET /api/v1/rooms - List rooms the authenticated user is a member of
 rooms.get("/", async (c) => {
   const userId = c.get("userId");
   const limit = Math.min(Number(c.req.query("limit") ?? 20), 50);
@@ -84,8 +118,8 @@ rooms.get("/", async (c) => {
   });
 });
 
-// ── GET /api/v1/rooms/hall  (public listing) ──────────────────────────────────
-
+// ── LIST ROOM HALL ───────────────────────────────────────────────────────────────
+// GET /api/v1/rooms/hall - List all open rooms with optional filters
 rooms.get("/hall", async (c) => {
   const userId = c.get("userId");
   const limit = Math.min(Number(c.req.query("limit") ?? 20), 50);
@@ -142,8 +176,37 @@ rooms.get("/hall", async (c) => {
   });
 });
 
-// ── POST /api/v1/rooms  (create) ──────────────────────────────────────────────
+// ── GET ROOM DETAILS ─────────────────────────────────────────────────────────────
+// GET /api/v1/rooms/:room_id - Get detailed info about a room including user's membership status
+rooms.get("/:room_id", async (c) => {
+  const userId = c.get("userId");
+  const roomId = c.req.param("room_id");
 
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    `SELECT r.*,
+       COUNT(rm.user_id) AS member_count,
+       MAX(CASE WHEN rm.user_id = ? THEN 1 ELSE 0 END) AS is_member,
+       MAX(CASE WHEN rm.user_id = ? THEN rm.approval_status ELSE NULL END) AS membership_status
+     FROM rooms r
+     LEFT JOIN room_members rm ON rm.room_id = r.uuid
+     WHERE r.uuid = ?
+     GROUP BY r.uuid`,
+    [userId, userId, roomId],
+  );
+
+  if (!rows[0])
+    return apiError(
+      c,
+      404,
+      "ROOM_NOT_FOUND",
+      "The specified room does not exist",
+    );
+
+  return c.json({ data: { room: formatRoomDetails(rows[0], userId) } });
+});
+
+// ── CREATE ROOM ──────────────────────────────────────────────────────────────────
+// POST /api/v1/rooms - Create a new room (creator becomes owner and auto-approved member)
 rooms.post("/", async (c) => {
   const userId = c.get("userId");
   const body = (await c.req.json().catch(() => null)) as Record<
@@ -170,16 +233,24 @@ rooms.post("/", async (c) => {
       },
     ]);
 
+  const joinApprovalRequired = body.join_approval_required === true;
   const roomId = crypto.randomUUID();
   const description =
     typeof body.description === "string" ? body.description : null;
 
   await pool.execute(
-    "INSERT INTO rooms (uuid, title, description, creator_id, max_members) VALUES (?, ?, ?, ?, ?)",
-    [roomId, body.name as string, description, userId, maxCapacity],
+    "INSERT INTO rooms (uuid, title, description, creator_id, max_members, join_approval_required) VALUES (?, ?, ?, ?, ?, ?)",
+    [
+      roomId,
+      body.name as string,
+      description,
+      userId,
+      maxCapacity,
+      joinApprovalRequired,
+    ],
   );
   await pool.execute(
-    "INSERT INTO room_members (room_id, user_id) VALUES (?, ?)",
+    "INSERT INTO room_members (room_id, user_id, approval_status) VALUES (?, ?, 'approved')",
     [roomId, userId],
   );
 
@@ -192,6 +263,7 @@ rooms.post("/", async (c) => {
           description,
           member_count: 1,
           max_capacity: maxCapacity,
+          join_approval_required: joinApprovalRequired,
           created_at: new Date().toISOString(),
           is_owner: true,
         },
@@ -201,18 +273,133 @@ rooms.post("/", async (c) => {
   );
 });
 
-// ── POST /api/v1/rooms/:room_id/join ──────────────────────────────────────────
+// ── UPDATE ROOM ──────────────────────────────────────────────────────────────────
+// PATCH /api/v1/rooms/:room_id - Update room settings (owner only)
+rooms.patch("/:room_id", async (c) => {
+  const userId = c.get("userId");
+  const roomId = c.req.param("room_id");
+  const body = (await c.req.json().catch(() => null)) as Record<
+    string,
+    unknown
+  > | null;
+  if (!body)
+    return apiError(c, 400, "VALIDATION_ERROR", "Invalid request data");
 
+  const [roomRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT * FROM rooms WHERE uuid = ?",
+    [roomId],
+  );
+  if (!roomRows[0])
+    return apiError(
+      c,
+      404,
+      "ROOM_NOT_FOUND",
+      "The specified room does not exist",
+    );
+
+  if (roomRows[0].status !== "open")
+    return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
+
+  if (roomRows[0].creator_id !== userId)
+    return apiError(
+      c,
+      403,
+      "NOT_OWNER",
+      "Only the room owner can update this room",
+    );
+
+  const updates: string[] = [];
+  const params: (string | number | boolean | Date | null)[] = [];
+
+  if (typeof body.name === "string" && body.name.length > 0) {
+    updates.push("title = ?");
+    params.push(body.name);
+  }
+  if (typeof body.description === "string") {
+    updates.push("description = ?");
+    params.push(body.description);
+  }
+  if (typeof body.max_capacity === "number") {
+    const newCap = body.max_capacity;
+    if (newCap > 50)
+      return apiError(
+        c,
+        400,
+        "CAPACITY_EXCEEDED",
+        "Maximum room capacity is 50",
+      );
+    if (newCap < 1)
+      return apiError(c, 400, "VALIDATION_ERROR", "Invalid request data", [
+        {
+          field: "max_capacity",
+          issue: "min_value",
+          message: "Capacity must be at least 1",
+        },
+      ]);
+    updates.push("max_members = ?");
+    params.push(newCap);
+  }
+  if (typeof body.join_approval_required === "boolean") {
+    const newValue = body.join_approval_required;
+    const oldValue = Boolean(roomRows[0].join_approval_required);
+    updates.push("join_approval_required = ?");
+    params.push(newValue);
+    if (oldValue === true && newValue === false) {
+      const [currentCount] = await pool.execute<RowDataPacket[]>(
+        "SELECT COUNT(*) as count FROM room_members WHERE room_id = ? AND approval_status = 'approved'",
+        [roomId],
+      );
+      const [pendingCount] = await pool.execute<RowDataPacket[]>(
+        "SELECT COUNT(*) as count FROM room_members WHERE room_id = ? AND approval_status = 'pending'",
+        [roomId],
+      );
+      const currentApproved = Number(currentCount[0].count);
+      const pending = Number(pendingCount[0].count);
+      const maxMembers = roomRows[0].max_members;
+      if (pending > 0 && currentApproved + pending <= maxMembers) {
+        await pool.execute(
+          "UPDATE room_members SET approval_status = 'approved' WHERE room_id = ? AND approval_status = 'pending'",
+          [roomId],
+        );
+      }
+    }
+  }
+  if (typeof body.event_time === "string" || body.event_time === null) {
+    updates.push("event_time = ?");
+    params.push(body.event_time ? new Date(body.event_time) : null);
+  }
+  if (typeof body.event_end_time === "string" || body.event_end_time === null) {
+    updates.push("event_end_time = ?");
+    params.push(body.event_end_time ? new Date(body.event_end_time) : null);
+  }
+  if (typeof body.location === "string" || body.location === null) {
+    updates.push("location = ?");
+    params.push(body.location);
+  }
+
+  if (updates.length === 0)
+    return apiError(c, 400, "VALIDATION_ERROR", "No valid fields to update");
+
+  params.push(roomId);
+  await pool.execute(
+    `UPDATE rooms SET ${updates.join(", ")} WHERE uuid = ?`,
+    params,
+  );
+
+  return c.json({ data: { success: true, room_id: roomId } });
+});
+
+// ── JOIN ROOM ───────────────────────────────────────────────────────────────────
+// POST /api/v1/rooms/:room_id/join - Request to join a room (auto-approve or pending based on room settings)
 rooms.post("/:room_id/join", async (c) => {
   const userId = c.get("userId");
   const roomId = c.req.param("room_id");
 
   const [roomRows] = await pool.execute<RowDataPacket[]>(
-    `SELECT r.*, COUNT(rm.user_id) AS member_count
+    `SELECT r.*, 
+       (SELECT COUNT(*) FROM room_members rm2 WHERE rm2.room_id = r.uuid AND rm2.approval_status = 'approved') AS member_count
      FROM rooms r
-     LEFT JOIN room_members rm ON rm.room_id = r.uuid
-     WHERE r.uuid = ? AND r.status = 'open'
-     GROUP BY r.uuid`,
+     WHERE r.uuid = ? AND r.status = 'open'`,
     [roomId],
   );
   if (!roomRows[0])
@@ -226,16 +413,39 @@ rooms.post("/:room_id/join", async (c) => {
   const room = roomRows[0];
 
   const [memberRows] = await pool.execute<RowDataPacket[]>(
-    "SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ?",
+    "SELECT * FROM room_members WHERE room_id = ? AND user_id = ?",
     [roomId, userId],
   );
-  if (memberRows.length > 0)
-    return apiError(
-      c,
-      409,
-      "ALREADY_JOINED",
-      "You are already a member of this room",
-    );
+  if (memberRows.length > 0) {
+    const existing = memberRows[0]!;
+    if (existing.approval_status === "approved")
+      return apiError(
+        c,
+        409,
+        "ALREADY_JOINED",
+        "You are already a member of this room",
+      );
+    if (existing.approval_status === "pending")
+      return apiError(
+        c,
+        409,
+        "PENDING_REQUEST",
+        "You already have a pending join request",
+      );
+    if (existing.approval_status === "rejected") {
+      await pool.execute(
+        "UPDATE room_members SET approval_status = ?, joined_at = NOW() WHERE room_id = ? AND user_id = ?",
+        [room.join_approval_required ? "pending" : "approved", roomId, userId],
+      );
+      if (!room.join_approval_required)
+        return c.json({
+          data: { success: true, room_id: roomId, status: "approved" },
+        });
+      return c.json({
+        data: { success: true, room_id: roomId, status: "pending" },
+      });
+    }
+  }
 
   if (Number(room.member_count) >= (room.max_members as number))
     return apiError(
@@ -245,16 +455,24 @@ rooms.post("/:room_id/join", async (c) => {
       "This room has reached its maximum capacity",
     );
 
+  const approvalStatus = room.join_approval_required ? "pending" : "approved";
   await pool.execute(
-    "INSERT INTO room_members (room_id, user_id) VALUES (?, ?)",
-    [roomId, userId],
+    "INSERT INTO room_members (room_id, user_id, approval_status) VALUES (?, ?, ?)",
+    [roomId, userId, approvalStatus],
   );
 
-  return c.json({ data: { success: true, room_id: roomId } });
+  if (room.join_approval_required)
+    return c.json({
+      data: { success: true, room_id: roomId, status: "pending" },
+    });
+
+  return c.json({
+    data: { success: true, room_id: roomId, status: "approved" },
+  });
 });
 
-// ── POST /api/v1/rooms/:room_id/leave ─────────────────────────────────────────
-
+// ── LEAVE ROOM ──────────────────────────────────────────────────────────────────
+// POST /api/v1/rooms/:room_id/leave - Leave a room (owner cannot leave, must dismiss instead)
 rooms.post("/:room_id/leave", async (c) => {
   const userId = c.get("userId");
   const roomId = c.req.param("room_id");
@@ -299,14 +517,13 @@ rooms.post("/:room_id/leave", async (c) => {
   return c.json({ data: { success: true, room_id: roomId } });
 });
 
-// ── DELETE /api/v1/rooms/:room_id  (dismiss) ──────────────────────────────────
-
-rooms.delete("/:room_id", async (c) => {
-  const userId = c.get("userId");
+// ── LIST ROOM MEMBERS ───────────────────────────────────────────────────────────
+// GET /api/v1/rooms/:room_id/members - List all approved members of a room
+rooms.get("/:room_id/members", async (c) => {
   const roomId = c.req.param("room_id");
 
   const [roomRows] = await pool.execute<RowDataPacket[]>(
-    "SELECT uuid, creator_id FROM rooms WHERE uuid = ? AND status = 'open'",
+    "SELECT * FROM rooms WHERE uuid = ?",
     [roomId],
   );
   if (!roomRows[0])
@@ -316,6 +533,323 @@ rooms.delete("/:room_id", async (c) => {
       "ROOM_NOT_FOUND",
       "The specified room does not exist",
     );
+
+  if (roomRows[0].status !== "open")
+    return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
+
+  const [memberRows] = await pool.execute<RowDataPacket[]>(
+    `SELECT rm.*, u.name, u.username,
+       CASE WHEN r.creator_id = rm.user_id THEN 1 ELSE 0 END AS is_owner
+     FROM room_members rm
+     JOIN users u ON u.uuid = rm.user_id
+     JOIN rooms r ON r.uuid = rm.room_id
+     WHERE rm.room_id = ? AND rm.approval_status = 'approved'
+     ORDER BY rm.joined_at ASC`,
+    [roomId],
+  );
+
+  return c.json({
+    data: {
+      members: memberRows.map(formatMember),
+      room_owner_id: roomRows[0].creator_id,
+    },
+  });
+});
+
+// ── LIST JOIN REQUESTS ──────────────────────────────────────────────────────────
+// GET /api/v1/rooms/:room_id/requests - List pending join requests (owner only)
+rooms.get("/:room_id/requests", async (c) => {
+  const userId = c.get("userId");
+  const roomId = c.req.param("room_id");
+
+  const [roomRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT * FROM rooms WHERE uuid = ?",
+    [roomId],
+  );
+  if (!roomRows[0])
+    return apiError(
+      c,
+      404,
+      "ROOM_NOT_FOUND",
+      "The specified room does not exist",
+    );
+
+  if (roomRows[0].status !== "open")
+    return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
+
+  if (roomRows[0].creator_id !== userId)
+    return apiError(
+      c,
+      403,
+      "NOT_OWNER",
+      "Only the room owner can view join requests",
+    );
+
+  const [requestRows] = await pool.execute<RowDataPacket[]>(
+    `SELECT rm.*, u.name, u.username
+     FROM room_members rm
+     JOIN users u ON u.uuid = rm.user_id
+     WHERE rm.room_id = ? AND rm.approval_status = 'pending'
+     ORDER BY rm.joined_at ASC`,
+    [roomId],
+  );
+
+  return c.json({ data: { requests: requestRows.map(formatMember) } });
+});
+
+// ── APPROVE JOIN REQUEST ───────────────────────────────────────────────────────
+// POST /api/v1/rooms/:room_id/requests/:user_id/approve - Approve a join request (owner only)
+rooms.post("/:room_id/requests/:user_id/approve", async (c) => {
+  const userId = c.get("userId");
+  const roomId = c.req.param("room_id");
+  const targetUserId = c.req.param("user_id");
+
+  const [roomRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT * FROM rooms WHERE uuid = ?",
+    [roomId],
+  );
+  if (!roomRows[0])
+    return apiError(
+      c,
+      404,
+      "ROOM_NOT_FOUND",
+      "The specified room does not exist",
+    );
+
+  if (roomRows[0].status !== "open")
+    return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
+
+  if (roomRows[0].creator_id !== userId)
+    return apiError(
+      c,
+      403,
+      "NOT_OWNER",
+      "Only the room owner can approve requests",
+    );
+
+  const [memberRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT * FROM room_members WHERE room_id = ? AND user_id = ? AND approval_status = 'pending'",
+    [roomId, targetUserId],
+  );
+  if (!memberRows[0])
+    return apiError(
+      c,
+      404,
+      "REQUEST_NOT_FOUND",
+      "No pending request found for this user",
+    );
+
+  const [currentCount] = await pool.execute<RowDataPacket[]>(
+    "SELECT COUNT(*) as count FROM room_members WHERE room_id = ? AND approval_status = 'approved'",
+    [roomId],
+  );
+  if (
+    !currentCount[0] ||
+    Number(currentCount[0].count) >= roomRows[0].max_members
+  )
+    return apiError(c, 400, "ROOM_FULL", "Room is at maximum capacity");
+
+  await pool.execute(
+    "UPDATE room_members SET approval_status = 'approved' WHERE room_id = ? AND user_id = ?",
+    [roomId, targetUserId],
+  );
+
+  return c.json({
+    data: { success: true, user_id: targetUserId, status: "approved" },
+  });
+});
+
+// ── APPROVE ALL JOIN REQUESTS ─────────────────────────────────────────────────
+// POST /api/v1/rooms/:room_id/requests/approve-all - Approve all pending requests (owner only)
+rooms.post("/:room_id/requests/approve-all", async (c) => {
+  const userId = c.get("userId");
+  const roomId = c.req.param("room_id");
+
+  const [roomRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT * FROM rooms WHERE uuid = ?",
+    [roomId],
+  );
+  if (!roomRows[0])
+    return apiError(
+      c,
+      404,
+      "ROOM_NOT_FOUND",
+      "The specified room does not exist",
+    );
+
+  if (roomRows[0].status !== "open")
+    return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
+
+  if (roomRows[0].creator_id !== userId)
+    return apiError(
+      c,
+      403,
+      "NOT_OWNER",
+      "Only the room owner can approve requests",
+    );
+
+  const [currentCount] = await pool.execute<RowDataPacket[]>(
+    "SELECT COUNT(*) as count FROM room_members WHERE room_id = ? AND approval_status = 'approved'",
+    [roomId],
+  );
+  const [pendingCount] = await pool.execute<RowDataPacket[]>(
+    "SELECT COUNT(*) as count FROM room_members WHERE room_id = ? AND approval_status = 'pending'",
+    [roomId],
+  );
+
+  const currentApproved = Number(currentCount[0].count);
+  const pending = Number(pendingCount[0].count);
+  const maxMembers = roomRows[0].max_members;
+  const availableSlots = maxMembers - currentApproved;
+
+  if (availableSlots <= 0)
+    return apiError(c, 400, "ROOM_FULL", "Room is at maximum capacity");
+
+  if (pending === 0)
+    return c.json({ data: { success: true, approved_count: 0 } });
+
+  const toApprove = Math.min(pending, availableSlots);
+
+  await pool.execute(
+    `UPDATE room_members SET approval_status = 'approved' 
+     WHERE room_id = ? AND approval_status = 'pending' 
+     LIMIT ?`,
+    [roomId, toApprove],
+  );
+
+  return c.json({ data: { success: true, approved_count: toApprove } });
+});
+
+// ── REJECT JOIN REQUEST ─────────────────────────────────────────────────────────
+// POST /api/v1/rooms/:room_id/requests/:user_id/reject - Reject a join request (owner only)
+rooms.post("/:room_id/requests/:user_id/reject", async (c) => {
+  const userId = c.get("userId");
+  const roomId = c.req.param("room_id");
+  const targetUserId = c.req.param("user_id");
+
+  const [roomRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT * FROM rooms WHERE uuid = ?",
+    [roomId],
+  );
+  if (!roomRows[0])
+    return apiError(
+      c,
+      404,
+      "ROOM_NOT_FOUND",
+      "The specified room does not exist",
+    );
+
+  if (roomRows[0].status !== "open")
+    return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
+
+  if (roomRows[0].creator_id !== userId)
+    return apiError(
+      c,
+      403,
+      "NOT_OWNER",
+      "Only the room owner can reject requests",
+    );
+
+  const [memberRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT * FROM room_members WHERE room_id = ? AND user_id = ? AND approval_status = 'pending'",
+    [roomId, targetUserId],
+  );
+  if (!memberRows[0])
+    return apiError(
+      c,
+      404,
+      "REQUEST_NOT_FOUND",
+      "No pending request found for this user",
+    );
+
+  await pool.execute(
+    "UPDATE room_members SET approval_status = 'rejected' WHERE room_id = ? AND user_id = ?",
+    [roomId, targetUserId],
+  );
+
+  return c.json({
+    data: { success: true, user_id: targetUserId, status: "rejected" },
+  });
+});
+
+// ── KICK MEMBER ──────────────────────────────────────────────────────────────────
+// DELETE /api/v1/rooms/:room_id/members/:user_id - Remove a member from room (owner only)
+rooms.delete("/:room_id/members/:user_id", async (c) => {
+  const userId = c.get("userId");
+  const roomId = c.req.param("room_id");
+  const targetUserId = c.req.param("user_id");
+
+  const [roomRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT * FROM rooms WHERE uuid = ?",
+    [roomId],
+  );
+  if (!roomRows[0])
+    return apiError(
+      c,
+      404,
+      "ROOM_NOT_FOUND",
+      "The specified room does not exist",
+    );
+
+  if (roomRows[0].status !== "open")
+    return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
+
+  if (roomRows[0].creator_id !== userId)
+    return apiError(
+      c,
+      403,
+      "NOT_OWNER",
+      "Only the room owner can remove members",
+    );
+
+  if (roomRows[0].creator_id === targetUserId)
+    return apiError(
+      c,
+      400,
+      "CANNOT_REMOVE_OWNER",
+      "Cannot remove the room owner",
+    );
+
+  const [memberRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT * FROM room_members WHERE room_id = ? AND user_id = ? AND approval_status = 'approved'",
+    [roomId, targetUserId],
+  );
+  if (!memberRows[0])
+    return apiError(
+      c,
+      404,
+      "MEMBER_NOT_FOUND",
+      "Member not found in this room",
+    );
+
+  await pool.execute(
+    "DELETE FROM room_members WHERE room_id = ? AND user_id = ?",
+    [roomId, targetUserId],
+  );
+
+  return c.json({ data: { success: true, user_id: targetUserId } });
+});
+
+// ── DISMISS ROOM ─────────────────────────────────────────────────────────────────
+// DELETE /api/v1/rooms/:room_id - Dismiss/cancel a room (owner only)
+rooms.delete("/:room_id", async (c) => {
+  const userId = c.get("userId");
+  const roomId = c.req.param("room_id");
+
+  const [roomRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT uuid, creator_id, status FROM rooms WHERE uuid = ?",
+    [roomId],
+  );
+  if (!roomRows[0])
+    return apiError(
+      c,
+      404,
+      "ROOM_NOT_FOUND",
+      "The specified room does not exist",
+    );
+
+  if (roomRows[0].status !== "open")
+    return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
 
   if (roomRows[0].creator_id !== userId)
     return apiError(
