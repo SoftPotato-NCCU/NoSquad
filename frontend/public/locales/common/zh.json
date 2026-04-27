@@ -39,5 +39,5 @@
   "status": "狀態",
   "dismissRoom": "解散房間",
   "dismissing": "解散中...",
-  "clearCache": "清除翻譯緩存"
+  "clearCache": "清除翻譯快取"
 }
