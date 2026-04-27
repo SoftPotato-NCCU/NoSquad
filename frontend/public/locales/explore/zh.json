@@ -1,11 +1,13 @@
 {
-  "explore": {
-    "title": "探索",
-    "roomHall": "房間大廳",
-    "createRoom": "創建房間",
-    "search": "搜尋房間...",
-    "noRooms": "暫無可用房間",
-    "join": "加入",
-    "full": "已滿"
-  }
+  "title": "探索",
+  "roomHall": "大廳",
+  "createRoom": "建立房間",
+  "search": "搜尋房間...",
+  "noRooms": "沒有可用的房間",
+  "join": "加入",
+  "full": "已滿",
+  "loading": "載入中...",
+  "loadMore": "載入更多",
+  "retry": "重試",
+  "error": "載入房間失敗"
 }

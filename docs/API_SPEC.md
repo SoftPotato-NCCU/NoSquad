@@ -708,6 +708,7 @@ Returns rooms the authenticated user is a member of.
 |-----------|------|---------|-------------|
 | limit | integer | 20 | Number of rooms per page (max 50) |
 | cursor | string | null | Timestamp cursor for pagination |
+| include_pending | boolean | false | Include rooms with pending approval status |
 
 #### Response (200 OK)
 
@@ -723,7 +724,8 @@ Returns rooms the authenticated user is a member of.
         "max_capacity": 10,
         "join_approval_required": false,
         "created_at": "2026-04-14T10:00:00Z",
-        "is_owner": true
+        "is_owner": true,
+        "membership_status": "approved"
       }
     ],
     "pagination": {
@@ -734,6 +736,10 @@ Returns rooms the authenticated user is a member of.
   }
 }
 ```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| membership_status | string | One of: `approved`, `pending` |
 
 #### Errors
 
@@ -862,7 +868,8 @@ Header: `Authorization: Bearer <access_token>`
       "max_capacity": 10,
       "join_approval_required": false,
       "created_at": "2026-04-14T10:00:00Z",
-      "is_owner": true
+      "is_owner": true,
+      "membership_status": "approved"
     }
   }
 }

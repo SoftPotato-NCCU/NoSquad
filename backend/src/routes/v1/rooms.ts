@@ -26,6 +26,7 @@ function formatMyRoom(r: RowDataPacket, userId: string) {
     join_approval_required: Boolean(r.join_approval_required),
     created_at: toISO(r.created_at as Date),
     is_owner: r.creator_id === userId,
+    membership_status: (r.membership_status as "approved" | "pending" | "rejected") ?? "approved",
   };
 }
 
@@ -80,6 +81,7 @@ rooms.get("/", async (c) => {
   const userId = c.get("userId");
   const limit = Math.min(Number(c.req.query("limit") ?? 20), 50);
   const cursor = c.req.query("cursor");
+  const includePending = c.req.query("include_pending") === "true";
 
   const params: (string | number)[] = [userId];
   let cursorClause = "";
@@ -87,14 +89,22 @@ rooms.get("/", async (c) => {
     cursorClause = "AND r.created_at < ?";
     params.push(cursor);
   }
+
+  let membershipFilter = "rm_me.approval_status = 'approved'";
+  if (includePending) {
+    membershipFilter = "rm_me.approval_status IN ('approved', 'pending')";
+  }
+
   params.push(limit + 1);
 
   const [rows] = await pool.execute<RowDataPacket[]>(
-    `SELECT r.*, COUNT(rm_all.user_id) AS member_count
+    `SELECT r.*,
+        rm_me.approval_status AS membership_status,
+        COUNT(rm_all.user_id) AS member_count
      FROM rooms r
-     JOIN room_members rm_me  ON rm_me.room_id  = r.uuid AND rm_me.user_id = ?
+     LEFT JOIN room_members rm_me ON rm_me.room_id = r.uuid AND rm_me.user_id = ?
      LEFT JOIN room_members rm_all ON rm_all.room_id = r.uuid
-     WHERE r.status = 'open' ${cursorClause}
+     WHERE r.status = 'open' AND rm_me.user_id IS NOT NULL AND ${membershipFilter} ${cursorClause}
      GROUP BY r.uuid
      ORDER BY r.created_at DESC
      LIMIT ?`,
@@ -353,10 +363,10 @@ rooms.patch("/:room_id", async (c) => {
         "SELECT COUNT(*) as count FROM room_members WHERE room_id = ? AND approval_status = 'pending'",
         [roomId],
       );
-      const currentApproved = Number(currentCount[0].count);
-      const pending = Number(pendingCount[0].count);
-      const maxMembers = roomRows[0].max_members;
-      if (pending > 0 && currentApproved + pending <= maxMembers) {
+      const currentApproved = Number(currentCount[0]?.count ?? 0);
+      const pending = Number(pendingCount[0]?.count ?? 0);
+      const maxMembers = roomRows[0]?.max_members;
+      if (maxMembers && pending > 0 && currentApproved + pending <= maxMembers) {
         await pool.execute(
           "UPDATE room_members SET approval_status = 'approved' WHERE room_id = ? AND approval_status = 'pending'",
           [roomId],
@@ -697,9 +707,9 @@ rooms.post("/:room_id/requests/approve-all", async (c) => {
     [roomId],
   );
 
-  const currentApproved = Number(currentCount[0].count);
-  const pending = Number(pendingCount[0].count);
-  const maxMembers = roomRows[0].max_members;
+  const currentApproved = Number(currentCount[0]?.count ?? 0);
+  const pending = Number(pendingCount[0]?.count ?? 0);
+  const maxMembers = roomRows[0]?.max_members ?? 0;
   const availableSlots = maxMembers - currentApproved;
 
   if (availableSlots <= 0)

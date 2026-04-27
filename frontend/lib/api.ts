@@ -1,3 +1,19 @@
+import {
+  CreateRoomRequest,
+  GenericSuccessResponse,
+  HallRoom,
+  JoinRequest,
+  JoinRoomResponse,
+  MembersResponse,
+  MyRoom,
+  RoomDetails,
+  RoomHallResponse,
+  RoomMember,
+  RequestsResponse,
+  RoomsResponse,
+  UpdateRoomRequest,
+} from "../types/rooms";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_BACKEND_URL || "";
 
 const AUTH_ERROR_CODES = [
@@ -56,10 +72,24 @@ async function fetchApi<T>(
     headers,
   });
 
-  if (!response.ok) {
+  if (response.status === 401) {
+    clearToken();
+    localStorage.removeItem("user");
+    window.location.href = "/auth/login";
+    throw {
+      error: { code: "UNAUTHORIZED", message: "Authentication required" },
+    };
+  }
+
+if (!response.ok) {
     const error = await response
       .json()
       .catch(() => ({ error: { message: "Request failed" } }));
+    if (isAuthError(error)) {
+      clearToken();
+      localStorage.removeItem("user");
+      window.location.href = "/auth/login";
+    }
     throw error;
   }
 
@@ -140,4 +170,150 @@ export async function logout() {
   }>("/auth/logout", { method: "POST" });
   clearToken();
   return result;
+}
+
+export async function getMe() {
+  return apiFetch<{
+    data: {
+      user: {
+        id: string;
+        name: string;
+        username: string;
+        email: string;
+        phone: string;
+      };
+    };
+  }>("/auth/me");
+}
+
+export type { CreateRoomRequest, UpdateRoomRequest } from "../types/rooms";
+
+export async function listMyRooms(params?: {
+  limit?: number;
+  cursor?: string;
+  include_pending?: boolean;
+}): Promise<{ data: RoomsResponse }> {
+  const query = new URLSearchParams();
+  if (params?.limit) query.set("limit", String(params.limit));
+  if (params?.cursor) query.set("cursor", params.cursor);
+  if (params?.include_pending) query.set("include_pending", "true");
+
+  const endpoint = `/rooms${query.toString() ? `?${query.toString()}` : ""}`;
+  return apiFetch<{ data: RoomsResponse }>(endpoint);
+}
+
+export async function listRoomHall(params?: {
+  limit?: number;
+  cursor?: string;
+  include_joined?: boolean;
+  include_full?: boolean;
+}): Promise<{ data: RoomHallResponse }> {
+  const query = new URLSearchParams();
+  if (params?.limit) query.set("limit", String(params.limit));
+  if (params?.cursor) query.set("cursor", params.cursor);
+  if (params?.include_joined) query.set("include_joined", "true");
+  if (params?.include_full) query.set("include_full", "true");
+
+  const endpoint = `/rooms/hall${query.toString() ? `?${query.toString()}` : ""}`;
+  return apiFetch<{ data: RoomHallResponse }>(endpoint);
+}
+
+export async function createRoom(
+  data: CreateRoomRequest,
+): Promise<{ data: { room: MyRoom } }> {
+  return apiFetch<{ data: { room: MyRoom } }>("/rooms", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getRoomDetails(
+  roomId: string,
+): Promise<{ data: { room: RoomDetails } }> {
+  return apiFetch<{ data: { room: RoomDetails } }>(`/rooms/${roomId}`);
+}
+
+export async function updateRoom(
+  roomId: string,
+  data: UpdateRoomRequest,
+): Promise<{ data: GenericSuccessResponse }> {
+  return apiFetch<{ data: GenericSuccessResponse }>(`/rooms/${roomId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function dismissRoom(
+  roomId: string,
+): Promise<{ data: GenericSuccessResponse }> {
+  return apiFetch<{ data: GenericSuccessResponse }>(`/rooms/${roomId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function joinRoom(
+  roomId: string,
+): Promise<{ data: JoinRoomResponse }> {
+  return apiFetch<{ data: JoinRoomResponse }>(`/rooms/${roomId}/join`, {
+    method: "POST",
+  });
+}
+
+export async function leaveRoom(
+  roomId: string,
+): Promise<{ data: GenericSuccessResponse }> {
+  return apiFetch<{ data: GenericSuccessResponse }>(`/rooms/${roomId}/leave`, {
+    method: "POST",
+  });
+}
+
+export async function listRoomMembers(
+  roomId: string,
+): Promise<{ data: MembersResponse }> {
+  return apiFetch<{ data: MembersResponse }>(`/rooms/${roomId}/members`);
+}
+
+export async function listJoinRequests(
+  roomId: string,
+): Promise<{ data: RequestsResponse }> {
+  return apiFetch<{ data: RequestsResponse }>(`/rooms/${roomId}/requests`);
+}
+
+export async function approveRequest(
+  roomId: string,
+  userId: string,
+): Promise<{ data: { success: boolean; user_id: string; status: string } }> {
+  return apiFetch<{ data: { success: boolean; user_id: string; status: string } }>(
+    `/rooms/${roomId}/requests/${userId}/approve`,
+    { method: "POST" },
+  );
+}
+
+export async function rejectRequest(
+  roomId: string,
+  userId: string,
+): Promise<{ data: { success: boolean; user_id: string; status: string } }> {
+  return apiFetch<{ data: { success: boolean; user_id: string; status: string } }>(
+    `/rooms/${roomId}/requests/${userId}/reject`,
+    { method: "POST" },
+  );
+}
+
+export async function approveAllRequests(
+  roomId: string,
+): Promise<{ data: { success: boolean; approved_count: number } }> {
+  return apiFetch<{ data: { success: boolean; approved_count: number } }>(
+    `/rooms/${roomId}/requests/approve-all`,
+    { method: "POST" },
+  );
+}
+
+export async function removeMember(
+  roomId: string,
+  userId: string,
+): Promise<{ data: GenericSuccessResponse }> {
+  return apiFetch<{ data: GenericSuccessResponse }>(
+    `/rooms/${roomId}/members/${userId}`,
+    { method: "DELETE" },
+  );
 }

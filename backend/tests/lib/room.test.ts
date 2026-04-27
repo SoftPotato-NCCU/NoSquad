@@ -45,6 +45,7 @@ describe("room formatters", () => {
         member_count: 3,
         max_members: 10,
         created_at: new Date("2024-06-15T10:30:00Z"),
+        membership_status: "approved",
       };
 
       const result = formatMyRoom(row, "other-user");
@@ -58,6 +59,7 @@ describe("room formatters", () => {
         join_approval_required: false,
         created_at: "2024-06-15T10:30:00.000Z",
         is_owner: false,
+        membership_status: "approved",
       });
     });
 
