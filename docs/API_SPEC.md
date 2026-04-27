@@ -225,6 +225,65 @@ Header: `Authorization: Bearer <access_token>`
 
 ---
 
+### Get Current User
+
+<details>
+<summary><strong>GET</strong> `/api/v1/auth/me` | Auth: Yes</summary>
+
+Header: `Authorization: Bearer <access_token>`
+
+Returns the authenticated user's profile.
+
+#### Response (200 OK)
+
+```json
+{
+  "data": {
+    "user": {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "John Doe",
+      "username": "johndoe",
+      "email": "john@example.com",
+      "phone": "+1234567890"
+    }
+  }
+}
+```
+
+#### Errors
+
+<details>
+<summary>Show Errors</summary>
+
+**401 UNAUTHORIZED**
+
+```json
+{
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required: token is missing or invalid",
+    "details": []
+  }
+}
+```
+
+**404 USER_NOT_FOUND**
+
+```json
+{
+  "error": {
+    "code": "USER_NOT_FOUND",
+    "message": "User not found",
+    "details": []
+  }
+}
+```
+
+</details>
+</details>
+
+---
+
 ## Passkey Authentication
 
 Hanko SDK integration for passwordless authentication.

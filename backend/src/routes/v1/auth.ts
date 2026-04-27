@@ -236,6 +236,22 @@ auth.post("/login", async (c) => {
   return c.json({ data: { user: publicUser(user), access_token } });
 });
 
+// ── GET /me ─────────────────────────────────────────────────────────────────────
+
+auth.get("/me", authMiddleware, async (c) => {
+  const userId = c.get("userId");
+
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    "SELECT * FROM users WHERE uuid = ?",
+    [userId],
+  );
+  if (!rows[0])
+    return apiError(c, 404, "USER_NOT_FOUND", "User not found");
+
+  const user = rows[0] as UserRow;
+  return c.json({ data: { user: publicUser(user) } });
+});
+
 // ── POST /logout ──────────────────────────────────────────────────────────────
 
 auth.post("/logout", authMiddleware, async (c) => {
