@@ -38,5 +38,6 @@
   "location": "Location",
   "status": "Status",
   "dismissRoom": "Dismiss Room",
-  "dismissing": "Dismissing..."
+  "dismissing": "Dismissing...",
+  "clearCache": "Clear Translation Cache"
 }

@@ -53,7 +53,7 @@ export async function getDictionary(
   lang: Lang,
   page: string = "common",
 ): Promise<Dictionary> {
-  const cacheKey = `${lang}:${page}`;
+  const cacheKey = `locales-${lang}:${page}`;
   console.log(`Loading dictionary for lang="${lang}", page="${page}"`);
 
   // 1. In-memory cache (fastest)
