@@ -3,14 +3,15 @@
 import { useState, useEffect, useRef } from "react";
 import { type Lang, supported } from "@/lib/i18n/useLang";
 import { langConfigs } from "@/lib/i18n/langConfig";
-import { useDictionary, t } from "@/lib/i18n/useDictionary";
 
-export default function SettingsMenu() {
-  const { dict } = useDictionary("common");
+type SettingsMenuProps = {
+  variant?: "floating" | "inline";
+};
+
+export default function SettingsMenu({ variant = "floating" }: SettingsMenuProps) {
   const [open, setOpen] = useState(false);
   const [lang, setLang] = useState<Lang>("en");
   const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
-  const [mounted, setMounted] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   const applyTheme = (theme: "light" | "dark" | "system") => {
@@ -69,7 +70,7 @@ export default function SettingsMenu() {
   };
 
   return (
-    <div ref={ref} className="fixed top-4 right-4 z-50">
+    <div ref={ref} className={variant === "floating"? "fixed top-4 right-4 z-50": "relative z-50"}>
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="Settings"
@@ -151,20 +152,6 @@ export default function SettingsMenu() {
               </button>
             </div>
           </div>
-
-          <div className="h-px bg-gray-100 dark:bg-zinc-800" />
-
-          <button
-            onClick={() => {
-              Object.keys(localStorage)
-                .filter((k) => k.startsWith("locales-"))
-                .forEach((k) => localStorage.removeItem(k));
-              window.location.reload();
-            }}
-            className="w-full py-1.5 text-sm font-medium text-gray-500 dark:text-zinc-400 hover:text-gray-700 dark:hover:text-zinc-200 text-center"
-          >
-            {t(dict, "clearCache", "Clear Translation Cache")}
-          </button>
         </div>
       )}
     </div>
