@@ -77,7 +77,6 @@ function Sidebar() {
           );
         })}
       </nav>
-
     </aside>
   );
 }
@@ -115,6 +114,18 @@ function TopBar() {
   );
 }
 
+function MobileCreateRoomButton() {
+  return (
+    <Link
+      href="/rooms/create"
+      aria-label="建立房間"
+      className="fixed bottom-24 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-3xl font-semibold leading-none text-white shadow-xl shadow-purple-500/30 transition active:scale-95 md:hidden"
+    >
+      +
+    </Link>
+  );
+}
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
 
@@ -143,6 +154,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             {children}
           </main>
         </div>
+
+        <MobileCreateRoomButton />
 
         <div className="md:hidden">
           <BottomNav />
