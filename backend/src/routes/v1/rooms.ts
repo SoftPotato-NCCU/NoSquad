@@ -56,6 +56,7 @@ function formatRoomDetails(r: RowDataPacket, userId: string) {
     join_approval_required: Boolean(r.join_approval_required),
     event_time: toISO(r.event_time),
     event_end_time: toISO(r.event_end_time),
+    matching_end_time: toISO(r.matching_end_time),
     location: r.location ?? null,
     created_at: toISO(r.created_at as Date),
     is_owner: r.creator_id === userId,
@@ -231,6 +232,11 @@ rooms.post("/", async (c) => {
       { field: "name", issue: "required", message: "Room name is required" },
     ]);
 
+  if (typeof body.event_time !== "string" || !body.event_time)
+    return apiError(c, 400, "VALIDATION_ERROR", "Invalid request data", [
+      { field: "event_time", issue: "required", message: "Event time is required" },
+    ]);
+
   const maxCapacity = Number(body.max_capacity ?? 10);
   if (maxCapacity > 50)
     return apiError(c, 400, "CAPACITY_EXCEEDED", "Maximum room capacity is 50");
@@ -247,9 +253,14 @@ rooms.post("/", async (c) => {
   const roomId = crypto.randomUUID();
   const description =
     typeof body.description === "string" ? body.description : null;
+  const location =
+    typeof body.location === "string" ? body.location : null;
+  const eventTime = new Date(body.event_time as string);
+  const eventEndTime = typeof body.event_end_time === "string" ? new Date(body.event_end_time) : eventTime;
+  const matchingEndTime = typeof body.matching_end_time === "string" ? new Date(body.matching_end_time) : eventTime;
 
   await pool.execute(
-    "INSERT INTO rooms (uuid, title, description, creator_id, max_members, join_approval_required) VALUES (?, ?, ?, ?, ?, ?)",
+    "INSERT INTO rooms (uuid, title, description, creator_id, max_members, join_approval_required, event_time, event_end_time, matching_end_time, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     [
       roomId,
       body.name as string,
@@ -257,6 +268,10 @@ rooms.post("/", async (c) => {
       userId,
       maxCapacity,
       joinApprovalRequired,
+      eventTime,
+      eventEndTime,
+      matchingEndTime,
+      location,
     ],
   );
   await pool.execute(
@@ -274,6 +289,10 @@ rooms.post("/", async (c) => {
           member_count: 1,
           max_capacity: maxCapacity,
           join_approval_required: joinApprovalRequired,
+          event_time: eventTime.toISOString(),
+          event_end_time: eventEndTime.toISOString(),
+          matching_end_time: matchingEndTime.toISOString(),
+          location,
           created_at: new Date().toISOString(),
           is_owner: true,
         },

@@ -14,6 +14,8 @@ CREATE TABLE rooms (
 
     event_time DATETIME,
     event_end_time DATETIME,
+    matching_end_time DATETIME,
+
     location VARCHAR(255),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 
