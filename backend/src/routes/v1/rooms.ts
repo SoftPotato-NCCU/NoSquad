@@ -566,6 +566,26 @@ rooms.get("/:room_id/members", async (c) => {
   if (roomRows[0].status !== "open")
     return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
 
+  const userId = c.get("userId");
+  const room = roomRows[0];
+
+  // Allow access if user is room owner
+  if (room.creator_id !== userId) {
+    // Otherwise, check if user is an approved member
+    const [memberCheck] = await pool.execute<RowDataPacket[]>(
+      "SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ? AND approval_status = 'approved'",
+      [roomId, userId],
+    );
+    if (memberCheck.length === 0) {
+      return apiError(
+        c,
+        403,
+        "INSUFFICIENT_PERMISSIONS",
+        "Only the room owner and approved members can view the member list",
+      );
+    }
+  }
+
   const [memberRows] = await pool.execute<RowDataPacket[]>(
     `SELECT rm.*, u.name, u.username,
        CASE WHEN r.creator_id = rm.user_id THEN 1 ELSE 0 END AS is_owner

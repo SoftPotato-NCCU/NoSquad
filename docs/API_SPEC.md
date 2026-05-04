@@ -1411,7 +1411,7 @@ Header: `Authorization: Bearer <access_token>`
 
 Header: `Authorization: Bearer <access_token>`
 
-Returns all approved members of a room.
+Returns all approved members of a room. Only the room owner and approved members can access this endpoint.
 
 #### Response (200 OK)
 
@@ -1477,6 +1477,18 @@ Returns all approved members of a room.
   "error": {
     "code": "UNAUTHORIZED",
     "message": "Authentication required: token is missing or invalid",
+    "details": []
+  }
+}
+```
+
+**403 INSUFFICIENT_PERMISSIONS**
+
+```json
+{
+  "error": {
+    "code": "INSUFFICIENT_PERMISSIONS",
+    "message": "Only the room owner and approved members can view the member list",
     "details": []
   }
 }
