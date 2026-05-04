@@ -844,7 +844,11 @@ Header: `Authorization: Bearer <access_token>`
   "name": "Study Group",
   "description": "For SE class",
   "max_capacity": 10,
-  "join_approval_required": false
+  "join_approval_required": false,
+  "event_time": "2026-04-20T14:00:00Z",
+  "event_end_time": "2026-04-20T16:00:00Z",
+  "matching_end_time": "2026-04-20T13:00:00Z",
+  "location": "Library Room 301"
 }
 ```
 
@@ -854,6 +858,10 @@ Header: `Authorization: Bearer <access_token>`
 | description | string | No | Room description |
 | max_capacity | integer | No | Max members (default 10, max 50) |
 | join_approval_required | boolean | No | If true, join requests need owner approval (default false) |
+| event_time | string | Yes | Event start time (ISO 8601) |
+| event_end_time | string | No | Event end time (ISO 8601, defaults to event_time) |
+| matching_end_time | string | No | Matching deadline (ISO 8601, defaults to event_time) |
+| location | string | No | Event location |
 
 #### Response (201 Created)
 
@@ -867,6 +875,10 @@ Header: `Authorization: Bearer <access_token>`
       "member_count": 1,
       "max_capacity": 10,
       "join_approval_required": false,
+      "event_time": "2026-04-20T14:00:00Z",
+      "event_end_time": "2026-04-20T16:00:00Z",
+      "matching_end_time": "2026-04-20T13:00:00Z",
+      "location": "Library Room 301",
       "created_at": "2026-04-14T10:00:00Z",
       "is_owner": true,
       "membership_status": "approved"
@@ -1218,6 +1230,7 @@ Returns detailed information about a room, including the user's membership statu
       "join_approval_required": false,
       "event_time": "2026-04-20T14:00:00Z",
       "event_end_time": "2026-04-20T16:00:00Z",
+      "matching_end_time": "2026-04-20T13:00:00Z",
       "location": "Library Room 301",
       "created_at": "2026-04-14T10:00:00Z",
       "is_owner": true,
