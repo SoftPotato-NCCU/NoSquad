@@ -4,74 +4,98 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-NoSquad is a study-group platform. It consists of three services orchestrated via Docker Compose:
+NoSquad is a study-group platform. Three services orchestrated via Docker Compose:
 
 - **Backend** — Bun + Hono API server (port 5050)
-- **Frontend** — Next.js 16 + React 19 app (port 3000)
-- **Database** — MariaDB 11.8 (port 3306); CloudBeaver GUI available on port 8978 in the `dev` Docker Compose profile
+- **Frontend** — Next.js 16 + React 19, **statically exported** and served by Nginx (port 3000)
+- **Database** — MariaDB 11.8 (port 3306); CloudBeaver GUI on port 8978 in the `dev` Compose profile
 
 ## Running the Stack
 
 ```bash
-# Start all services (production-like)
-docker compose up
-
-# Start with CloudBeaver DB GUI (dev profile)
-docker compose --profile dev up
+docker compose up                 # all services
+docker compose --profile dev up   # also starts CloudBeaver on :8978
 ```
+
+Required env vars (see `.env.example`): `DB_HOST`, `DB_PORT`, `DB_ROOT_PASSWORD`, `DB_DATABASE`, `DB_USER`, `DB_PASSWORD`, plus `JWT_SECRET` (consumed by backend) and `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` (web push). The frontend reads `NEXT_PUBLIC_API_BACKEND_URL` at build time.
 
 ## Backend (Bun/Hono)
 
 ```bash
 cd backend
 bun install
-bun run src/index.ts   # dev server
-bun test               # run tests
-bunx eslint .          # lint
+bun run src/index.ts                  # dev server
+bun test                              # all tests
+bun test tests/lib/room.test.ts       # single test file
+bunx eslint .                         # lint
 ```
 
-Entry point: `backend/src/index.ts`. Routes live under `backend/src/routes/`, middleware under `backend/src/middleware/`, DB helpers under `backend/src/db/`.
+- Entry: [backend/src/index.ts](backend/src/index.ts) — mounts CORS, logger, and `app.route('/api/v1', v1)`.
+- Routes: [backend/src/routes/v1/](backend/src/routes/v1/) (`auth.ts`, `rooms.ts`).
+- Auth middleware: [backend/src/routes/v1/middleware/auth.ts](backend/src/routes/v1/middleware/auth.ts) — verifies the Bearer token against `user_tokens`, rejects revoked tokens, and updates `last_used_at` / `user_agent` / `ip_address` on every request.
+- DB pool (mysql2): [backend/src/db/connection.ts](backend/src/db/connection.ts).
+- Row types: [backend/src/db/types.ts](backend/src/db/types.ts) (`UserRow`, `RoomRow`, `RoomMemberRow`, `UserTokenRow`).
+- Errors: [backend/src/lib/errors.ts](backend/src/lib/errors.ts) — always return via `apiError(c, status, code, message)`.
+- Passwords: hashed with `Bun.password.hash` (Bun runtime, not Node).
+- Backend changelog (Claude maintains): [backend/CHANGELOG.md](backend/CHANGELOG.md).
 
 ## Frontend (Next.js)
 
 ```bash
 cd frontend
-npm install
-npm run dev    # dev server on port 3000
-npm run build
+npm install                          # NOT bun — package manager differs from backend
+npm run dev                          # dev server on :3000
+npm run build                        # static export to ./out
 npm run lint
+npm test                             # vitest (jsdom)
+npm run test:watch
+npx vitest run tests/lib/foo.test.ts # single test
 ```
 
-**Next.js 16 breaking changes**: This project uses Next.js 16.2.3 which has breaking API differences from versions ≤15. Refer to the official Next.js 16 migration guide — do not rely on Next.js ≤15 knowledge for routing or config APIs.
+- **Static export** — [frontend/next.config.ts](frontend/next.config.ts) sets `output: "export"`, `trailingSlash: true`, `images.unoptimized: true`. There is **no SSR, no Route Handlers, no Server Actions** at runtime. The build emits `./out/` and Nginx serves it (see [frontend/Dockerfile](frontend/Dockerfile), [frontend/nginx.conf](frontend/nginx.conf)). Anything that requires a Node server at request time will not work.
+- **Next.js 16**: this project uses 16.2.3, which has breaking changes from ≤15. Don't rely on v15 routing/config patterns from training data — check `frontend/node_modules/next/dist/docs/` for current APIs.
+- API client: [frontend/lib/api.ts](frontend/lib/api.ts) — reads `NEXT_PUBLIC_API_BACKEND_URL`, stores the token in `localStorage["access_token"]`, and on 401 / known auth-error codes clears storage and redirects to `/auth/login`.
+- Auth context: [frontend/lib/auth-context.tsx](frontend/lib/auth-context.tsx); rooms context: [frontend/lib/rooms-context.tsx](frontend/lib/rooms-context.tsx).
+- i18n: [frontend/lib/i18n/](frontend/lib/i18n/) — supports `en` and `zh`. Use `useDictionary()` / `t()` rather than hard-coded strings; for zh prefer **「快取」** over 「緩存」 and **「建立房間」** as the canonical phrasing (per recent commits).
+- Push notifications: [frontend/lib/push-notifications.ts](frontend/lib/push-notifications.ts) + [frontend/components/ServiceWorkerRegistration.tsx](frontend/components/ServiceWorkerRegistration.tsx) (uses VAPID keys).
+- Vitest config: [frontend/vitest.config.ts](frontend/vitest.config.ts) — jsdom env, `@/*` alias maps to `frontend/`.
 
 ## API Design
 
-Full specification: `docs/API_SPEC.md`.
+Full spec: [docs/API_SPEC.md](docs/API_SPEC.md).
 
-- Base paths: `/api/v1/auth`, `/api/v1/rooms`
-- Auth: `Authorization: Bearer <access_token>` (JWT via `jose`)
-- Passkey/WebAuthn supported alongside password auth
-- Error responses: `{ "error": { "code": "...", "message": "...", "details": [] } }`
-- Pagination: cursor-based, newest-first by `created_at`
+- Base paths: `/api/v1/auth`, `/api/v1/rooms`.
+- Auth header: `Authorization: Bearer <access_token>`. **Tokens are opaque 64-char hex strings**, not JWTs — generated by [backend/src/lib/token.ts](backend/src/lib/token.ts) and validated by lookup in `user_tokens` (logout sets `revoked_at`). Don't try to decode them.
+- Error shape: `{ "error": { "code": "...", "message": "...", "details": [] } }`.
+- Pagination: cursor-based, newest-first by `created_at`.
 
-### Key domain rules
-- Rooms have a max capacity of 50 members
-- Room owner cannot leave; must dismiss the room instead
-- Ownership transfer not supported
+### Domain rules
+- Max 50 members per room.
+- Owner cannot leave — must `DELETE /:room_id` (dismiss) instead.
+- Ownership transfer is not supported.
+- Rooms support a join-request flow: `GET/POST /rooms/:id/requests`, `.../approve`, `.../reject`, `.../approve-all`, plus `DELETE /rooms/:id/members/:userId` for owner kicks.
 
 ## Database
 
-Init SQL scripts go in `database/init/` (run once on first container start). Schema file: `database/init/01-users.sql`.
+Init SQL runs once on first MariaDB container start, ordered by filename:
 
-Environment variables consumed by MariaDB and the backend:
-
-| Variable | Purpose |
+| File | Purpose |
 |---|---|
-| `DB_ROOT_PASSWORD` | MariaDB root password |
-| `DB_DATABASE` | Database name (default: `nosquad`) |
-| `DB_USER` | App DB user |
-| `DB_PASSWORD` | App DB user password |
+| [database/init/00-init.sql](database/init/00-init.sql) | `CREATE DATABASE` + `USE` |
+| [database/init/01-users.sql](database/init/01-users.sql) | `users` table |
+| [database/init/02-rooms.sql](database/init/02-rooms.sql) | `rooms` table |
+| [database/init/03-room_members.sql](database/init/03-room_members.sql) | `room_members` (join + status: pending/approved) |
+| [database/init/04-user_tokens.sql](database/init/04-user_tokens.sql) | `user_tokens` (opaque session tokens) |
+| [database/init/05-index.sql](database/init/05-index.sql) | indexes |
+
+Schema changes for an existing dev DB require dropping the volume (`docker compose down -v`) — the init scripts only run on a fresh data dir.
+
+## CI
+
+GitLab CI ([.gitlab-ci.yml](.gitlab-ci.yml)) runs on `main`, `develop`, MRs, MRs targeting `main`, and manual web triggers:
+- `test-backend` — `bun install && bun test` on `oven/bun:1`.
+- `test-frontend` — `npm install && npm run lint && npm test` on `node:24`.
 
 ## Dev Container
 
-`.devcontainer/` has per-service dev container configs (backend, frontend, database) for VS Code.
+[.devcontainer/](.devcontainer/) has per-service VS Code dev container configs (backend, frontend, database).
