@@ -21,9 +21,16 @@ function formatMyRoom(r: RowDataPacket, userId: string) {
     id: r.uuid,
     name: r.title,
     description: r.description ?? null,
+    room_status: r.status as
+      | "open"
+      | "recruiting_closed"
+      | "ended"
+      | "cancelled",
     member_count: Number(r.member_count),
     max_capacity: r.max_members,
     join_approval_required: Boolean(r.join_approval_required),
+    event_time: toISO(r.event_time),
+    event_end_time: toISO(r.event_end_time),
     created_at: toISO(r.created_at as Date),
     is_owner: r.creator_id === userId,
     membership_status: (r.membership_status as "approved" | "pending" | "rejected") ?? "approved",
@@ -50,13 +57,16 @@ function formatRoomDetails(r: RowDataPacket, userId: string) {
     id: r.uuid,
     name: r.title,
     description: r.description ?? null,
-    status: r.status,
+    room_status: r.status as
+      | "open"
+      | "recruiting_closed"
+      | "ended"
+      | "cancelled",
     member_count: Number(r.member_count),
     max_capacity: r.max_members,
     join_approval_required: Boolean(r.join_approval_required),
     event_time: toISO(r.event_time),
     event_end_time: toISO(r.event_end_time),
-    matching_end_time: toISO(r.matching_end_time),
     location: r.location ?? null,
     created_at: toISO(r.created_at as Date),
     is_owner: r.creator_id === userId,
@@ -64,6 +74,8 @@ function formatRoomDetails(r: RowDataPacket, userId: string) {
     membership_status: r.membership_status ?? null,
   };
 }
+
+const ACTIVE_STATUSES = "('open','recruiting_closed')";
 
 function formatMember(r: RowDataPacket) {
   return {
@@ -105,7 +117,7 @@ rooms.get("/", async (c) => {
      FROM rooms r
      LEFT JOIN room_members rm_me ON rm_me.room_id = r.uuid AND rm_me.user_id = ?
      LEFT JOIN room_members rm_all ON rm_all.room_id = r.uuid
-     WHERE r.status = 'open' AND rm_me.user_id IS NOT NULL AND ${membershipFilter} ${cursorClause}
+     WHERE r.status IN ${ACTIVE_STATUSES} AND rm_me.user_id IS NOT NULL AND ${membershipFilter} ${cursorClause}
      GROUP BY r.uuid
      ORDER BY r.created_at DESC
      LIMIT ?`,
@@ -256,11 +268,13 @@ rooms.post("/", async (c) => {
   const location =
     typeof body.location === "string" ? body.location : null;
   const eventTime = new Date(body.event_time as string);
-  const eventEndTime = typeof body.event_end_time === "string" ? new Date(body.event_end_time) : eventTime;
-  const matchingEndTime = typeof body.matching_end_time === "string" ? new Date(body.matching_end_time) : eventTime;
+  const eventEndTime =
+    typeof body.event_end_time === "string"
+      ? new Date(body.event_end_time)
+      : eventTime;
 
   await pool.execute(
-    "INSERT INTO rooms (uuid, title, description, creator_id, max_members, join_approval_required, event_time, event_end_time, matching_end_time, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    "INSERT INTO rooms (uuid, title, description, creator_id, max_members, join_approval_required, event_time, event_end_time, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
     [
       roomId,
       body.name as string,
@@ -270,7 +284,6 @@ rooms.post("/", async (c) => {
       joinApprovalRequired,
       eventTime,
       eventEndTime,
-      matchingEndTime,
       location,
     ],
   );
@@ -286,15 +299,17 @@ rooms.post("/", async (c) => {
           id: roomId,
           name: body.name,
           description,
+          room_status: "open" as const,
           member_count: 1,
           max_capacity: maxCapacity,
           join_approval_required: joinApprovalRequired,
           event_time: eventTime.toISOString(),
           event_end_time: eventEndTime.toISOString(),
-          matching_end_time: matchingEndTime.toISOString(),
           location,
           created_at: new Date().toISOString(),
           is_owner: true,
+          is_member: true,
+          membership_status: "approved" as const,
         },
       },
     },
@@ -326,7 +341,7 @@ rooms.patch("/:room_id", async (c) => {
       "The specified room does not exist",
     );
 
-  if (roomRows[0].status !== "open")
+  if (roomRows[0].status !== "open" && roomRows[0].status !== "recruiting_closed")
     return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
 
   if (roomRows[0].creator_id !== userId)
@@ -425,10 +440,10 @@ rooms.post("/:room_id/join", async (c) => {
   const roomId = c.req.param("room_id");
 
   const [roomRows] = await pool.execute<RowDataPacket[]>(
-    `SELECT r.*, 
+    `SELECT r.*,
        (SELECT COUNT(*) FROM room_members rm2 WHERE rm2.room_id = r.uuid AND rm2.approval_status = 'approved') AS member_count
      FROM rooms r
-     WHERE r.uuid = ? AND r.status = 'open'`,
+     WHERE r.uuid = ?`,
     [roomId],
   );
   if (!roomRows[0])
@@ -441,6 +456,8 @@ rooms.post("/:room_id/join", async (c) => {
 
   const room = roomRows[0];
 
+  // Check existing membership FIRST so already-joined / pending users get the
+  // correct error code (ALREADY_JOINED / PENDING_REQUEST) regardless of room status.
   const [memberRows] = await pool.execute<RowDataPacket[]>(
     "SELECT * FROM room_members WHERE room_id = ? AND user_id = ?",
     [roomId, userId],
@@ -462,6 +479,15 @@ rooms.post("/:room_id/join", async (c) => {
         "You already have a pending join request",
       );
     if (existing.approval_status === "rejected") {
+      if (room.status === "recruiting_closed")
+        return apiError(
+          c,
+          400,
+          "RECRUITING_CLOSED",
+          "This room is no longer accepting new members",
+        );
+      if (room.status !== "open")
+        return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
       await pool.execute(
         "UPDATE room_members SET approval_status = ?, joined_at = NOW() WHERE room_id = ? AND user_id = ?",
         [room.join_approval_required ? "pending" : "approved", roomId, userId],
@@ -475,6 +501,17 @@ rooms.post("/:room_id/join", async (c) => {
       });
     }
   }
+
+  if (room.status === "recruiting_closed")
+    return apiError(
+      c,
+      400,
+      "RECRUITING_CLOSED",
+      "This room is no longer accepting new members",
+    );
+
+  if (room.status !== "open")
+    return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
 
   if (Number(room.member_count) >= (room.max_members as number))
     return apiError(
@@ -507,7 +544,7 @@ rooms.post("/:room_id/leave", async (c) => {
   const roomId = c.req.param("room_id");
 
   const [roomRows] = await pool.execute<RowDataPacket[]>(
-    "SELECT uuid, creator_id FROM rooms WHERE uuid = ? AND status = 'open'",
+    `SELECT uuid, creator_id FROM rooms WHERE uuid = ? AND status IN ${ACTIVE_STATUSES}`,
     [roomId],
   );
   if (!roomRows[0])
@@ -563,7 +600,7 @@ rooms.get("/:room_id/members", async (c) => {
       "The specified room does not exist",
     );
 
-  if (roomRows[0].status !== "open")
+  if (roomRows[0].status !== "open" && roomRows[0].status !== "recruiting_closed")
     return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
 
   const userId = c.get("userId");
@@ -623,7 +660,7 @@ rooms.get("/:room_id/requests", async (c) => {
       "The specified room does not exist",
     );
 
-  if (roomRows[0].status !== "open")
+  if (roomRows[0].status !== "open" && roomRows[0].status !== "recruiting_closed")
     return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
 
   if (roomRows[0].creator_id !== userId)
@@ -665,7 +702,7 @@ rooms.post("/:room_id/requests/:user_id/approve", async (c) => {
       "The specified room does not exist",
     );
 
-  if (roomRows[0].status !== "open")
+  if (roomRows[0].status !== "open" && roomRows[0].status !== "recruiting_closed")
     return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
 
   if (roomRows[0].creator_id !== userId)
@@ -726,7 +763,7 @@ rooms.post("/:room_id/requests/approve-all", async (c) => {
       "The specified room does not exist",
     );
 
-  if (roomRows[0].status !== "open")
+  if (roomRows[0].status !== "open" && roomRows[0].status !== "recruiting_closed")
     return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
 
   if (roomRows[0].creator_id !== userId)
@@ -788,7 +825,7 @@ rooms.post("/:room_id/requests/:user_id/reject", async (c) => {
       "The specified room does not exist",
     );
 
-  if (roomRows[0].status !== "open")
+  if (roomRows[0].status !== "open" && roomRows[0].status !== "recruiting_closed")
     return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
 
   if (roomRows[0].creator_id !== userId)
@@ -840,7 +877,7 @@ rooms.delete("/:room_id/members/:user_id", async (c) => {
       "The specified room does not exist",
     );
 
-  if (roomRows[0].status !== "open")
+  if (roomRows[0].status !== "open" && roomRows[0].status !== "recruiting_closed")
     return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
 
   if (roomRows[0].creator_id !== userId)
@@ -879,6 +916,66 @@ rooms.delete("/:room_id/members/:user_id", async (c) => {
   return c.json({ data: { success: true, user_id: targetUserId } });
 });
 
+// ── CLOSE RECRUITING ────────────────────────────────────────────────────────────
+// POST /api/v1/rooms/:room_id/recruiting/close - Stop accepting new join requests (owner only)
+rooms.post("/:room_id/recruiting/close", async (c) => {
+  const userId = c.get("userId");
+  const roomId = c.req.param("room_id");
+
+  const [roomRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT uuid, creator_id, status FROM rooms WHERE uuid = ?",
+    [roomId],
+  );
+  if (!roomRows[0])
+    return apiError(c, 404, "ROOM_NOT_FOUND", "The specified room does not exist");
+
+  if (roomRows[0].creator_id !== userId)
+    return apiError(c, 403, "NOT_OWNER", "Only the room owner can close recruiting");
+
+  if (roomRows[0].status === "recruiting_closed")
+    return c.json({ data: { success: true, room_id: roomId, status: "recruiting_closed" } });
+
+  if (roomRows[0].status !== "open")
+    return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
+
+  await pool.execute(
+    "UPDATE rooms SET status = 'recruiting_closed' WHERE uuid = ?",
+    [roomId],
+  );
+
+  return c.json({ data: { success: true, room_id: roomId, status: "recruiting_closed" } });
+});
+
+// ── OPEN RECRUITING ─────────────────────────────────────────────────────────────
+// POST /api/v1/rooms/:room_id/recruiting/open - Resume accepting new join requests (owner only)
+rooms.post("/:room_id/recruiting/open", async (c) => {
+  const userId = c.get("userId");
+  const roomId = c.req.param("room_id");
+
+  const [roomRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT uuid, creator_id, status FROM rooms WHERE uuid = ?",
+    [roomId],
+  );
+  if (!roomRows[0])
+    return apiError(c, 404, "ROOM_NOT_FOUND", "The specified room does not exist");
+
+  if (roomRows[0].creator_id !== userId)
+    return apiError(c, 403, "NOT_OWNER", "Only the room owner can resume recruiting");
+
+  if (roomRows[0].status === "open")
+    return c.json({ data: { success: true, room_id: roomId, status: "open" } });
+
+  if (roomRows[0].status !== "recruiting_closed")
+    return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
+
+  await pool.execute(
+    "UPDATE rooms SET status = 'open' WHERE uuid = ?",
+    [roomId],
+  );
+
+  return c.json({ data: { success: true, room_id: roomId, status: "open" } });
+});
+
 // ── DISMISS ROOM ─────────────────────────────────────────────────────────────────
 // DELETE /api/v1/rooms/:room_id - Dismiss/cancel a room (owner only)
 rooms.delete("/:room_id", async (c) => {
@@ -897,7 +994,7 @@ rooms.delete("/:room_id", async (c) => {
       "The specified room does not exist",
     );
 
-  if (roomRows[0].status !== "open")
+  if (roomRows[0].status !== "open" && roomRows[0].status !== "recruiting_closed")
     return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
 
   if (roomRows[0].creator_id !== userId)
