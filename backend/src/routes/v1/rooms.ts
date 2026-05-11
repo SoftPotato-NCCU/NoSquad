@@ -129,7 +129,7 @@ rooms.get("/", async (c) => {
         COUNT(rm_all.user_id) AS member_count
      FROM rooms r
      LEFT JOIN room_members rm_me ON rm_me.room_id = r.uuid AND rm_me.user_id = ?
-     LEFT JOIN room_members rm_all ON rm_all.room_id = r.uuid
+     LEFT JOIN room_members rm_all ON rm_all.room_id = r.uuid AND rm_all.approval_status = 'approved'
      WHERE r.status IN ${ACTIVE_STATUSES} AND rm_me.user_id IS NOT NULL AND ${membershipFilter} ${cursorClause}
      GROUP BY r.uuid
      ORDER BY r.created_at DESC
@@ -182,7 +182,7 @@ rooms.get("/hall", async (c) => {
   const [rows] = await pool.execute<RowDataPacket[]>(
     `SELECT sub.* FROM (
        SELECT r.*,
-         COUNT(rm.user_id) AS member_count,
+         COUNT(CASE WHEN rm.approval_status = 'approved' THEN 1 END) AS member_count,
          MAX(CASE WHEN rm.user_id = ? THEN 1 ELSE 0 END) AS is_joined
        FROM rooms r
        LEFT JOIN room_members rm ON rm.room_id = r.uuid
@@ -222,7 +222,7 @@ rooms.get("/:room_id", async (c) => {
 
   const [rows] = await pool.execute<RowDataPacket[]>(
     `SELECT r.*,
-       COUNT(rm.user_id) AS member_count,
+       COUNT(CASE WHEN rm.approval_status = 'approved' THEN 1 END) AS member_count,
        MAX(CASE WHEN rm.user_id = ? THEN 1 ELSE 0 END) AS is_member,
        MAX(CASE WHEN rm.user_id = ? THEN rm.approval_status ELSE NULL END) AS membership_status
      FROM rooms r
