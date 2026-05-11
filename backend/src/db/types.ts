@@ -15,7 +15,7 @@ export interface RoomRow {
   uuid: string;
   title: string;
   description: string | null;
-  status: "open" | "full" | "ended" | "cancelled";
+  status: "open" | "recruiting_closed" | "ended" | "cancelled";
   creator_id: string;
   max_members: number;
   join_approval_required: boolean;

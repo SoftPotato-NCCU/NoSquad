@@ -5,7 +5,7 @@ CREATE TABLE rooms (
     uuid CHAR(36) NOT NULL,
     title VARCHAR(200) NOT NULL,
     description TEXT,
-    status ENUM('open','full','ended','cancelled') DEFAULT 'open',
+    status ENUM('open','recruiting_closed','ended','cancelled') DEFAULT 'open',
 
     creator_id CHAR(36) NOT NULL,
     max_members INT DEFAULT 1,
@@ -14,7 +14,6 @@ CREATE TABLE rooms (
 
     event_time DATETIME,
     event_end_time DATETIME,
-    matching_end_time DATETIME,
 
     location VARCHAR(255),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,

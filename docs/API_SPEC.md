@@ -720,9 +720,12 @@ Returns rooms the authenticated user is a member of.
         "id": "550e8400-e29b-41d4-a716-446655440000",
         "name": "Study Group",
         "description": "For SE class",
+        "room_status": "open",
         "member_count": 5,
         "max_capacity": 10,
         "join_approval_required": false,
+        "event_time": "2026-04-20T14:00:00Z",
+        "event_end_time": "2026-04-20T16:00:00Z",
         "created_at": "2026-04-14T10:00:00Z",
         "is_owner": true,
         "membership_status": "approved"
@@ -739,6 +742,9 @@ Returns rooms the authenticated user is a member of.
 
 | Field | Type | Description |
 |-------|------|-------------|
+| room_status | string | One of: `open`, `recruiting_closed`. (Other terminal statuses are filtered out of this list.) |
+| event_time | string \| null | Event start time (ISO 8601) |
+| event_end_time | string \| null | Event end time (ISO 8601) |
 | membership_status | string | One of: `approved`, `pending` |
 
 #### Errors
@@ -847,7 +853,6 @@ Header: `Authorization: Bearer <access_token>`
   "join_approval_required": false,
   "event_time": "2026-04-20T14:00:00Z",
   "event_end_time": "2026-04-20T16:00:00Z",
-  "matching_end_time": "2026-04-20T13:00:00Z",
   "location": "Library Room 301"
 }
 ```
@@ -860,7 +865,6 @@ Header: `Authorization: Bearer <access_token>`
 | join_approval_required | boolean | No | If true, join requests need owner approval (default false) |
 | event_time | string | Yes | Event start time (ISO 8601) |
 | event_end_time | string | No | Event end time (ISO 8601, defaults to event_time) |
-| matching_end_time | string | No | Matching deadline (ISO 8601, defaults to event_time) |
 | location | string | No | Event location |
 
 #### Response (201 Created)
@@ -872,15 +876,16 @@ Header: `Authorization: Bearer <access_token>`
       "id": "550e8400-e29b-41d4-a716-446655440002",
       "name": "Study Group",
       "description": "For SE class",
+      "room_status": "open",
       "member_count": 1,
       "max_capacity": 10,
       "join_approval_required": false,
       "event_time": "2026-04-20T14:00:00Z",
       "event_end_time": "2026-04-20T16:00:00Z",
-      "matching_end_time": "2026-04-20T13:00:00Z",
       "location": "Library Room 301",
       "created_at": "2026-04-14T10:00:00Z",
       "is_owner": true,
+      "is_member": true,
       "membership_status": "approved"
     }
   }
@@ -996,6 +1001,20 @@ If room requires approval:
   "error": {
     "code": "ROOM_CLOSED",
     "message": "This room is no longer active",
+    "details": []
+  }
+}
+```
+
+**400 RECRUITING_CLOSED**
+
+Returned when the room owner has stopped accepting new members. The room itself is still active for existing members.
+
+```json
+{
+  "error": {
+    "code": "RECRUITING_CLOSED",
+    "message": "This room is no longer accepting new members",
     "details": []
   }
 }
@@ -1130,6 +1149,172 @@ Header: `Authorization: Bearer <access_token>`
 
 ---
 
+### Close Recruiting
+
+<details>
+<summary><strong>POST</strong> `/api/v1/rooms/{room_id}/recruiting/close` | Auth: Yes (Owner only)</summary>
+
+Header: `Authorization: Bearer <access_token>`
+
+Pauses new join requests. Existing members are unaffected; the owner can still view, approve, reject pending requests, kick members, update room metadata, or dismiss the room. Idempotent — calling on an already-closed room returns success.
+
+Sets `status` from `open` → `recruiting_closed`.
+
+#### Response (200 OK)
+
+```json
+{
+  "data": {
+    "success": true,
+    "room_id": "550e8400-e29b-41d4-a716-446655440002",
+    "status": "recruiting_closed"
+  }
+}
+```
+
+#### Errors
+
+<details>
+<summary>Show Errors</summary>
+
+**404 ROOM_NOT_FOUND**
+
+```json
+{
+  "error": {
+    "code": "ROOM_NOT_FOUND",
+    "message": "The specified room does not exist",
+    "details": []
+  }
+}
+```
+
+**403 NOT_OWNER**
+
+```json
+{
+  "error": {
+    "code": "NOT_OWNER",
+    "message": "Only the room owner can close recruiting",
+    "details": []
+  }
+}
+```
+
+**400 ROOM_CLOSED**
+
+Returned when the room is in a terminal state (`ended`, `cancelled`).
+
+```json
+{
+  "error": {
+    "code": "ROOM_CLOSED",
+    "message": "This room is no longer active",
+    "details": []
+  }
+}
+```
+
+**401 UNAUTHORIZED**
+
+```json
+{
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required: token is missing or invalid",
+    "details": []
+  }
+}
+```
+
+</details>
+</details>
+
+---
+
+### Open Recruiting
+
+<details>
+<summary><strong>POST</strong> `/api/v1/rooms/{room_id}/recruiting/open` | Auth: Yes (Owner only)</summary>
+
+Header: `Authorization: Bearer <access_token>`
+
+Resumes new join requests on a room whose recruiting was previously closed. Idempotent — calling on an already-open room returns success.
+
+Sets `status` from `recruiting_closed` → `open`.
+
+#### Response (200 OK)
+
+```json
+{
+  "data": {
+    "success": true,
+    "room_id": "550e8400-e29b-41d4-a716-446655440002",
+    "status": "open"
+  }
+}
+```
+
+#### Errors
+
+<details>
+<summary>Show Errors</summary>
+
+**404 ROOM_NOT_FOUND**
+
+```json
+{
+  "error": {
+    "code": "ROOM_NOT_FOUND",
+    "message": "The specified room does not exist",
+    "details": []
+  }
+}
+```
+
+**403 NOT_OWNER**
+
+```json
+{
+  "error": {
+    "code": "NOT_OWNER",
+    "message": "Only the room owner can resume recruiting",
+    "details": []
+  }
+}
+```
+
+**400 ROOM_CLOSED**
+
+Returned when the room is in a terminal state (`ended`, `cancelled`).
+
+```json
+{
+  "error": {
+    "code": "ROOM_CLOSED",
+    "message": "This room is no longer active",
+    "details": []
+  }
+}
+```
+
+**401 UNAUTHORIZED**
+
+```json
+{
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required: token is missing or invalid",
+    "details": []
+  }
+}
+```
+
+</details>
+</details>
+
+---
+
 ### Dismiss Room
 
 <details>
@@ -1224,13 +1409,12 @@ Returns detailed information about a room, including the user's membership statu
       "id": "550e8400-e29b-41d4-a716-446655440002",
       "name": "Study Group",
       "description": "For SE class",
-      "status": "open",
+      "room_status": "open",
       "member_count": 5,
       "max_capacity": 10,
       "join_approval_required": false,
       "event_time": "2026-04-20T14:00:00Z",
       "event_end_time": "2026-04-20T16:00:00Z",
-      "matching_end_time": "2026-04-20T13:00:00Z",
       "location": "Library Room 301",
       "created_at": "2026-04-14T10:00:00Z",
       "is_owner": true,
@@ -1245,6 +1429,7 @@ Returns detailed information about a room, including the user's membership statu
 |-------|------|-------------|
 | is_member | boolean | Whether the user is in the room (any status) |
 | membership_status | string | One of: `approved`, `pending`, `rejected`, `null` |
+| room_status | string | One of: `open`, `recruiting_closed`, `ended`, `cancelled`. `recruiting_closed` means the owner has paused new joins; existing members are unaffected. Capacity is tracked separately via `member_count` / `max_capacity` — there is no `full` status. |
 
 #### Errors
 
@@ -1296,7 +1481,6 @@ Header: `Authorization: Bearer <access_token>`
   "max_capacity": 15,
   "join_approval_required": true,
   "event_time": "2026-04-20T14:00:00Z",
-  "event_end_time": "2026-04-20T16:00:00Z",
   "location": "Library Room 301"
 }
 ```
@@ -1308,7 +1492,6 @@ Header: `Authorization: Bearer <access_token>`
 | max_capacity | integer | Max members (1-50) |
 | join_approval_required | boolean | Require approval for new members |
 | event_time | string | Event start time (ISO 8601, null to remove) |
-| event_end_time | string | Event end time (ISO 8601, null to remove) |
 | location | string | Event location (null to remove) |
 
 #### Response (200 OK)
@@ -1411,7 +1594,7 @@ Header: `Authorization: Bearer <access_token>`
 
 Header: `Authorization: Bearer <access_token>`
 
-Returns all approved members of a room.
+Returns all approved members of a room. Only the room owner and approved members can access this endpoint.
 
 #### Response (200 OK)
 
@@ -1477,6 +1660,18 @@ Returns all approved members of a room.
   "error": {
     "code": "UNAUTHORIZED",
     "message": "Authentication required: token is missing or invalid",
+    "details": []
+  }
+}
+```
+
+**403 INSUFFICIENT_PERMISSIONS**
+
+```json
+{
+  "error": {
+    "code": "INSUFFICIENT_PERMISSIONS",
+    "message": "Only the room owner and approved members can view the member list",
     "details": []
   }
 }
@@ -1967,6 +2162,13 @@ Removes a member from the room. Cannot remove the room owner.
 - Joining a room may require approval based on `join_approval_required` setting
 - If rejected, user can re-apply to join
 - When owner changes `join_approval_required` from `true` to `false`, all pending requests are auto-approved if they can all fit within max capacity. Otherwise, none are approved.
+- Room `status` lifecycle:
+  - `open` — default; new members may join.
+  - `recruiting_closed` — owner has paused recruiting via `POST /rooms/{id}/recruiting/close`. New `POST /join` requests fail with `RECRUITING_CLOSED`. Existing members, member management (members, requests, approve, reject, kick), update, leave, and dismiss continue to work. Owner can resume with `POST /rooms/{id}/recruiting/open`.
+  - `ended`, `cancelled` — terminal; most write endpoints return `ROOM_CLOSED`.
+- "Full" is not a status. Capacity is computed from `member_count >= max_capacity`; the `is_full` flag in hall responses, the `ROOM_FULL` join error, and the in-memory check are all derived live. A room at capacity may still be `open` or `recruiting_closed`.
+- Hall listing (`GET /rooms/hall`) only returns rooms with `status = 'open'`. `recruiting_closed` rooms are hidden from discovery.
+- "My rooms" listing (`GET /rooms`) includes both `open` and `recruiting_closed`.
 
 ---
 
