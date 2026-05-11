@@ -47,14 +47,26 @@ function roomToActivity(
         ? "已加入"
         : isFull
           ? "已滿"
-          : room.join_approval_required
-            ? "需審核"
-            : "可加入",
+          : room.room_status === "recruiting_closed"
+            ? "已停止招募"
+            : room.room_status === "in_progress"
+              ? "進行中"
+              : room.room_status === "ended"
+                ? "已結束"
+                : room.room_status === "cancelled"
+                  ? "已取消"
+                  : room.join_approval_required
+                    ? "需審核"
+                    : "可加入",
     statusTone: isPending
       ? ("orange" as const)
       : isApproved
         ? ("blue" as const)
-        : isFull
+        : isFull ||
+            room.room_status === "recruiting_closed" ||
+            room.room_status === "in_progress" ||
+            room.room_status === "ended" ||
+            room.room_status === "cancelled"
           ? ("orange" as const)
           : room.join_approval_required
             ? ("purple" as const)
@@ -174,7 +186,13 @@ function ExploreContent() {
       pendingRoomIds.has(room.id) || pendingJoinedRoomIds.has(room.id);
     const isApproved = approvedJoinedRoomIds.has(room.id);
 
-    if (room.is_full || joiningRoomId || isPending || isApproved) {
+    if (
+      room.room_status !== "open" ||
+      room.is_full ||
+      joiningRoomId ||
+      isPending ||
+      isApproved
+    ) {
       return;
     }
 
@@ -343,6 +361,7 @@ function ExploreContent() {
                 {...roomToActivity(room, isPending, isApproved)}
                 detailHref={`/rooms/room?room_id=${room.id}`}
                 actionDisabled={
+                  room.room_status !== "open" ||
                   isApproved ||
                   room.is_full ||
                   isPending ||
@@ -357,7 +376,15 @@ function ExploreContent() {
                         ? "已加入"
                         : room.is_full
                           ? "已滿"
-                          : "加入"
+                          : room.room_status === "recruiting_closed"
+                            ? "已停止招募"
+                            : room.room_status === "in_progress"
+                              ? "進行中"
+                              : room.room_status === "ended"
+                                ? "已結束"
+                                : room.room_status === "cancelled"
+                                  ? "已取消"
+                                  : "加入"
                 }
                 onActionClick={() => handleJoinRoom(room)}
               />

@@ -16,6 +16,7 @@ export default function CreateRoomModal({
 }: CreateRoomModalProps) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [eventTime, setEventTime] = useState("");
   const [maxCapacity, setMaxCapacity] = useState(10);
   const [joinApprovalRequired, setJoinApprovalRequired] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -26,6 +27,19 @@ export default function CreateRoomModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    if (!eventTime) {
+      setError("Please select an event time");
+      return;
+    }
+
+    const eventDate = new Date(eventTime);
+
+    if (Number.isNaN(eventDate.getTime())) {
+      setError("Invalid event time");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -34,9 +48,12 @@ export default function CreateRoomModal({
         description: description.trim() || undefined,
         max_capacity: maxCapacity,
         join_approval_required: joinApprovalRequired,
+        event_time: eventDate.toISOString(),
       });
+
       setName("");
       setDescription("");
+      setEventTime("");
       setMaxCapacity(10);
       setJoinApprovalRequired(false);
       onClose();
@@ -53,6 +70,7 @@ export default function CreateRoomModal({
         className="absolute inset-0 bg-black/50"
         onClick={onClose}
       />
+
       <div className="relative bg-background border border-border rounded-lg w-full max-w-md p-6 shadow-lg">
         <h2 className="text-lg font-semibold text-foreground">Create Room</h2>
 
@@ -87,12 +105,29 @@ export default function CreateRoomModal({
 
           <div>
             <label className="block text-sm font-medium text-foreground">
+              Event Time *
+            </label>
+            <input
+              type="datetime-local"
+              value={eventTime}
+              onChange={(e) => setEventTime(e.target.value)}
+              required
+              className="mt-1 w-full px-3 py-2 bg-background border border-border rounded-md text-foreground"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-foreground">
               Max Members (1-50)
             </label>
             <input
               type="number"
               value={maxCapacity}
-              onChange={(e) => setMaxCapacity(Math.min(50, Math.max(1, parseInt(e.target.value) || 10)))}
+              onChange={(e) =>
+                setMaxCapacity(
+                  Math.min(50, Math.max(1, parseInt(e.target.value) || 10)),
+                )
+              }
               min={1}
               max={50}
               className="mt-1 w-full px-3 py-2 bg-background border border-border rounded-md text-foreground"
@@ -124,9 +159,10 @@ export default function CreateRoomModal({
             >
               Cancel
             </button>
+
             <button
               type="submit"
-              disabled={isSubmitting || !name.trim()}
+              disabled={isSubmitting || !name.trim() || !eventTime}
               className="flex-1 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               {isSubmitting ? "Creating..." : "Create"}

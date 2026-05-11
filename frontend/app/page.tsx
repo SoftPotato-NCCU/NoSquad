@@ -29,21 +29,38 @@ function formatRoomDate(value: string | null) {
 }
 
 function roomToCard(room: MyRoom) {
+  const isInactiveStatus =
+    room.room_status === "recruiting_closed" ||
+    room.room_status === "in_progress" ||
+    room.room_status === "ended" ||
+    room.room_status === "cancelled";
+
   return {
     title: room.name,
-    date: formatRoomDate(room.created_at),
+    date: formatRoomDate(room.event_time),
     location: room.description || "尚未提供活動說明",
     members: `${room.member_count}/${room.max_capacity}`,
-    status: room.is_owner
-      ? "房主"
-      : room.membership_status === "pending"
-        ? "待審核"
-        : "已加入",
-    statusTone: room.is_owner
-      ? ("purple" as const)
-      : room.membership_status === "pending"
-        ? ("orange" as const)
-        : ("blue" as const),
+    status:
+      room.room_status === "recruiting_closed"
+        ? "已停止招募"
+        : room.room_status === "in_progress"
+          ? "進行中"
+          : room.room_status === "ended"
+            ? "已結束"
+            : room.room_status === "cancelled"
+              ? "已取消"
+              : room.is_owner
+                ? "房主"
+                : room.membership_status === "pending"
+                  ? "待審核"
+                  : "已加入",
+    statusTone: isInactiveStatus
+      ? ("orange" as const)
+      : room.is_owner
+        ? ("purple" as const)
+        : room.membership_status === "pending"
+          ? ("orange" as const)
+          : ("blue" as const),
     icon: "⚡",
   };
 }

@@ -3,7 +3,6 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { useDictionary } from "@/lib/i18n/useDictionary";
 import {
   getRoomDetails,
   joinRoom,
@@ -15,6 +14,8 @@ import {
   rejectRequest,
   approveAllRequests,
   removeMember,
+  closeRecruiting,
+  openRecruiting,
 } from "@/lib/api";
 import type { RoomDetails, RoomMember, JoinRequest } from "@/types/rooms";
 
@@ -36,11 +37,51 @@ function formatDate(value: string | null) {
   });
 }
 
+function getRoomStatusLabel(status: RoomDetails["room_status"]) {
+  switch (status) {
+    case "open":
+      return "招募中";
+    case "recruiting_closed":
+      return "已停止招募";
+    case "in_progress":
+      return "進行中";
+    case "ended":
+      return "已結束";
+    case "cancelled":
+      return "已取消";
+    default:
+      return "未知狀態";
+  }
+}
+
+function getJoinButtonText(
+  room: RoomDetails,
+  isFull: boolean,
+  isActionLoading: boolean,
+) {
+  if (isActionLoading) return "加入中...";
+  if (isFull) return "房間已滿";
+
+  switch (room.room_status) {
+    case "open":
+      return room.join_approval_required ? "申請加入" : "加入房間";
+    case "recruiting_closed":
+      return "已停止招募";
+    case "in_progress":
+      return "活動進行中";
+    case "ended":
+      return "活動已結束";
+    case "cancelled":
+      return "房間已取消";
+    default:
+      return "無法加入";
+  }
+}
+
 function RoomDetailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
-  const { dict } = useDictionary("common");
   const roomId = searchParams.get("room_id");
 
   const [room, setRoom] = useState<RoomDetails | null>(null);
@@ -61,15 +102,20 @@ function RoomDetailContent() {
     try {
       setError(null);
 
-      const [roomRes, membersRes] = await Promise.all([
-        getRoomDetails(roomId),
-        listRoomMembers(roomId),
-      ]);
-
+      const roomRes = await getRoomDetails(roomId);
       const roomData = roomRes.data.room;
 
       setRoom(roomData);
-      setMembers(membersRes.data.members);
+
+      const canViewMembers =
+        roomData.is_owner || roomData.membership_status === "approved";
+
+      if (canViewMembers) {
+        const membersRes = await listRoomMembers(roomId);
+        setMembers(membersRes.data.members);
+      } else {
+        setMembers([]);
+      }
 
       if (roomData.is_owner) {
         const requestsRes = await listJoinRequests(roomId);
@@ -138,6 +184,36 @@ function RoomDetailContent() {
     } catch (e) {
       console.error("Failed to dismiss room:", e);
       setError(e instanceof Error ? e.message : "Failed to dismiss room");
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleCloseRecruiting = async () => {
+    if (!roomId) return;
+
+    setIsActionLoading(true);
+    try {
+      await closeRecruiting(roomId);
+      await fetchRoomData();
+    } catch (e) {
+      console.error("Failed to close recruiting:", e);
+      setError(e instanceof Error ? e.message : "停止招募失敗");
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const handleOpenRecruiting = async () => {
+    if (!roomId) return;
+
+    setIsActionLoading(true);
+    try {
+      await openRecruiting(roomId);
+      await fetchRoomData();
+    } catch (e) {
+      console.error("Failed to open recruiting:", e);
+      setError(e instanceof Error ? e.message : "恢復招募失敗");
     } finally {
       setIsActionLoading(false);
     }
@@ -240,6 +316,14 @@ function RoomDetailContent() {
 
   const isFull = room.member_count >= room.max_capacity;
   const isPending = !room.is_owner && room.membership_status === "pending";
+  const canJoin =
+    room.room_status === "open" &&
+    !room.is_member &&
+    !isPending &&
+    !isFull;
+
+  const canViewMembers =
+    room.is_owner || room.membership_status === "approved";
 
   const owner = members.find((member) => member.is_owner);
   const approvedMembersFromApi = members.filter(
@@ -282,14 +366,38 @@ function RoomDetailContent() {
         </button>
 
         {room.is_owner && (
-          <button
-            type="button"
-            onClick={handleDismiss}
-            disabled={isActionLoading}
-            className="rounded-full border border-red-200 bg-white/85 px-5 py-2 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900/60 dark:bg-zinc-900/70 dark:text-red-400 dark:hover:bg-red-500/10"
-          >
-            {isActionLoading ? "處理中..." : "解散房間"}
-          </button>
+          <div className="flex flex-wrap justify-end gap-2">
+            {room.room_status === "open" && (
+              <button
+                type="button"
+                onClick={handleCloseRecruiting}
+                disabled={isActionLoading}
+                className="rounded-full border border-zinc-200 bg-white/85 px-5 py-2 text-sm font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              >
+                {isActionLoading ? "處理中..." : "停止招募"}
+              </button>
+            )}
+
+            {room.room_status === "recruiting_closed" && (
+              <button
+                type="button"
+                onClick={handleOpenRecruiting}
+                disabled={isActionLoading}
+                className="rounded-full border border-zinc-200 bg-white/85 px-5 py-2 text-sm font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              >
+                {isActionLoading ? "處理中..." : "恢復招募"}
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={handleDismiss}
+              disabled={isActionLoading}
+              className="rounded-full border border-red-200 bg-white/85 px-5 py-2 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900/60 dark:bg-zinc-900/70 dark:text-red-400 dark:hover:bg-red-500/10"
+            >
+              {isActionLoading ? "處理中..." : "解散房間"}
+            </button>
+          </div>
         )}
       </div>
 
@@ -326,7 +434,7 @@ function RoomDetailContent() {
                 )}
 
                 <span className="rounded-full bg-blue-100 px-4 py-1.5 text-sm font-semibold text-blue-600 dark:bg-blue-500/15 dark:text-blue-300">
-                  {room.status}
+                  {getRoomStatusLabel(room.room_status)}
                 </span>
               </div>
             </div>
@@ -375,6 +483,12 @@ function RoomDetailContent() {
               </p>
             )}
 
+            {room.room_status === "recruiting_closed" && !room.is_owner && (
+              <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+                此房間目前已停止招募新成員。
+              </p>
+            )}
+
             {error && (
               <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900/60 dark:bg-red-500/10 dark:text-red-400">
                 {error}
@@ -386,14 +500,10 @@ function RoomDetailContent() {
                 <button
                   type="button"
                   onClick={handleJoin}
-                  disabled={isFull || isActionLoading}
+                  disabled={!canJoin || isActionLoading}
                   className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {isFull
-                    ? "房間已滿"
-                    : isActionLoading
-                      ? "加入中..."
-                      : "加入房間"}
+                  {getJoinButtonText(room, isFull, isActionLoading)}
                 </button>
               )}
 
@@ -412,7 +522,7 @@ function RoomDetailContent() {
         </div>
       </section>
 
-      {room.is_member && (
+      {canViewMembers && (
         <section className="rounded-3xl border border-zinc-200/70 bg-white/85 p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
             <div className="flex gap-2 rounded-full bg-zinc-100 p-1 dark:bg-zinc-800">

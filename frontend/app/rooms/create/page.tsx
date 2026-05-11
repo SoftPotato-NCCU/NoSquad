@@ -79,6 +79,18 @@ function CreateRoomContent() {
       return;
     }
 
+    if (!formData.eventTime) {
+      setError("請選擇活動時間");
+      return;
+    }
+
+    const eventDate = new Date(formData.eventTime);
+
+    if (Number.isNaN(eventDate.getTime())) {
+      setError("活動時間格式不正確");
+      return;
+    }
+
     if (formData.maxCapacity < 1) {
       setError("人數上限至少要 1 人");
       return;
@@ -93,6 +105,8 @@ function CreateRoomContent() {
         description: formData.description.trim(),
         max_capacity: formData.maxCapacity,
         join_approval_required: formData.approvalMode === "manual",
+        event_time: eventDate.toISOString(),
+        location: formData.location.trim() || undefined,
       });
 
       router.push("/");

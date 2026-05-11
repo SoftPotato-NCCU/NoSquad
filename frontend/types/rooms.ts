@@ -1,9 +1,17 @@
+export type RoomStatus =
+  | "open"
+  | "recruiting_closed"
+  | "in_progress"
+  | "ended"
+  | "cancelled";
+
 export type MembershipStatus = "approved" | "pending" | "rejected";
 
 export interface BaseRoom {
   id: string;
   name: string;
   description: string | null;
+  room_status: RoomStatus;
   member_count: number;
   max_capacity: number;
   join_approval_required: boolean;
@@ -11,6 +19,8 @@ export interface BaseRoom {
 }
 
 export interface MyRoom extends BaseRoom {
+  event_time: string | null;
+  event_end_time: string | null;
   is_owner: boolean;
   membership_status: MembershipStatus;
 }
@@ -21,7 +31,6 @@ export interface HallRoom extends BaseRoom {
 }
 
 export interface RoomDetails extends BaseRoom {
-  status: "open" | "full" | "ended" | "cancelled";
   event_time: string | null;
   event_end_time: string | null;
   location: string | null;
@@ -82,6 +91,9 @@ export interface CreateRoomRequest {
   description?: string;
   max_capacity?: number;
   join_approval_required?: boolean;
+  event_time: string;
+  event_end_time?: string;
+  location?: string;
 }
 
 export interface UpdateRoomRequest {
@@ -105,4 +117,5 @@ export interface GenericSuccessResponse {
   room_id?: string;
   user_id?: string;
   message?: string;
+  status?: RoomStatus;
 }
