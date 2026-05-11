@@ -19,22 +19,21 @@ function toISO(d: Date | string | null): string | null {
 }
 
 // Computes frontend-facing status from DB status + event times.
-// DB terminal states (cancelled, ended) always take priority.
-// For active rooms: time determines in_progress / ended.
+// Priority: cancelled > ended (by time) > in_progress > recruiting_closed > open
 function computeDisplayStatus(
   dbStatus: string,
   eventTime: Date | string | null,
   eventEndTime: Date | string | null,
 ): RoomDisplayStatus {
   if (dbStatus === "cancelled") return "cancelled";
-  if (dbStatus === "ended") return "ended";
 
   const now = new Date();
   if (eventEndTime && new Date(eventEndTime) <= now) return "ended";
   if (eventTime && new Date(eventTime) <= now) return "in_progress";
 
   if (dbStatus === "recruiting_closed") return "recruiting_closed";
-  return "open";
+  if (dbStatus === "open") return "open";
+  throw new Error(`Unhandled room status: ${dbStatus}`);
 }
 
 function formatMyRoom(r: RowDataPacket, userId: string) {
@@ -264,6 +263,24 @@ rooms.post("/", async (c) => {
     return apiError(c, 400, "VALIDATION_ERROR", "Invalid request data", [
       { field: "event_time", issue: "required", message: "Event time is required" },
     ]);
+  
+  // check start time earlier than now
+  if (new Date(body.event_time) <= new Date())
+    return apiError(c, 400, "VALIDATION_ERROR", "Event time must be in the future", [
+      { field: "event_time", issue: "invalid_value", message: "Event time must be in the future" },
+    ]);
+  
+  // if end time provided, check end time later than start time
+  if (body.event_end_time) {
+    if (typeof body.event_end_time !== "string")
+      return apiError(c, 400, "VALIDATION_ERROR", "Invalid request data", [
+        { field: "event_end_time", issue: "invalid_type", message: "Event end time must be a string" },
+      ]);
+    if (new Date(body.event_end_time) <= new Date(body.event_time))
+      return apiError(c, 400, "VALIDATION_ERROR", "Event end time must be after event time", [
+        { field: "event_end_time", issue: "invalid_value", message: "Event end time must be after event time" },
+      ]);
+  }
 
   const maxCapacity = Number(body.max_capacity ?? 10);
   if (maxCapacity > 50)
