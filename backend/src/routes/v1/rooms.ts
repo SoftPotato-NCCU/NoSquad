@@ -11,9 +11,30 @@ rooms.use("*", authMiddleware);
 
 // ── HELPERS ─────────────────────────────────────────────────────────────────────
 
+type RoomDisplayStatus = "open" | "recruiting_closed" | "in_progress" | "ended" | "cancelled";
+
 function toISO(d: Date | string | null): string | null {
   if (!d) return null;
   return d instanceof Date ? d.toISOString() : new Date(d).toISOString();
+}
+
+// Computes frontend-facing status from DB status + event times.
+// DB terminal states (cancelled, ended) always take priority.
+// For active rooms: time determines in_progress / ended.
+function computeDisplayStatus(
+  dbStatus: string,
+  eventTime: Date | string | null,
+  eventEndTime: Date | string | null,
+): RoomDisplayStatus {
+  if (dbStatus === "cancelled") return "cancelled";
+  if (dbStatus === "ended") return "ended";
+
+  const now = new Date();
+  if (eventEndTime && new Date(eventEndTime) <= now) return "ended";
+  if (eventTime && new Date(eventTime) <= now) return "in_progress";
+
+  if (dbStatus === "recruiting_closed") return "recruiting_closed";
+  return "open";
 }
 
 function formatMyRoom(r: RowDataPacket, userId: string) {
@@ -21,11 +42,7 @@ function formatMyRoom(r: RowDataPacket, userId: string) {
     id: r.uuid,
     name: r.title,
     description: r.description ?? null,
-    room_status: r.status as
-      | "open"
-      | "recruiting_closed"
-      | "ended"
-      | "cancelled",
+    room_status: computeDisplayStatus(r.status, r.event_time, r.event_end_time),
     member_count: Number(r.member_count),
     max_capacity: r.max_members,
     join_approval_required: Boolean(r.join_approval_required),
@@ -43,6 +60,7 @@ function formatHallRoom(r: RowDataPacket) {
     id: r.uuid,
     name: r.title,
     description: r.description ?? null,
+    room_status: computeDisplayStatus(r.status, r.event_time, r.event_end_time),
     member_count: memberCount,
     max_capacity: r.max_members,
     join_approval_required: Boolean(r.join_approval_required),
@@ -57,11 +75,7 @@ function formatRoomDetails(r: RowDataPacket, userId: string) {
     id: r.uuid,
     name: r.title,
     description: r.description ?? null,
-    room_status: r.status as
-      | "open"
-      | "recruiting_closed"
-      | "ended"
-      | "cancelled",
+    room_status: computeDisplayStatus(r.status, r.event_time, r.event_end_time),
     member_count: Number(r.member_count),
     max_capacity: r.max_members,
     join_approval_required: Boolean(r.join_approval_required),
@@ -173,7 +187,9 @@ rooms.get("/hall", async (c) => {
          MAX(CASE WHEN rm.user_id = ? THEN 1 ELSE 0 END) AS is_joined
        FROM rooms r
        LEFT JOIN room_members rm ON rm.room_id = r.uuid
-       WHERE r.status = 'open' ${cursorClause}
+       WHERE r.status = 'open'
+         AND (r.event_time IS NULL OR r.event_time > NOW())
+         ${cursorClause}
        GROUP BY r.uuid
      ) AS sub
      ${outerWhere}
