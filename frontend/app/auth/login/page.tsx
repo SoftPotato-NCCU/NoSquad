@@ -20,6 +20,7 @@ function LoginContent() {
     password: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -80,10 +81,9 @@ function LoginContent() {
   return (
     <div className="min-h-screen relative overflow-hidden auth-bg">
       <SettingsMenu />
-      {/* ─── 左側品牌區域：fixed，桌面版才顯示 ─── */}
+
       <div className="hidden lg:flex fixed top-0 left-0 w-1/2 h-screen flex-col justify-between pt-16 pb-12 px-12 z-20 pointer-events-none">
         <div className="max-w-[clamp(28rem,30vw,42rem)] pointer-events-auto">
-          {/* Logo 和標題行 */}
           <div className="flex items-center gap-4 mb-8">
             <div className="inline-flex flex-shrink-0 items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-blue-600 shadow-lg shadow-purple-400/20">
               <svg
@@ -105,7 +105,6 @@ function LoginContent() {
             </h1>
           </div>
 
-          {/* 說明文字 */}
           <p className="text-[clamp(1.25rem,1.35vw,2.2rem)] text-gray-600 dark:text-zinc-400 mb-8 leading-relaxed">
             <span
               className="block opacity-0 animate-fadeInUp"
@@ -136,7 +135,6 @@ function LoginContent() {
           </p>
         </div>
 
-        {/* 裝飾圖片 — 在左下角 */}
         <div className="relative pointer-events-auto w-[clamp(22rem,32vw,46rem)] h-[clamp(22rem,32vw,46rem)] ml-auto -mr-30 pb-8">
           <Image
             src="/images/auth/auth_pic.png"
@@ -148,11 +146,9 @@ function LoginContent() {
         </div>
       </div>
 
-      {/* ─── 右側表單區域：正常文檔流，左半寬度留給 fixed 左欄 ─── */}
       <div className="relative z-10 min-h-screen flex items-center justify-center lg:justify-end px-4 sm:px-6 lg:pr-12 py-12 sm:py-16 lg:ml-[50%]">
         <div className="w-full max-w-[clamp(32rem,34vw,52rem)]">
           <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-md border border-gray-200 dark:border-zinc-800 p-6 sm:p-8 md:p-10">
-            {/* 手機版 Logo 區域 */}
             <div className="mb-6 sm:mb-8 text-center lg:hidden">
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-blue-500 mb-4">
                 <svg
@@ -170,18 +166,16 @@ function LoginContent() {
                 </svg>
               </div>
               <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 dark:text-white mb-2">
-{t(dict, "login.title", "Login to NoSquad")}
+                {t(dict, "login.title", "Login to NoSquad")}
               </h1>
             </div>
 
-            {/* 桌面版標題 */}
             <div className="mb-6 sm:mb-8 hidden lg:block">
               <h2 className="text-[clamp(2rem,2.2vw,3.75rem)] font-bold text-gray-900 dark:text-white mb-2">
                 {t(dict, "login.title", "Login to continue")}
               </h2>
             </div>
 
-            {/* 錯誤提示 */}
             {error && (
               <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-800 rounded-lg text-red-700 dark:text-red-400 text-[clamp(0.95rem,1.1vw,1.25rem)] flex items-start gap-3">
                 <svg
@@ -199,9 +193,7 @@ function LoginContent() {
               </div>
             )}
 
-            {/* 登入表單 */}
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-              {/* 電子郵件/帳號字段 */}
               <div>
                 <label
                   htmlFor="identifier"
@@ -235,7 +227,6 @@ function LoginContent() {
                 </div>
               </div>
 
-              {/* 密碼字段 */}
               <div>
                 <label
                   htmlFor="password"
@@ -246,29 +237,80 @@ function LoginContent() {
                 <div className="relative group">
                   <input
                     id="password"
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
                     required
                     placeholder="••••••••"
-                    className="w-full px-4 py-3 bg-gray-50 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-[clamp(0.95rem,1.1vw,1.25rem)]"
+                    className="w-full px-4 py-3 pr-12 bg-gray-50 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 rounded-lg text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-200 text-[clamp(0.95rem,1.1vw,1.25rem)]"
                   />
-                  <svg
-                    className="absolute right-3 top-3.5 w-5 h-5 text-gray-400 dark:text-zinc-500 opacity-60"
-                    fill="currentColor"
-                    viewBox="0 0 20 20"
+
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors"
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
                   >
-                    <path
-                      fillRule="evenodd"
-                      d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z"
-                      clipRule="evenodd"
-                    ></path>
-                  </svg>
+                    {showPassword ? (
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 15a3 3 0 100-6 3 3 0 000 6z"
+                        />
+                      </svg>
+                    ) : (
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M3 3l18 18"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M10.58 10.58A2 2 0 0012 14a2 2 0 001.42-.58"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9.88 4.24A10.45 10.45 0 0112 4c5 0 9 4 10 8a11.74 11.74 0 01-2.18 3.72"
+                        />
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6.1 6.1C4.18 7.44 2.75 9.5 2 12c1 4 5 8 10 8a10.6 10.6 0 005.9-1.9"
+                        />
+                      </svg>
+                    )}
+                  </button>
                 </div>
               </div>
 
-              {/* 記住我和忘記密碼 */}
               <div className="flex items-center justify-between pt-2">
                 <label className="flex items-center group cursor-pointer">
                   <input
@@ -291,7 +333,6 @@ function LoginContent() {
                 </Link>
               </div>
 
-              {/* 登入按鈕 */}
               <button
                 type="submit"
                 disabled={isSubmitting}
@@ -308,7 +349,6 @@ function LoginContent() {
               </button>
             </form>
 
-            {/* 分割線 */}
             <div className="flex items-center gap-3 my-6">
               <div className="flex-1 h-px bg-gradient-to-r from-transparent to-gray-300 dark:to-zinc-700"></div>
               <span className="text-xs text-gray-400 dark:text-zinc-500">
@@ -317,7 +357,6 @@ function LoginContent() {
               <div className="flex-1 h-px bg-gradient-to-l from-transparent to-gray-300 dark:to-zinc-700"></div>
             </div>
 
-            {/* 社交登入 */}
             <div className="space-y-2">
               <button
                 type="button"
@@ -334,7 +373,6 @@ function LoginContent() {
               </button>
             </div>
 
-            {/* 註冊鏈接 */}
             <div className="mt-6 text-center text-[clamp(0.95rem,1.1vw,1.25rem)] text-gray-600 dark:text-zinc-400">
               {t(dict, "signupLink", "Don't have an account?")}{" "}
               <Link

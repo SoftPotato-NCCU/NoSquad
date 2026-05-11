@@ -317,3 +317,21 @@ export async function removeMember(
     { method: "DELETE" },
   );
 }
+
+export async function closeRecruiting(
+  roomId: string,
+): Promise<{ data: GenericSuccessResponse }> {
+  return apiFetch<{ data: GenericSuccessResponse }>(
+    `/rooms/${roomId}/recruiting/close`,
+    { method: "POST" },
+  );
+}
+
+export async function openRecruiting(
+  roomId: string,
+): Promise<{ data: GenericSuccessResponse }> {
+  return apiFetch<{ data: GenericSuccessResponse }>(
+    `/rooms/${roomId}/recruiting/open`,
+    { method: "POST" },
+  );
+}
