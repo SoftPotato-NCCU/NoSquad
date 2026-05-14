@@ -44,3 +44,16 @@ export function t(
 
   return typeof value === "string" ? value : fallback;
 }
+
+export function tpl(
+  dict: Dictionary | null | undefined,
+  path: string,
+  params: Record<string, string>,
+  fallback: string = "",
+): string {
+  let value = t(dict, path, fallback);
+  for (const [key, val] of Object.entries(params)) {
+    value = value.replace(`{${key}}`, val);
+  }
+  return value;
+}

@@ -9,18 +9,16 @@ import { handleAuthError, joinRoom, listRoomHall } from "@/lib/api";
 import type { HallRoom } from "@/types/rooms";
 import ActivityCard from "@/components/ActivityCard";
 
-const categories = ["全部", "運動", "學習", "娛樂", "社交"];
-
 function formatRoomDate(value: string | null) {
-  if (!value) return "時間尚未設定";
+  if (!value) return "";
 
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return "時間尚未設定";
+    return "";
   }
 
-  return date.toLocaleString("zh-TW", {
+  return date.toLocaleString(undefined, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
@@ -29,35 +27,53 @@ function formatRoomDate(value: string | null) {
   });
 }
 
+function roomStatusLabel(
+  dict: Record<string, unknown>,
+  roomStatus: string,
+  isPending: boolean,
+  isApproved: boolean,
+  isFull: boolean,
+  joinApprovalRequired: boolean,
+) {
+  if (isPending) return t(dict, "explore.status.pending", "待審核");
+  if (isApproved) return t(dict, "explore.status.approved", "已加入");
+  if (isFull) return t(dict, "explore.status.full", "已滿");
+  if (roomStatus === "recruiting_closed")
+    return t(dict, "explore.status.recruitingClosed", "已停止招募");
+  if (roomStatus === "in_progress")
+    return t(dict, "explore.status.inProgress", "進行中");
+  if (roomStatus === "ended")
+    return t(dict, "explore.status.ended", "已結束");
+  if (roomStatus === "cancelled")
+    return t(dict, "explore.status.cancelled", "已取消");
+  if (joinApprovalRequired)
+    return t(dict, "explore.status.needsApproval", "需審核");
+  return t(dict, "explore.status.joinable", "可加入");
+}
+
 function roomToActivity(
   room: HallRoom,
   isPending = false,
   isApproved = false,
+  dict: Record<string, unknown>,
 ) {
   const isFull = room.is_full;
+
+  const statusLabel = roomStatusLabel(
+    dict,
+    room.room_status,
+    isPending,
+    isApproved,
+    isFull,
+    room.join_approval_required,
+  );
 
   return {
     title: room.name,
     time: formatRoomDate(room.created_at),
-    location: room.description || "尚未提供活動說明",
+    location: room.description || t(dict, "explore.noDescription", "尚未提供活動說明"),
     members: `${room.member_count}/${room.max_capacity}`,
-    status: isPending
-      ? "待審核"
-      : isApproved
-        ? "已加入"
-        : isFull
-          ? "已滿"
-          : room.room_status === "recruiting_closed"
-            ? "已停止招募"
-            : room.room_status === "in_progress"
-              ? "進行中"
-              : room.room_status === "ended"
-                ? "已結束"
-                : room.room_status === "cancelled"
-                  ? "已取消"
-                  : room.join_approval_required
-                    ? "需審核"
-                    : "可加入",
+    status: statusLabel,
     statusTone: isPending
       ? ("orange" as const)
       : isApproved
@@ -74,6 +90,8 @@ function roomToActivity(
     icon: "⚡",
   };
 }
+
+const categoryKeys = ["all", "sports", "learning", "entertainment", "social"];
 
 function ExploreContent() {
   const { user, isLoading: authLoading } = useAuth();
@@ -122,7 +140,7 @@ function ExploreContent() {
         if (handleAuthError(error)) return;
 
         if (mounted) {
-          setRoomError("房間大廳載入失敗");
+          setRoomError(t(dict, "explore.loadError", "房間大廳載入失敗"));
         }
       } finally {
         if (mounted) {
@@ -136,7 +154,7 @@ function ExploreContent() {
     return () => {
       mounted = false;
     };
-  }, [user]);
+  }, [user, dict]);
 
   const createdRoomIds = useMemo(() => {
     return new Set(
@@ -234,7 +252,7 @@ function ExploreContent() {
       await fetchRooms(true);
     } catch (error) {
       if (handleAuthError(error)) return;
-      setRoomError("加入房間失敗，請稍後再試");
+      setRoomError(t(dict, "explore.joinError", "加入房間失敗，請稍後再試"));
     } finally {
       setJoiningRoomId(null);
     }
@@ -314,9 +332,9 @@ function ExploreContent() {
         </div>
 
         <div className="flex flex-wrap gap-3">
-          {categories.map((category, index) => (
+          {categoryKeys.map((key, index) => (
             <button
-              key={category}
+              key={key}
               type="button"
               className={`rounded-full px-5 py-2 text-sm font-semibold shadow-sm transition ${
                 index === 0
@@ -324,7 +342,7 @@ function ExploreContent() {
                   : "border border-zinc-200/70 bg-white/85 text-zinc-600 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-300 dark:hover:bg-zinc-800"
               }`}
             >
-              {category}
+              {t(dict, `explore.categories.${key}`, key)}
             </button>
           ))}
         </div>
@@ -339,13 +357,13 @@ function ExploreContent() {
       <section className="grid gap-4 lg:grid-cols-2">
         {isLoadingRooms && (
           <div className="rounded-3xl border border-zinc-200/70 bg-white/85 p-6 text-zinc-500 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-400 lg:col-span-2">
-            房間大廳載入中...
+            {t(dict, "explore.loading", "房間大廳載入中...")}
           </div>
         )}
 
         {!isLoadingRooms && !roomError && filteredRooms.length === 0 && (
           <div className="rounded-3xl border border-zinc-200/70 bg-white/85 p-6 text-zinc-500 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-400 lg:col-span-2">
-            目前沒有可以顯示的房間。
+            {t(dict, "explore.noRoomsDisplay", "目前沒有可以顯示的房間。")}
           </div>
         )}
 
@@ -358,7 +376,7 @@ function ExploreContent() {
             return (
               <ActivityCard
                 key={room.id}
-                {...roomToActivity(room, isPending, isApproved)}
+                {...roomToActivity(room, isPending, isApproved, dict)}
                 detailHref={`/rooms/room?room_id=${room.id}`}
                 actionDisabled={
                   room.room_status !== "open" ||
@@ -369,22 +387,15 @@ function ExploreContent() {
                 }
                 actionLabel={
                   joiningRoomId === room.id
-                    ? "加入中..."
-                    : isPending
-                      ? "待審核"
-                      : isApproved
-                        ? "已加入"
-                        : room.is_full
-                          ? "已滿"
-                          : room.room_status === "recruiting_closed"
-                            ? "已停止招募"
-                            : room.room_status === "in_progress"
-                              ? "進行中"
-                              : room.room_status === "ended"
-                                ? "已結束"
-                                : room.room_status === "cancelled"
-                                  ? "已取消"
-                                  : "加入"
+                    ? t(dict, "explore.status.joining", "加入中...")
+                    : roomStatusLabel(
+                        dict,
+                        room.room_status,
+                        isPending,
+                        isApproved,
+                        room.is_full,
+                        room.join_approval_required,
+                      )
                 }
                 onActionClick={() => handleJoinRoom(room)}
               />

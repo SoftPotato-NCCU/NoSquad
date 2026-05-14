@@ -1,15 +1,32 @@
 {
-  "title": "Home",
-  "myRooms": "My Rooms",
+  "home": {
+    "home": {
+      "title": "Home",
+      "myRooms": "My Rooms",
+      "tagline": "Find and organize group activities",
+      "login": "Log In",
+      "signup": "Sign Up",
+      "loadingRooms": "Loading rooms...",
+      "emptyAll": "You haven't created or joined any rooms yet.",
+      "emptyCreated": "You haven't created any rooms yet.",
+      "emptyJoined": "You haven't joined any rooms yet.",
+      "myCreatedRooms": "My Created Rooms",
+      "myJoinedRooms": "My Joined Rooms"
+    },
+    "dashboard": {
+      "welcomeTitle": "Welcome back, {username}!",
+      "welcomeDescription": "Find like-minded partners and create wonderful moments together!",
+      "activeRooms": "Active Rooms",
+      "joinedActivities": "Activities Joined",
+      "viewAll": "View all ›"
+    }
+  },
   "empty": "No rooms yet",
   "findRooms": "Find rooms in the hall",
   "createRoom": "Create Room",
   "roomHall": "Room Hall",
   "loading": "Loading rooms...",
   "noRooms": "No rooms available",
-  "tagline": "Find and organize group activities",
-  "login": "Log In",
-  "signup": "Sign Up",
   "pendingApproval": "Pending Approval",
   "yourRooms": "Your Rooms"
 }

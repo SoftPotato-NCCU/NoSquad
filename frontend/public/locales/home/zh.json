@@ -1,15 +1,32 @@
 {
-  "title": "首頁",
-  "myRooms": "我的房間",
+  "home": {
+    "home": {
+      "title": "首頁",
+      "myRooms": "我的房間",
+      "tagline": "尋找與組織團體活動",
+      "login": "登入",
+      "signup": "註冊",
+      "loadingRooms": "房間資料載入中...",
+      "emptyAll": "你目前還沒有創建或加入任何房間。",
+      "emptyCreated": "你目前還沒有創建房間。",
+      "emptyJoined": "你目前還沒有加入其他房間。",
+      "myCreatedRooms": "我創建的房間",
+      "myJoinedRooms": "我加入的房間"
+    },
+    "dashboard": {
+      "welcomeTitle": "歡迎回來，{username}！",
+      "welcomeDescription": "今天也一起找到志同道合的夥伴，創造屬於你們的精彩時刻吧！",
+      "activeRooms": "進行中房間",
+      "joinedActivities": "參與活動",
+      "viewAll": "查看全部 ›"
+    }
+  },
   "empty": "還沒有房間",
   "findRooms": "到大廳找房間",
   "createRoom": "建立房間",
   "roomHall": "房間大廳",
   "loading": "載入房間中...",
   "noRooms": "暫無可用房間",
-  "tagline": "尋找與組織團體活動",
-  "login": "登入",
-  "signup": "註冊",
   "pendingApproval": "待審核",
   "yourRooms": "您的房間"
 }

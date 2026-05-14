@@ -1,12 +1,29 @@
 {
-  "title": "Profile",
-  "settings": "Settings",
-  "logout": "Log Out",
-  "deleteAccount": "Delete Account",
-  "name": "Name",
-  "username": "Username",
-  "email": "Email",
-  "phone": "Phone",
-  "passkeys": "Passkeys",
-  "noPasskeys": "No passkeys registered"
+  "profile": {
+    "profile": {
+      "title": "Profile",
+      "subtitle": "Account and preferences"
+    },
+    "stats": {
+      "joinedRooms": "Rooms Joined",
+      "createdRooms": "Rooms Created",
+      "friends": "Friends"
+    },
+    "sections": {
+      "account": "Account Info",
+      "accountDescription": "Manage your basic account details",
+      "settings": "Quick Settings",
+      "settingsDescription": "Adjust your preferences"
+    },
+    "settings": {
+      "language": "Language",
+      "theme": "Theme",
+      "notifications": "Notifications",
+      "help": "Help Center"
+    },
+    "email": "Email",
+    "phone": "Phone",
+    "preferences": "Preferences",
+    "logout": "Log Out"
+  }
 }

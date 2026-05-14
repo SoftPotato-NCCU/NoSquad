@@ -3,7 +3,7 @@
 import { Suspense, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useRooms } from "@/lib/rooms-context";
-import { useDictionary, t } from "@/lib/i18n/useDictionary";
+import { useDictionary, t, tpl } from "@/lib/i18n/useDictionary";
 import type { MyRoom } from "@/types/rooms";
 import Link from "next/link";
 import Image from "next/image";
@@ -105,9 +105,10 @@ function AuthenticatedHome({
         <div className="grid gap-6 p-6 md:grid-cols-[1fr_auto] md:items-center md:p-10">
           <div className="flex flex-col justify-center">
             <h2 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50 md:text-4xl">
-              {t(
+              {tpl(
                 dict,
                 "home.dashboard.welcomeTitle",
+                { username: user.username },
                 `歡迎回來，${user.username}！`,
               )}
             </h2>
@@ -175,7 +176,7 @@ function AuthenticatedHome({
         <div className="space-y-8">
           {isLoadingRooms && (
             <div className="rounded-3xl border border-zinc-200/70 bg-white/85 p-6 text-zinc-500 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-400">
-              房間資料載入中...
+              {t(dict, "home.home.loadingRooms", "房間資料載入中...")}
             </div>
           )}
 
@@ -187,7 +188,11 @@ function AuthenticatedHome({
 
           {!isLoadingRooms && !roomError && myRooms.length === 0 && (
             <div className="rounded-3xl border border-zinc-200/70 bg-white/85 p-6 text-zinc-500 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-400">
-              你目前還沒有創建或加入任何房間。
+              {t(
+                dict,
+                "home.home.emptyAll",
+                "你目前還沒有創建或加入任何房間。",
+              )}
             </div>
           )}
 
@@ -195,13 +200,17 @@ function AuthenticatedHome({
             <>
               <div>
                 <h3 className="mb-4 text-lg font-bold text-zinc-950 dark:text-zinc-50">
-                  我創建的房間
+                  {t(dict, "home.home.myCreatedRooms", "我創建的房間")}
                 </h3>
 
                 <div className="space-y-4">
                   {createdRooms.length === 0 ? (
                     <div className="rounded-3xl border border-zinc-200/70 bg-white/85 p-6 text-zinc-500 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-400">
-                      你目前還沒有創建房間。
+                      {t(
+                        dict,
+                        "home.home.emptyCreated",
+                        "你目前還沒有創建房間。",
+                      )}
                     </div>
                   ) : (
                     createdRooms.map((room) => (
@@ -217,13 +226,17 @@ function AuthenticatedHome({
 
               <div>
                 <h3 className="mb-4 text-lg font-bold text-zinc-950 dark:text-zinc-50">
-                  我加入的房間
+                  {t(dict, "home.home.myJoinedRooms", "我加入的房間")}
                 </h3>
 
                 <div className="space-y-4">
                   {joinedRooms.length === 0 ? (
                     <div className="rounded-3xl border border-zinc-200/70 bg-white/85 p-6 text-zinc-500 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-400">
-                      你目前還沒有加入其他房間。
+                      {t(
+                        dict,
+                        "home.home.emptyJoined",
+                        "你目前還沒有加入其他房間。",
+                      )}
                     </div>
                   ) : (
                     joinedRooms.map((room) => (
