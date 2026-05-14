@@ -2,7 +2,7 @@ import { apiFetch, getToken } from "./api";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BACKEND_URL || "";
 
-function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
+export function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
 

@@ -1,7 +1,8 @@
 import { expect, describe, test } from 'bun:test';
 
+import { publicUser } from '../../src/routes/v1/auth';
+
 describe('publicUser', () => {
-  const { publicUser } = require('../../src/routes/v1/auth');
 
   test('returns user object with correct shape', () => {
     const userRow = {
