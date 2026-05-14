@@ -1046,4 +1046,4 @@ rooms.delete("/:room_id", async (c) => {
 });
 
 export default rooms;
-export { toISO, formatMyRoom, formatHallRoom };
+export { toISO, formatMyRoom, formatHallRoom, computeDisplayStatus, formatRoomDetails, formatMember };

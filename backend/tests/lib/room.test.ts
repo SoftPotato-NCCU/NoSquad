@@ -1,7 +1,8 @@
 import { expect, describe, test } from "bun:test";
 
+import { formatMyRoom, formatHallRoom } from "../../src/routes/v1/rooms";
+
 describe("room formatters", () => {
-  const { formatMyRoom, formatHallRoom } = require("../../src/routes/v1/rooms");
 
   describe("formatMyRoom", () => {
     test("is_owner true when user is creator", () => {

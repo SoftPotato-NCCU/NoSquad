@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { t } from "../../../lib/i18n/useDictionary";
+import { t, tpl } from "../../../lib/i18n/useDictionary";
 
 describe("t() - translation function", () => {
   const mockDict = {
@@ -64,5 +64,43 @@ describe("t() - translation function", () => {
   it("handles empty string as valid translation", () => {
     const dictWithEmpty = { auth: { title: "" } };
     expect(t(dictWithEmpty, "auth.title", "Fallback")).toBe("");
+  });
+});
+
+describe("tpl() - template translation function", () => {
+  const mockDict = {
+    welcome: "Hello {name}!",
+    points: "You have {count} points",
+    nested: {
+      greeting: "Hi {title} {lastName}",
+    },
+  };
+
+  it("replaces single parameter", () => {
+    expect(tpl(mockDict, "welcome", { name: "Alice" })).toBe("Hello Alice!");
+  });
+
+  it("replaces multiple parameters", () => {
+    expect(tpl(mockDict, "points", { count: "42" })).toBe("You have 42 points");
+  });
+
+  it("replaces parameters in nested key", () => {
+    expect(tpl(mockDict, "nested.greeting", { title: "Dr.", lastName: "Smith" })).toBe("Hi Dr. Smith");
+  });
+
+  it("returns fallback when key does not exist", () => {
+    expect(tpl(mockDict, "nonexistent", { a: "b" }, "Fallback")).toBe("Fallback");
+  });
+
+  it("returns fallback when dict is null", () => {
+    expect(tpl(null, "welcome", { name: "A" }, "Fallback")).toBe("Fallback");
+  });
+
+  it("leaves unreplaced placeholders intact", () => {
+    expect(tpl(mockDict, "welcome", {})).toBe("Hello {name}!");
+  });
+
+  it("uses empty string fallback by default", () => {
+    expect(tpl(mockDict, "nonexistent", { a: "b" })).toBe("");
   });
 });
