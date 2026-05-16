@@ -22,6 +22,7 @@ export interface RoomRow {
   event_time: Date | null;
   event_end_time: Date | null;
   location: string | null;
+  category: "sports" | "study" | "entertainment" | "social" | null;
   created_at: Date;
 }
 

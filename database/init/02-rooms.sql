@@ -16,6 +16,7 @@ CREATE TABLE rooms (
     event_end_time DATETIME,
 
     location VARCHAR(255),
+    category ENUM('sports','study','entertainment','social') DEFAULT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY (uuid),
