@@ -42,6 +42,7 @@ function formatMyRoom(r: RowDataPacket, userId: string) {
     name: r.title,
     description: r.description ?? null,
     room_status: computeDisplayStatus(r.status, r.event_time, r.event_end_time),
+    category: r.category ?? null,
     member_count: Number(r.member_count),
     max_capacity: r.max_members,
     join_approval_required: Boolean(r.join_approval_required),
@@ -60,6 +61,7 @@ function formatHallRoom(r: RowDataPacket) {
     name: r.title,
     description: r.description ?? null,
     room_status: computeDisplayStatus(r.status, r.event_time, r.event_end_time),
+    category: r.category ?? null,
     member_count: memberCount,
     max_capacity: r.max_members,
     join_approval_required: Boolean(r.join_approval_required),
@@ -75,6 +77,7 @@ function formatRoomDetails(r: RowDataPacket, userId: string) {
     name: r.title,
     description: r.description ?? null,
     room_status: computeDisplayStatus(r.status, r.event_time, r.event_end_time),
+    category: r.category ?? null,
     member_count: Number(r.member_count),
     max_capacity: r.max_members,
     join_approval_required: Boolean(r.join_approval_required),
@@ -162,12 +165,23 @@ rooms.get("/hall", async (c) => {
   const cursor = c.req.query("cursor");
   const includeJoined = c.req.query("include_joined") === "true";
   const includeFull = c.req.query("include_full") === "true";
+  const validCategories = ["sports", "study", "entertainment", "social"];
+  const categoryFilter = c.req.query("category");
+  const category =
+    categoryFilter && validCategories.includes(categoryFilter)
+      ? categoryFilter
+      : null;
 
   const params: (string | number)[] = [userId];
   let cursorClause = "";
   if (cursor) {
     cursorClause = "AND r.created_at < ?";
     params.push(cursor);
+  }
+  let categoryClause = "";
+  if (category) {
+    categoryClause = "AND r.category = ?";
+    params.push(category);
   }
 
   const outerConds: string[] = [];
@@ -189,6 +203,7 @@ rooms.get("/hall", async (c) => {
        WHERE r.status = 'open'
          AND (r.event_time IS NULL OR r.event_time > NOW())
          ${cursorClause}
+         ${categoryClause}
        GROUP BY r.uuid
      ) AS sub
      ${outerWhere}
@@ -300,6 +315,11 @@ rooms.post("/", async (c) => {
     typeof body.description === "string" ? body.description : null;
   const location =
     typeof body.location === "string" ? body.location : null;
+  const validCategories = ["sports", "study", "entertainment", "social"];
+  const category =
+    typeof body.category === "string" && validCategories.includes(body.category)
+      ? body.category
+      : null;
   const eventTime = new Date(body.event_time as string);
   const eventEndTime =
     typeof body.event_end_time === "string"
@@ -307,7 +327,7 @@ rooms.post("/", async (c) => {
       : eventTime;
 
   await pool.execute(
-    "INSERT INTO rooms (uuid, title, description, creator_id, max_members, join_approval_required, event_time, event_end_time, location) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+    "INSERT INTO rooms (uuid, title, description, creator_id, max_members, join_approval_required, event_time, event_end_time, location, category) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
     [
       roomId,
       body.name as string,
@@ -318,6 +338,7 @@ rooms.post("/", async (c) => {
       eventTime,
       eventEndTime,
       location,
+      category,
     ],
   );
   await pool.execute(

@@ -67,6 +67,7 @@ describe("formatRoomDetails", () => {
       name: "Detail Room",
       description: "A detailed room",
       room_status: "open",
+      category: null,
       member_count: 3,
       max_capacity: 10,
       join_approval_required: false,
