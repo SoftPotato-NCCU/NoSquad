@@ -71,11 +71,11 @@ ENV NODE_ENV=production
 # Build Next.js application
 RUN --mount=type=cache,target=/app/.next/cache \
   if [ -f package-lock.json ]; then \
-    npm run build; \
+    npm test && npm run build; \
   elif [ -f yarn.lock ]; then \
-    corepack enable yarn && yarn build; \
+    corepack enable yarn && corepack enable yarn && yarn build; \
   elif [ -f pnpm-lock.yaml ]; then \
-    corepack enable pnpm && pnpm build; \
+    corepack enable pnpm && corepack enable pnpm && pnpm build; \
   else \
     echo "No lockfile found." && exit 1; \
   fi

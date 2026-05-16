@@ -1,0 +1,29 @@
+{
+  "profile": {
+    "profile": {
+      "title": "個人檔案",
+      "subtitle": "帳號與偏好設定"
+    },
+    "stats": {
+      "joinedRooms": "加入房間",
+      "createdRooms": "建立房間",
+      "friends": "好友"
+    },
+    "sections": {
+      "account": "帳號資訊",
+      "accountDescription": "管理你的基本帳號資料",
+      "settings": "快速設定",
+      "settingsDescription": "調整你的使用偏好"
+    },
+    "settings": {
+      "language": "語言設定",
+      "theme": "主題設定",
+      "notifications": "通知設定",
+      "help": "幫助中心"
+    },
+    "email": "電子郵件",
+    "phone": "電話號碼",
+    "preferences": "偏好類別",
+    "logout": "登出帳號"
+  }
+}

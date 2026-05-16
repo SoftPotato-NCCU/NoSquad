@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --background: #ffffff;
@@ -12,15 +13,103 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@layer utilities {
+  .animate-fadeInUp {
+    animation: fadeInUp 0.6s ease-out forwards;
+  }
+}
+
+.auth-bg {
+  background-color: #fdfcff;
+  background-image:
+    radial-gradient(
+      ellipse 65% 100% at 0% 60%,
+      rgba(196, 181, 253, 0.28) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 60% 55% at 100% 100%,
+      rgba(186, 230, 253, 0.24) 0%,
+      transparent 65%
+    );
+}
+
+.auth-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='250' height='250'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.68' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='250' height='250' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 250px 250px;
+  opacity: 0.22;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dark .auth-bg {
+  background-color: #00000b;
+  background-image:
+    /* 左側螢光紫 */ radial-gradient(
+    ellipse 65% 100% at 0% 60%,
+    rgba(213, 168, 252, 0.257) 0%,
+    rgba(22, 2, 54, 0.15) 55%,
+    transparent 72%
+  );
+}
+
+.dark .auth-bg::before {
+  opacity: 0.1;
+}
+
+.app-bg {
+  background-image:
+    radial-gradient(
+      ellipse 55% 70% at 0% 60%,
+      rgba(196, 181, 253, 0.22) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 60% 55% at 100% 100%,
+      rgba(186, 230, 253, 0.2) 0%,
+      transparent 65%
+    );
+}
+
+.app-bg::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='250' height='250'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.68' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='250' height='250' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 250px 250px;
+  opacity: 0.12;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.app-bg > * {
+  position: relative;
+  z-index: 1;
 }

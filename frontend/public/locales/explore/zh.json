@@ -1,0 +1,46 @@
+{
+  "explore": {
+    "explore": {
+      "title": "探索",
+      "subtitle": "尋找適合你的活動"
+    },
+    "search": {
+      "placeholder": "搜尋活動、地點或關鍵字",
+      "filter": "篩選"
+    },
+    "categories": {
+      "all": "全部",
+      "sports": "運動",
+      "learning": "學習",
+      "entertainment": "娛樂",
+      "social": "社交"
+    },
+    "status": {
+      "pending": "待審核",
+      "approved": "已加入",
+      "full": "已滿",
+      "recruitingClosed": "已停止招募",
+      "inProgress": "進行中",
+      "ended": "已結束",
+      "cancelled": "已取消",
+      "needsApproval": "需審核",
+      "joinable": "可加入",
+      "joining": "加入中...",
+      "join": "加入"
+    },
+    "loading": "房間大廳載入中...",
+    "noRoomsDisplay": "目前沒有可以顯示的房間。",
+    "loadError": "房間大廳載入失敗",
+    "joinError": "加入房間失敗，請稍後再試"
+  },
+  "roomHall": "大廳",
+  "createRoom": "建立房間",
+  "search": "搜尋房間...",
+  "noRooms": "沒有可用的房間",
+  "join": "加入",
+  "full": "已滿",
+  "loading": "載入中...",
+  "loadMore": "載入更多",
+  "retry": "重試",
+  "error": "載入房間失敗"
+}

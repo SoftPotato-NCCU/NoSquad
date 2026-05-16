@@ -4,11 +4,22 @@ services:
       context: ./backend
     ports:
       - "5050:5050"
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_DATABASE: ${DB_DATABASE}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-in-production}
+    depends_on:
+      - db
   frontend:
     build:
       context: ./frontend
     ports:
       - "3000:3000"
+    depends_on:
+      - backend # TODO: Remove this dependency once we have a dedicated nginx service independent of the backend for the route proxying
   db:
     image: mariadb:11.8
     environment:
@@ -17,7 +28,7 @@ services:
       MARIADB_USER: ${DB_USER}
       MARIADB_PASSWORD: ${DB_PASSWORD}
     ports:
-      - "3306:3306"
+       - "3306:3306"
     volumes:
       - mariadb_data:/var/lib/mysql
       - ./database/init:/docker-entrypoint-initdb.d/

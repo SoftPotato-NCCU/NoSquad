@@ -1,0 +1,46 @@
+{
+  "explore": {
+    "explore": {
+      "title": "Explore",
+      "subtitle": "Find activities that suit you"
+    },
+    "search": {
+      "placeholder": "Search activities, locations, or keywords",
+      "filter": "Filter"
+    },
+    "categories": {
+      "all": "All",
+      "sports": "Sports",
+      "learning": "Learning",
+      "entertainment": "Entertainment",
+      "social": "Social"
+    },
+    "status": {
+      "pending": "Pending",
+      "approved": "Joined",
+      "full": "Full",
+      "recruitingClosed": "Recruiting Closed",
+      "inProgress": "In Progress",
+      "ended": "Ended",
+      "cancelled": "Cancelled",
+      "needsApproval": "Approval Required",
+      "joinable": "Joinable",
+      "joining": "Joining...",
+      "join": "Join"
+    },
+    "loading": "Loading room hall...",
+    "noRoomsDisplay": "No rooms to display.",
+    "loadError": "Failed to load room hall",
+    "joinError": "Failed to join room, please try again"
+  },
+  "roomHall": "Room Hall",
+  "createRoom": "Create Room",
+  "search": "Search rooms...",
+  "noRooms": "No rooms available",
+  "join": "Join",
+  "full": "Full",
+  "loading": "Loading...",
+  "loadMore": "Load More",
+  "retry": "Retry",
+  "error": "Failed to load rooms"
+}
