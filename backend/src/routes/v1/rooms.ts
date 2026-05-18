@@ -65,6 +65,8 @@ function formatHallRoom(r: RowDataPacket) {
     member_count: memberCount,
     max_capacity: r.max_members,
     join_approval_required: Boolean(r.join_approval_required),
+    event_time: toISO(r.event_time),
+    event_end_time: toISO(r.event_end_time),
     created_at: toISO(r.created_at as Date),
     is_joined: !!Number(r.is_joined),
     is_full: memberCount >= (r.max_members as number),
@@ -172,9 +174,19 @@ rooms.get("/hall", async (c) => {
       ? categoryFilter
       : null;
 
+  const searchQuery = c.req.query("q")?.trim() || null;
+
+  const validSortFields = ["created_at", "event_time", "member_count"];
+  const sortByParam = c.req.query("sort_by") ?? "created_at";
+  const sortBy = validSortFields.includes(sortByParam) ? sortByParam : "created_at";
+  const order = c.req.query("order") === "asc" ? "ASC" : "DESC";
+
+  // For non-created_at sorts, cursor holds the numeric offset as a string.
+  const offset = sortBy !== "created_at" && cursor ? Math.max(0, Number(cursor)) : 0;
+
   const params: (string | number)[] = [userId];
   let cursorClause = "";
-  if (cursor) {
+  if (cursor && sortBy === "created_at") {
     cursorClause = "AND r.created_at < ?";
     params.push(cursor);
   }
@@ -182,6 +194,11 @@ rooms.get("/hall", async (c) => {
   if (category) {
     categoryClause = "AND r.category = ?";
     params.push(category);
+  }
+  let searchClause = "";
+  if (searchQuery) {
+    searchClause = "AND (r.title LIKE ? OR r.description LIKE ?)";
+    params.push(`%${searchQuery}%`, `%${searchQuery}%`);
   }
 
   const outerConds: string[] = [];
@@ -191,7 +208,15 @@ rooms.get("/hall", async (c) => {
     ? `WHERE ${outerConds.join(" AND ")}`
     : "";
 
+  const orderClause =
+    sortBy === "member_count"
+      ? `ORDER BY sub.member_count ${order}, sub.created_at DESC`
+      : sortBy === "event_time"
+      ? `ORDER BY sub.event_time IS NULL, sub.event_time ${order}, sub.created_at DESC`
+      : `ORDER BY sub.created_at ${order}`;
+
   params.push(limit + 1);
+  if (sortBy !== "created_at") params.push(offset);
 
   const [rows] = await pool.execute<RowDataPacket[]>(
     `SELECT sub.* FROM (
@@ -204,11 +229,12 @@ rooms.get("/hall", async (c) => {
          AND (r.event_time IS NULL OR r.event_time > NOW())
          ${cursorClause}
          ${categoryClause}
+         ${searchClause}
        GROUP BY r.uuid
      ) AS sub
      ${outerWhere}
-     ORDER BY sub.created_at DESC
-     LIMIT ?`,
+     ${orderClause}
+     LIMIT ?${sortBy !== "created_at" ? " OFFSET ?" : ""}`,
     params,
   );
 
@@ -221,7 +247,9 @@ rooms.get("/hall", async (c) => {
       pagination: {
         has_next: hasNext,
         next_cursor: hasNext
-          ? toISO((items.at(-1)?.created_at as Date) ?? null)
+          ? sortBy === "created_at"
+            ? toISO((items.at(-1)?.created_at as Date) ?? null)
+            : String(offset + limit)
           : null,
         limit,
       },
@@ -355,6 +383,7 @@ rooms.post("/", async (c) => {
           description,
           room_status: "open" as const,
           member_count: 1,
+          category,
           max_capacity: maxCapacity,
           join_approval_required: joinApprovalRequired,
           event_time: eventTime.toISOString(),
