@@ -783,9 +783,13 @@ Returns all available rooms with optional filters.
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | limit | integer | 20 | Number of rooms per page (max 50) |
-| cursor | string | null | Timestamp cursor for pagination |
+| cursor | string | null | Pagination cursor. For `sort_by=created_at` this is a timestamp; for other sort fields it is an opaque numeric string. Always use the value returned by `next_cursor`. |
 | include_joined | boolean | false | Include rooms user has already joined |
 | include_full | boolean | false | Include rooms that are at capacity |
+| category | string | null | Filter by category: `sports`, `study`, `entertainment`, `social`. Invalid values are ignored. |
+| q | string | null | Keyword search — matches against room name and description |
+| sort_by | string | `created_at` | Sort field: `created_at`, `event_time`, `member_count` |
+| order | string | `desc` | Sort direction: `asc`, `desc` |
 
 #### Response (200 OK)
 
@@ -797,9 +801,13 @@ Returns all available rooms with optional filters.
         "id": "550e8400-e29b-41d4-a716-446655440001",
         "name": "Math Tutoring",
         "description": "Help with calculus",
+        "room_status": "open",
+        "category": "study",
         "member_count": 3,
         "max_capacity": 10,
         "join_approval_required": false,
+        "event_time": "2026-04-20T14:00:00Z",
+        "event_end_time": "2026-04-20T16:00:00Z",
         "created_at": "2026-04-14T08:00:00Z",
         "is_joined": false,
         "is_full": false
@@ -812,6 +820,15 @@ Returns all available rooms with optional filters.
     }
   }
 }
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| category | string \| null | One of: `sports`, `study`, `entertainment`, `social`, or `null` |
+| event_time | string \| null | Event start time (ISO 8601) |
+| event_end_time | string \| null | Event end time (ISO 8601) |
+
+> **Note:** `next_cursor` format depends on `sort_by`. For `created_at` it is an ISO timestamp; for `event_time` and `member_count` it is an opaque numeric string. Always treat it as opaque and pass it back as-is.
 ```
 
 #### Errors
@@ -849,6 +866,7 @@ Header: `Authorization: Bearer <access_token>`
 {
   "name": "Study Group",
   "description": "For SE class",
+  "category": "study",
   "max_capacity": 10,
   "join_approval_required": false,
   "event_time": "2026-04-20T14:00:00Z",
@@ -861,6 +879,7 @@ Header: `Authorization: Bearer <access_token>`
 |-------|------|----------|-------------|
 | name | string | Yes | Room name (max 200 chars) |
 | description | string | No | Room description |
+| category | string | No | One of: `sports`, `study`, `entertainment`, `social`. Invalid values are stored as `null`. |
 | max_capacity | integer | No | Max members (default 10, max 50) |
 | join_approval_required | boolean | No | If true, join requests need owner approval (default false) |
 | event_time | string | Yes | Event start time (ISO 8601) |
@@ -877,6 +896,7 @@ Header: `Authorization: Bearer <access_token>`
       "name": "Study Group",
       "description": "For SE class",
       "room_status": "open",
+      "category": "study",
       "member_count": 1,
       "max_capacity": 10,
       "join_approval_required": false,
@@ -2180,8 +2200,8 @@ This API uses cursor-based pagination for list endpoints.
 
 ### Behavior
 
-- **Cursor:** Uses `created_at` timestamp
-- **Order:** Results are returned newest-first (DESC by created_at)
+- **Cursor:** An opaque string returned in `next_cursor`. Pass it back unchanged as `?cursor=<value>`. The internal format varies by `sort_by` — treat it as a black box.
+- **Order:** Results are returned newest-first by default (DESC). Override with `order=asc`.
 - **First request:** Omit `cursor` to start from the most recent items
 - **Next page:** Use `next_cursor` from previous response
 - **End of list:** When `has_next` is `false`, stop fetching
