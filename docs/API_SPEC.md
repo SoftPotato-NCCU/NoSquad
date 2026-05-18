@@ -786,9 +786,9 @@ Returns all available rooms with optional filters.
 | cursor | string | null | Pagination cursor. For `sort_by=created_at` this is a timestamp; for other sort fields it is an opaque numeric string. Always use the value returned by `next_cursor`. |
 | include_joined | boolean | false | Include rooms user has already joined |
 | include_full | boolean | false | Include rooms that are at capacity |
-| category | string | null | Filter by category: `sports`, `study`, `entertainment`, `social`. Invalid values are ignored. |
+| category | string | null | Filter by category: `sports`, `study`, `entertainment`, `social`. Returns 400 if an unrecognised value is supplied. |
 | q | string | null | Keyword search — matches against room name and description |
-| sort_by | string | `created_at` | Sort field: `created_at`, `event_time`, `member_count` |
+| sort_by | string | `created_at` | Sort field: `created_at`, `event_time`, `member_count`. Returns 400 if an unrecognised value is supplied. |
 | order | string | `desc` | Sort direction: `asc`, `desc` |
 
 #### Response (200 OK)
@@ -835,6 +835,24 @@ Returns all available rooms with optional filters.
 
 <details>
 <summary>Show Errors</summary>
+
+**400 VALIDATION_ERROR** (invalid `category` or `sort_by`)
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid category",
+    "details": [
+      {
+        "field": "category",
+        "issue": "invalid_value",
+        "message": "category must be one of: sports, study, entertainment, social"
+      }
+    ]
+  }
+}
+```
 
 **401 UNAUTHORIZED**
 

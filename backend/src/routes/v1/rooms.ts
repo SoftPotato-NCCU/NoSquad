@@ -163,26 +163,50 @@ rooms.get("/", async (c) => {
 // GET /api/v1/rooms/hall - List all open rooms with optional filters
 rooms.get("/hall", async (c) => {
   const userId = c.get("userId");
-  const limit = Math.min(Number(c.req.query("limit") ?? 20), 50);
+  const limitRaw = c.req.query("limit");
+  const limitNum = limitRaw !== undefined ? Number(limitRaw) : 20;
+  if (!Number.isInteger(limitNum) || limitNum < 1)
+    return apiError(c, 400, "VALIDATION_ERROR", "Invalid limit", [
+      { field: "limit", issue: "invalid_value", message: "limit must be a positive integer" },
+    ]);
+  const limit = Math.min(limitNum, 50);
   const cursor = c.req.query("cursor");
   const includeJoined = c.req.query("include_joined") === "true";
   const includeFull = c.req.query("include_full") === "true";
   const validCategories = ["sports", "study", "entertainment", "social"];
   const categoryFilter = c.req.query("category");
-  const category =
-    categoryFilter && validCategories.includes(categoryFilter)
-      ? categoryFilter
-      : null;
+  if (categoryFilter && !validCategories.includes(categoryFilter))
+    return apiError(c, 400, "VALIDATION_ERROR", "Invalid category", [
+      { field: "category", issue: "invalid_value", message: `category must be one of: ${validCategories.join(", ")}` },
+    ]);
+  const category = categoryFilter ?? null;
 
   const searchQuery = c.req.query("q")?.trim() || null;
 
   const validSortFields = ["created_at", "event_time", "member_count"];
   const sortByParam = c.req.query("sort_by") ?? "created_at";
-  const sortBy = validSortFields.includes(sortByParam) ? sortByParam : "created_at";
-  const order = c.req.query("order") === "asc" ? "ASC" : "DESC";
+  if (!validSortFields.includes(sortByParam))
+    return apiError(c, 400, "VALIDATION_ERROR", "Invalid sort_by", [
+      { field: "sort_by", issue: "invalid_value", message: `sort_by must be one of: ${validSortFields.join(", ")}` },
+    ]);
+  const sortBy = sortByParam;
+  const orderParam = c.req.query("order") ?? "desc";
+  if (orderParam !== "asc" && orderParam !== "desc")
+    return apiError(c, 400, "VALIDATION_ERROR", "Invalid order", [
+      { field: "order", issue: "invalid_value", message: "order must be one of: asc, desc" },
+    ]);
+  const order = orderParam === "asc" ? "ASC" : "DESC";
 
   // For non-created_at sorts, cursor holds the numeric offset as a string.
-  const offset = sortBy !== "created_at" && cursor ? Math.max(0, Number(cursor)) : 0;
+  let offset = 0;
+  if (sortBy !== "created_at" && cursor) {
+    const offsetNum = Number(cursor);
+    if (!Number.isInteger(offsetNum) || offsetNum < 0)
+      return apiError(c, 400, "VALIDATION_ERROR", "Invalid cursor", [
+        { field: "cursor", issue: "invalid_value", message: "cursor must be a non-negative integer for this sort order" },
+      ]);
+    offset = offsetNum;
+  }
 
   const params: (string | number)[] = [userId];
   let cursorClause = "";
