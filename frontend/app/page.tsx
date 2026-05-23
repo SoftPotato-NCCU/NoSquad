@@ -62,6 +62,7 @@ function roomToCard(room: MyRoom) {
           ? ("orange" as const)
           : ("blue" as const),
     icon: "⚡",
+    category: room.category,
   };
 }
 
