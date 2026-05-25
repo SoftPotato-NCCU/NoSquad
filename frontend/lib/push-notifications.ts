@@ -102,35 +102,54 @@ export async function isSubscribed(): Promise<boolean> {
   }
 }
 
+// Called automatically on app start — only subscribes if permission is already granted.
+// Does NOT request permission (requires a user gesture on iOS).
 export async function initializePushNotifications(): Promise<boolean> {
   try {
     const supported = await isPushSupported();
     if (!supported) {
-      console.log("Push notifications not supported");
+      console.log("[PUSH] Push notifications not supported");
       return false;
     }
 
-    const permission = await requestNotificationPermission();
-    if (permission !== "granted") {
-      console.log("Notification permission not granted");
+    if (!("Notification" in window) || Notification.permission !== "granted") {
+      console.log("[PUSH] Permission not granted, skipping auto-subscribe");
       return false;
-    }
-
-    const alreadySubscribed = await isSubscribed();
-    if (alreadySubscribed) {
-      console.log("Already subscribed to push notifications");
-      return true;
     }
 
     const subscription = await subscribeToPush();
     if (subscription) {
-      console.log("Successfully subscribed to push notifications");
+      console.log("[PUSH] Successfully subscribed to push notifications");
       return true;
     }
 
     return false;
   } catch (error) {
-    console.error("Failed to initialize push notifications:", error);
+    console.error("[PUSH] Failed to initialize push notifications:", error);
+    return false;
+  }
+}
+
+// Called from a user-initiated action (button tap).
+// Requests permission first, then subscribes if granted.
+export async function requestPermissionAndSubscribe(): Promise<boolean> {
+  try {
+    const supported = await isPushSupported();
+    if (!supported) {
+      console.log("[PUSH] Push notifications not supported");
+      return false;
+    }
+
+    const permission = await requestNotificationPermission();
+    if (permission !== "granted") {
+      console.log("[PUSH] Permission not granted");
+      return false;
+    }
+
+    const subscription = await subscribeToPush();
+    return subscription !== null;
+  } catch (error) {
+    console.error("[PUSH] Failed to request permission and subscribe:", error);
     return false;
   }
 }
