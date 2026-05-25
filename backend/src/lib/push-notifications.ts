@@ -64,19 +64,15 @@ export async function notifyUser(
     return { sent: 0, failed: 0 };
   }
 
-  let sent = 0;
-  let failed = 0;
+  // Fire-and-forget: spawn sends without blocking response
+  Promise.all(
+    subscriptions.map((sub) => sendPushToSubscription(sub, payload)),
+  ).catch((error) => {
+    console.error(`[PUSH] Background send failed for user ${userId}:`, error);
+  });
 
-  for (const sub of subscriptions) {
-    const success = await sendPushToSubscription(sub, payload);
-    if (success) {
-      sent++;
-    } else {
-      failed++;
-    }
-  }
-
-  return { sent, failed };
+  // Return immediately with subscription count
+  return { sent: subscriptions.length, failed: 0 };
 }
 
 export async function notifyAllUsers(
@@ -90,19 +86,15 @@ export async function notifyAllUsers(
     return { sent: 0, failed: 0 };
   }
 
-  let sent = 0;
-  let failed = 0;
+  // Fire-and-forget: spawn sends without blocking response
+  Promise.all(
+    subscriptions.map((sub) => sendPushToSubscription(sub, payload)),
+  ).catch((error) => {
+    console.error('[PUSH] Background broadcast failed:', error);
+  });
 
-  for (const sub of subscriptions) {
-    const success = await sendPushToSubscription(sub, payload);
-    if (success) {
-      sent++;
-    } else {
-      failed++;
-    }
-  }
-
-  return { sent, failed };
+  // Return immediately with subscription count
+  return { sent: subscriptions.length, failed: 0 };
 }
 
 async function sendPushToSubscription(
