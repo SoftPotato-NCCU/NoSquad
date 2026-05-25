@@ -299,7 +299,7 @@ function RoomDetailContent() {
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={() => router.push("/")}
           className="w-fit rounded-full border border-zinc-200 bg-white/85 px-5 py-2 text-sm font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-200 dark:hover:bg-zinc-800"
         >
           ← 返回
@@ -359,7 +359,7 @@ function RoomDetailContent() {
       <div className="flex items-center justify-between gap-4">
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={() => router.push("/")}
           className="rounded-full border border-zinc-200 bg-white/85 px-5 py-2 text-sm font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-200 dark:hover:bg-zinc-800"
         >
           ← 返回
@@ -504,6 +504,29 @@ function RoomDetailContent() {
                   className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {getJoinButtonText(room, isFull, isActionLoading)}
+                </button>
+              )}
+
+              {canViewMembers && (
+                <button
+                  type="button"
+                  onClick={() => router.push(`/rooms/chat?room_id=${roomId}`)}
+                  className="flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-6 py-3 text-sm font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                >
+                  <svg
+                    className="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                    />
+                  </svg>
+                  群聊
                 </button>
               )}
 

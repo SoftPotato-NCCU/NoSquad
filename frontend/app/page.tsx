@@ -220,6 +220,7 @@ function AuthenticatedHome({
                         key={room.id}
                         {...roomToCard(room)}
                         detailHref={`/rooms/room?room_id=${room.id}`}
+                        chatHref={`/rooms/chat?room_id=${room.id}`}
                       />
                     ))
                   )}
@@ -246,6 +247,11 @@ function AuthenticatedHome({
                         key={room.id}
                         {...roomToCard(room)}
                         detailHref={`/rooms/room?room_id=${room.id}`}
+                        chatHref={
+                          room.membership_status === "approved"
+                            ? `/rooms/chat?room_id=${room.id}`
+                            : undefined
+                        }
                       />
                     ))
                   )}

@@ -1,4 +1,6 @@
-import Link from "next/link";
+"use client";
+
+import { useRouter } from "next/navigation";
 import type { RoomCategory } from "@/types/rooms";
 
 // 房間列表卡片格式
@@ -13,6 +15,8 @@ type RoomCardProps = {
   icon?: string;
   category?: RoomCategory | null;
   detailHref?: string;
+  chatHref?: string;
+  unreadCount?: number;
 };
 
 const statusClassMap = {
@@ -65,11 +69,17 @@ export default function RoomCard({
   icon = "⚡",
   category,
   detailHref,
+  chatHref,
+  unreadCount,
 }: RoomCardProps) {
+  const router = useRouter();
   const cat = category ? CATEGORY_CONFIG[category] : null;
 
-  const cardContent = (
-    <article className="group flex items-center gap-4 rounded-3xl border border-zinc-200/70 bg-white/85 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900/70">
+  return (
+    <article
+      className="group flex items-center gap-4 rounded-3xl border border-zinc-200/70 bg-white/85 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900/70 cursor-pointer"
+      onClick={() => detailHref && router.push(detailHref)}
+    >
       <div
         className={`flex h-20 w-24 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-4xl ${cat ? cat.bg : "from-purple-50 to-blue-50 dark:from-purple-500/10 dark:to-blue-500/10"}`}
       >
@@ -129,7 +139,7 @@ export default function RoomCard({
         </div>
       </div>
 
-      <div className="hidden items-center gap-5 sm:flex">
+      <div className="hidden items-center gap-3 sm:flex">
         <span
           className={`rounded-full px-4 py-1.5 text-sm font-semibold ${statusClassMap[statusTone]}`}
         >
@@ -153,20 +163,41 @@ export default function RoomCard({
           {members}
         </span>
 
+        {chatHref && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(chatHref);
+            }}
+            className="relative flex items-center justify-center w-9 h-9 rounded-full text-zinc-500 hover:bg-purple-50 hover:text-purple-600 dark:text-zinc-400 dark:hover:bg-purple-500/10 dark:hover:text-purple-400 transition-colors"
+            title="群聊"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+              />
+            </svg>
+            {typeof unreadCount === "number" && unreadCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[1.1rem] h-[1.1rem] flex items-center justify-center text-[0.6rem] font-bold text-white bg-red-500 rounded-full px-0.5 leading-none">
+                {unreadCount > 9 ? "9+" : unreadCount}
+              </span>
+            )}
+          </button>
+        )}
+
         <span className="text-2xl text-zinc-300 transition group-hover:text-purple-500">
           ›
         </span>
       </div>
     </article>
-  );
-
-  if (!detailHref) {
-    return cardContent;
-  }
-
-  return (
-    <Link href={detailHref} className="block">
-      {cardContent}
-    </Link>
   );
 }
