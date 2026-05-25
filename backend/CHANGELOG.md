@@ -20,6 +20,13 @@
 - `POST /api/v1/rooms/:room_id/recruiting/close` / `.../recruiting/open` (owner only) — pause and resume recruiting. While closed, `POST /:room_id/join` fails with `RECRUITING_CLOSED`; existing members and all owner actions are unaffected. `recruiting_closed` rooms are hidden from `GET /hall` but still listed in `GET /` ("my rooms").
 - Capacity is **not** a status: `ROOM_FULL` (join) and the `is_full` hall flag are derived live from `member_count >= max_members`. A room at capacity can still be `open` or `recruiting_closed`.
 
+#### Waitlist (manual promotion)
+- `room_members.approval_status` gains a `waitlisted` value (`database/init/03-room_members.sql`).
+- `POST /:room_id/join` on a full room no longer returns `ROOM_FULL` — the user is added with `approval_status = 'waitlisted'` and the response carries `status: "waitlisted"`. Waitlisted members do not count toward capacity (`member_count` / `is_full` still count `approved` only). Status precedence: full → `waitlisted`, else approval-required → `pending`, else `approved` (see `computeJoinStatus()`, unit-tested).
+- `GET /:room_id/waitlist` — owner lists waitlisted users, ordered by `joined_at` (FIFO).
+- `POST /:room_id/waitlist/:user_id/promote` — owner promotes a waitlisted user to `approved`; returns `400 ROOM_FULL` if no spot is free, `404 WAITLIST_ENTRY_NOT_FOUND` if the user is not waitlisted.
+- `DELETE /:room_id/members/:user_id` (owner kick) now matches any membership row (approved / pending / waitlisted), so owners can also clear waitlist entries.
+
 #### Join-request / approval flow
 - `GET /api/v1/rooms/:room_id/requests` — list pending join requests (owner only).
 - `POST /:room_id/requests/:user_id/approve`, `POST /:room_id/requests/approve-all`, `POST /:room_id/requests/:user_id/reject` — owner manages pending requests.

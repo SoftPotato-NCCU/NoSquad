@@ -5,7 +5,7 @@ export type RoomStatus =
   | "ended"
   | "cancelled";
 
-export type MembershipStatus = "approved" | "pending" | "rejected";
+export type MembershipStatus = "approved" | "pending" | "rejected" | "waitlisted";
 
 export type RoomCategory = "sports" | "study" | "entertainment" | "social";
 
@@ -117,7 +117,11 @@ export type SortOrder = "asc" | "desc";
 export interface JoinRoomResponse {
   success: boolean;
   room_id: string;
-  status: "approved" | "pending";
+  status: "approved" | "pending" | "waitlisted";
+}
+
+export interface WaitlistResponse {
+  waitlist: RoomMember[];
 }
 
 export interface GenericSuccessResponse {

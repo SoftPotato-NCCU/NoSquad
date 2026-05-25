@@ -35,7 +35,9 @@
       "needsApproval": "需審核",
       "joinable": "可加入",
       "joining": "加入中...",
-      "join": "加入"
+      "join": "加入",
+      "joinWaitlist": "加入候補",
+      "waitlisted": "候補中"
     },
     "loading": "房間大廳載入中...",
     "noRoomsDisplay": "目前沒有可以顯示的房間。",

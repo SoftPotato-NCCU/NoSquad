@@ -35,7 +35,9 @@
       "needsApproval": "Approval Required",
       "joinable": "Joinable",
       "joining": "Joining...",
-      "join": "Join"
+      "join": "Join",
+      "joinWaitlist": "Join waitlist",
+      "waitlisted": "Waitlisted"
     },
     "loading": "Loading room hall...",
     "noRoomsDisplay": "No rooms to display.",

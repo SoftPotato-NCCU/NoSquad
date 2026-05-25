@@ -15,6 +15,7 @@ import {
   RoomSortField,
   SortOrder,
   UpdateRoomRequest,
+  WaitlistResponse,
 } from "../types/rooms";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BACKEND_URL || "";
@@ -326,6 +327,22 @@ export async function removeMember(
   return apiFetch<{ data: GenericSuccessResponse }>(
     `/rooms/${roomId}/members/${userId}`,
     { method: "DELETE" },
+  );
+}
+
+export async function listWaitlist(
+  roomId: string,
+): Promise<{ data: WaitlistResponse }> {
+  return apiFetch<{ data: WaitlistResponse }>(`/rooms/${roomId}/waitlist`);
+}
+
+export async function promoteFromWaitlist(
+  roomId: string,
+  userId: string,
+): Promise<{ data: { success: boolean; user_id: string; status: string } }> {
+  return apiFetch<{ data: { success: boolean; user_id: string; status: string } }>(
+    `/rooms/${roomId}/waitlist/${userId}/promote`,
+    { method: "POST" },
   );
 }
 

@@ -16,6 +16,8 @@ import {
   removeMember,
   closeRecruiting,
   openRecruiting,
+  listWaitlist,
+  promoteFromWaitlist,
 } from "@/lib/api";
 import type { RoomDetails, RoomMember, JoinRequest } from "@/types/rooms";
 
@@ -60,6 +62,8 @@ function getJoinButtonText(
   isActionLoading: boolean,
 ) {
   if (isActionLoading) return "加入中...";
+  // A full but still-open room can be joined as a waitlist entry.
+  if (isFull && room.room_status === "open") return "加入候補";
   if (isFull) return "房間已滿";
 
   switch (room.room_status) {
@@ -87,9 +91,10 @@ function RoomDetailContent() {
   const [room, setRoom] = useState<RoomDetails | null>(null);
   const [members, setMembers] = useState<RoomMember[]>([]);
   const [requests, setRequests] = useState<JoinRequest[]>([]);
+  const [waitlist, setWaitlist] = useState<RoomMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"members" | "requests">("members");
+  const [activeTab, setActiveTab] = useState<"members" | "requests" | "waitlist">("members");
   const [isActionLoading, setIsActionLoading] = useState(false);
 
   const fetchRoomData = async () => {
@@ -125,8 +130,12 @@ function RoomDetailContent() {
             (request) => request.user_id !== user?.id,
           ),
         );
+
+        const waitlistRes = await listWaitlist(roomId);
+        setWaitlist(waitlistRes.data.waitlist);
       } else {
         setRequests([]);
+        setWaitlist([]);
       }
     } catch (e) {
       console.error("Failed to load room:", e);
@@ -280,6 +289,21 @@ function RoomDetailContent() {
     }
   };
 
+  const handlePromote = async (userId: string) => {
+    if (!roomId) return;
+
+    setIsActionLoading(true);
+    try {
+      await promoteFromWaitlist(roomId, userId);
+      await fetchRoomData();
+    } catch (e) {
+      console.error("Failed to promote from waitlist:", e);
+      setError(e instanceof Error ? e.message : "遞補失敗：房間可能已滿");
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
   if (authLoading || isLoading) {
     return (
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
@@ -316,15 +340,18 @@ function RoomDetailContent() {
 
   const isFull = room.member_count >= room.max_capacity;
   const isPending = !room.is_owner && room.membership_status === "pending";
+  const isWaitlisted = !room.is_owner && room.membership_status === "waitlisted";
   // Once the activity is underway (or finished) leaving no longer makes sense,
   // so the leave button is hidden for in_progress / ended rooms.
   const hasStarted =
     room.room_status === "in_progress" || room.room_status === "ended";
+  // A full room is still joinable — the join lands on the waitlist — so being
+  // full no longer blocks the button (only non-open / already-in states do).
   const canJoin =
     room.room_status === "open" &&
     !room.is_member &&
     !isPending &&
-    !isFull;
+    !isWaitlisted;
 
   const canViewMembers =
     room.is_owner || room.membership_status === "approved";
@@ -499,8 +526,14 @@ function RoomDetailContent() {
               </div>
             )}
 
+            {isWaitlisted && (
+              <p className="mt-4 text-sm text-amber-600 dark:text-amber-400">
+                房間目前已滿，你已加入候補名單。有名額時房主會手動遞補。
+              </p>
+            )}
+
             <div className="mt-6 flex flex-wrap gap-3">
-              {!room.is_member && !isPending && (
+              {!room.is_member && !isPending && !isWaitlisted && (
                 <button
                   type="button"
                   onClick={handleJoin}
@@ -508,6 +541,17 @@ function RoomDetailContent() {
                   className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {getJoinButtonText(room, isFull, isActionLoading)}
+                </button>
+              )}
+
+              {isWaitlisted && (
+                <button
+                  type="button"
+                  onClick={handleLeave}
+                  disabled={isActionLoading}
+                  className="rounded-full border border-amber-300 bg-amber-50 px-6 py-3 text-sm font-semibold text-amber-700 shadow-sm transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300"
+                >
+                  {isActionLoading ? "處理中..." : "取消候補"}
                 </button>
               )}
 
@@ -553,6 +597,20 @@ function RoomDetailContent() {
                   }`}
                 >
                   申請 ({requests.length})
+                </button>
+              )}
+
+              {room.is_owner && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("waitlist")}
+                  className={`rounded-full px-5 py-2 text-sm font-semibold transition ${
+                    activeTab === "waitlist"
+                      ? "bg-white text-purple-600 shadow-sm dark:bg-zinc-900 dark:text-purple-300"
+                      : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                  }`}
+                >
+                  候補 ({waitlist.length})
                 </button>
               )}
             </div>
@@ -665,6 +723,65 @@ function RoomDetailContent() {
                       className="rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
                     >
                       拒絕
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {activeTab === "waitlist" && room.is_owner && (
+            <div className="space-y-3">
+              {waitlist.length === 0 && (
+                <div className="rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-5 text-zinc-500 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-400">
+                  目前沒有候補名單。房間滿了之後，新加入者會排到這裡。
+                </div>
+              )}
+
+              {waitlist.length > 0 && (
+                <p className="px-1 text-sm text-zinc-500 dark:text-zinc-400">
+                  依登記時間排序。有名額時可手動遞補（房間已滿時遞補會失敗）。
+                </p>
+              )}
+
+              {waitlist.map((entry, index) => (
+                <div
+                  key={entry.user_id}
+                  className="flex items-center justify-between gap-4 rounded-2xl border border-zinc-200/70 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-100 font-bold text-amber-600 dark:bg-amber-500/15 dark:text-amber-300">
+                      {index + 1}
+                    </div>
+
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-zinc-950 dark:text-zinc-50">
+                        {entry.name}
+                      </p>
+                      <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
+                        @{entry.username}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handlePromote(entry.user_id)}
+                      disabled={isActionLoading || isFull}
+                      title={isFull ? "房間已滿，需先有名額" : undefined}
+                      className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-purple-500/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      遞補
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveMember(entry.user_id)}
+                      disabled={isActionLoading}
+                      className="rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                    >
+                      移除
                     </button>
                   </div>
                 </div>

@@ -131,6 +131,7 @@ function ExploreContent() {
   const [showFilters, setShowFilters] = useState(false);
   const [joiningRoomId, setJoiningRoomId] = useState<string | null>(null);
   const [pendingRoomIds, setPendingRoomIds] = useState<Set<string>>(new Set());
+  const [waitlistedRoomIds, setWaitlistedRoomIds] = useState<Set<string>>(new Set());
 
   // Debounce the search box so typing doesn't fire a request per keystroke.
   useEffect(() => {
@@ -231,13 +232,17 @@ function ExploreContent() {
     const isPending =
       pendingRoomIds.has(room.id) || pendingJoinedRoomIds.has(room.id);
     const isApproved = approvedJoinedRoomIds.has(room.id);
+    const isWaitlisted = waitlistedRoomIds.has(room.id);
 
+    // A full room is still clickable — the join goes onto the waitlist instead
+    // of being blocked. Only non-open rooms or an in-flight/settled membership
+    // short-circuit here.
     if (
       room.room_status !== "open" ||
-      room.is_full ||
       joiningRoomId ||
       isPending ||
-      isApproved
+      isApproved ||
+      isWaitlisted
     ) {
       return;
     }
@@ -247,6 +252,12 @@ function ExploreContent() {
       setRoomError(null);
 
       const response = await joinRoom(room.id);
+
+      if (response.data.status === "waitlisted") {
+        setWaitlistedRoomIds((prev) => new Set(prev).add(room.id));
+        await fetchRooms(true);
+        return;
+      }
 
       if (response.data.status === "pending") {
         setPendingRoomIds((prev) => {
@@ -442,31 +453,46 @@ function ExploreContent() {
             const isPending =
               pendingRoomIds.has(room.id) || pendingJoinedRoomIds.has(room.id);
             const isApproved = approvedJoinedRoomIds.has(room.id);
+            const isWaitlisted = waitlistedRoomIds.has(room.id);
+
+            // A full open room stays actionable so the user can join the
+            // waitlist; only settled/in-flight memberships disable the button.
+            const actionDisabled =
+              room.room_status !== "open" ||
+              isApproved ||
+              isPending ||
+              isWaitlisted ||
+              joiningRoomId === room.id;
+
+            let actionLabel: string;
+            if (joiningRoomId === room.id)
+              actionLabel = t(dict, "explore.status.joining", "加入中...");
+            else if (isWaitlisted)
+              actionLabel = t(dict, "explore.status.waitlisted", "候補中");
+            else if (
+              room.room_status === "open" &&
+              room.is_full &&
+              !isApproved &&
+              !isPending
+            )
+              actionLabel = t(dict, "explore.status.joinWaitlist", "加入候補");
+            else
+              actionLabel = roomStatusLabel(
+                dict,
+                room.room_status,
+                isPending,
+                isApproved,
+                room.is_full,
+                room.join_approval_required,
+              );
 
             return (
               <ActivityCard
                 key={room.id}
                 {...roomToActivity(room, isPending, isApproved, dict)}
                 detailHref={`/rooms/room?room_id=${room.id}`}
-                actionDisabled={
-                  room.room_status !== "open" ||
-                  isApproved ||
-                  room.is_full ||
-                  isPending ||
-                  joiningRoomId === room.id
-                }
-                actionLabel={
-                  joiningRoomId === room.id
-                    ? t(dict, "explore.status.joining", "加入中...")
-                    : roomStatusLabel(
-                        dict,
-                        room.room_status,
-                        isPending,
-                        isApproved,
-                        room.is_full,
-                        room.join_approval_required,
-                      )
-                }
+                actionDisabled={actionDisabled}
+                actionLabel={actionLabel}
                 onActionClick={() => handleJoinRoom(room)}
               />
             );

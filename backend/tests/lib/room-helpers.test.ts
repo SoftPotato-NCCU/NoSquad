@@ -1,5 +1,20 @@
 import { expect, describe, test } from "bun:test";
-import { computeDisplayStatus, formatRoomDetails, formatMember, roleFilterClause } from "../../src/routes/v1/rooms";
+import { computeDisplayStatus, formatRoomDetails, formatMember, roleFilterClause, computeJoinStatus } from "../../src/routes/v1/rooms";
+
+describe("computeJoinStatus", () => {
+  test("full room → waitlisted regardless of approval requirement", () => {
+    expect(computeJoinStatus(true, false)).toBe("waitlisted");
+    expect(computeJoinStatus(true, true)).toBe("waitlisted");
+  });
+
+  test("open room with approval required → pending", () => {
+    expect(computeJoinStatus(false, true)).toBe("pending");
+  });
+
+  test("open room without approval → approved", () => {
+    expect(computeJoinStatus(false, false)).toBe("approved");
+  });
+});
 
 describe("roleFilterClause", () => {
   test("returns empty clause and valid when role is undefined", () => {
