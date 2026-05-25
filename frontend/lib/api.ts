@@ -72,7 +72,7 @@ async function fetchApi<T>(
     headers,
   });
 
-  if (response.status === 401) {
+  if (response.status === 401 && requireAuth) {
     clearToken();
     localStorage.removeItem("user");
     window.location.href = "/auth/login";
@@ -81,11 +81,11 @@ async function fetchApi<T>(
     };
   }
 
-if (!response.ok) {
+  if (!response.ok) {
     const error = await response
       .json()
       .catch(() => ({ error: { message: "Request failed" } }));
-    if (isAuthError(error)) {
+    if (requireAuth && isAuthError(error)) {
       clearToken();
       localStorage.removeItem("user");
       window.location.href = "/auth/login";

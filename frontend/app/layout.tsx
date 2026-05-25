@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ServiceWorkerRegistration from "@/components/ServiceWorkerRegistration";
+import PushNotificationInitializer from "@/components/PushNotificationInitializer";
 import { AuthProvider } from "@/lib/auth-context";
 import { RoomsProvider } from "@/lib/rooms-context";
 import AppShell from "@/components/AppShell";
@@ -59,6 +60,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <ServiceWorkerRegistration />
         <AuthProvider>
+          <PushNotificationInitializer />
           <RoomsProvider>
             <AppShell>{children}</AppShell>
           </RoomsProvider>

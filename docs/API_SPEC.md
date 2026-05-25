@@ -8,6 +8,7 @@
 |---------|----------|
 | Auth | `/api/v1/auth` |
 | Room | `/api/v1/rooms` |
+| Push | `/api/v1/push` |
 
 ---
 
@@ -2207,6 +2208,279 @@ Removes a member from the room. Cannot remove the room owner.
 - "Full" is not a status. Capacity is computed from `member_count >= max_capacity`; the `is_full` flag in hall responses, the `ROOM_FULL` join error, and the in-memory check are all derived live. A room at capacity may still be `open` or `recruiting_closed`.
 - Hall listing (`GET /rooms/hall`) only returns rooms with `status = 'open'`. `recruiting_closed` rooms are hidden from discovery.
 - "My rooms" listing (`GET /rooms`) includes both `open` and `recruiting_closed`.
+
+---
+
+## Push Notifications Service
+
+---
+
+### Get VAPID Public Key
+
+<details>
+<summary><strong>GET</strong> `/api/v1/push/vapid-public-key` | Auth: No</summary>
+
+Returns the VAPID public key needed for Web Push subscription on the client side.
+
+#### Response (200 OK)
+
+```json
+{
+  "vapidPublicKey": "BElVVFlCRUJLQXRtVkV..."
+}
+```
+
+#### Errors
+
+<details>
+<summary>Show Errors</summary>
+
+**500 INTERNAL_ERROR**
+
+```json
+{
+  "error": {
+    "code": "INTERNAL_ERROR",
+    "message": "VAPID public key not configured",
+    "details": []
+  }
+}
+```
+
+</details>
+</details>
+
+---
+
+### Subscribe to Push Notifications
+
+<details>
+<summary><strong>POST</strong> `/api/v1/push/subscribe` | Auth: Yes</summary>
+
+Header: `Authorization: Bearer <access_token>`
+
+Saves or updates a Web Push subscription for the authenticated user. If the endpoint already exists for any user, it is updated with the new user's ID and keys.
+
+#### Request
+
+```json
+{
+  "endpoint": "https://fcm.googleapis.com/fcm/send/...",
+  "keys": {
+    "p256dh": "base64url_encoded_key",
+    "auth": "base64url_encoded_key"
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| endpoint | string | Push service endpoint URL (required) |
+| keys.p256dh | string | ECDH public key for payload encryption (required) |
+| keys.auth | string | Authentication secret for payload verification (required) |
+
+#### Response (201 Created)
+
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "message": "Push subscription saved successfully"
+}
+```
+
+#### Errors
+
+<details>
+<summary>Show Errors</summary>
+
+**400 VALIDATION_ERROR**
+
+```json
+{
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "Invalid subscription data",
+    "details": [
+      {
+        "field": "endpoint",
+        "issue": "required",
+        "message": "Endpoint is required"
+      },
+      {
+        "field": "keys",
+        "issue": "required",
+        "message": "Keys with p256dh and auth are required"
+      }
+    ]
+  }
+}
+```
+
+**500 INTERNAL_ERROR**
+
+```json
+{
+  "error": {
+    "code": "INTERNAL_ERROR",
+    "message": "Failed to save subscription",
+    "details": []
+  }
+}
+```
+
+**401 UNAUTHORIZED**
+
+```json
+{
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required: token is missing or invalid",
+    "details": []
+  }
+}
+```
+
+</details>
+</details>
+
+---
+
+### List Push Subscriptions
+
+<details>
+<summary><strong>GET</strong> `/api/v1/push/subscriptions` | Auth: Yes</summary>
+
+Header: `Authorization: Bearer <access_token>`
+
+Returns all active Web Push subscriptions for the authenticated user.
+
+#### Response (200 OK)
+
+```json
+{
+  "subscriptions": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "endpoint": "https://fcm.googleapis.com/fcm/send/...",
+      "platform": "web",
+      "created_at": "2026-04-14T10:00:00Z"
+    }
+  ]
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | string | Subscription ID (UUID) |
+| endpoint | string | Push service endpoint URL |
+| platform | string | Platform type: `web`, `fcm`, or `apns` (currently only `web` is active) |
+| created_at | string | Subscription creation time (ISO 8601) |
+
+#### Errors
+
+<details>
+<summary>Show Errors</summary>
+
+**500 INTERNAL_ERROR**
+
+```json
+{
+  "error": {
+    "code": "INTERNAL_ERROR",
+    "message": "Failed to fetch subscriptions",
+    "details": []
+  }
+}
+```
+
+**401 UNAUTHORIZED**
+
+```json
+{
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required: token is missing or invalid",
+    "details": []
+  }
+}
+```
+
+</details>
+</details>
+
+---
+
+### Send Test Notification
+
+<details>
+<summary><strong>POST</strong> `/api/v1/push/test` | Auth: Yes</summary>
+
+Header: `Authorization: Bearer <access_token>`
+
+Sends a test push notification to all active subscriptions of the authenticated user. Useful for verifying the push notification system is working correctly.
+
+#### Response (200 OK)
+
+```json
+{
+  "message": "Test notification sent",
+  "sent": 1,
+  "failed": 0
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| message | string | Status message |
+| sent | integer | Number of subscriptions successfully notified |
+| failed | integer | Number of subscriptions that failed |
+
+The test notification uses:
+- **Title:** "Test Push Notification"
+- **Body:** "This is a push notification test"
+- **Data:** `{"hello": "world"}`
+
+#### Errors
+
+<details>
+<summary>Show Errors</summary>
+
+**500 INTERNAL_ERROR**
+
+```json
+{
+  "error": {
+    "code": "INTERNAL_ERROR",
+    "message": "Failed to send test notification",
+    "details": []
+  }
+}
+```
+
+**401 UNAUTHORIZED**
+
+```json
+{
+  "error": {
+    "code": "UNAUTHORIZED",
+    "message": "Authentication required: token is missing or invalid",
+    "details": []
+  }
+}
+```
+
+</details>
+</details>
+
+---
+
+### Push Notifications Design Rules
+
+- Subscriptions are tied to user IDs and Web Push endpoints
+- Duplicate endpoints are deduplicated — if a user subscribes with the same endpoint, only the most recent subscription is retained
+- Invalid or expired subscriptions (410 Gone, 404 Not Found) are automatically cleaned up
+- Currently supports Web Push (browser notifications). Platform field is reserved for future FCM/APNs support
+- Notifications are sent asynchronously to minimize response times
 
 ---
 
