@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useRooms } from "@/lib/rooms-context";
 import { useDictionary, t, tpl } from "@/lib/i18n/useDictionary";
@@ -9,6 +10,7 @@ import Link from "next/link";
 import Image from "next/image";
 import RoomCard from "@/components/RoomCard";
 import StatCard from "@/components/StatCard";
+import { requestNotificationPermission } from "@/lib/push-notifications";
 
 function formatRoomDate(value: string | null) {
   if (!value) return "時間尚未設定";
@@ -258,6 +260,13 @@ function AuthenticatedHome({
 }
 
 function UnauthenticatedHome({ dict }: { dict: Record<string, unknown> }) {
+  const router = useRouter();
+
+  const handleLoginClick = async () => {
+    await requestNotificationPermission().catch(() => {});
+    router.push("/auth/login");
+  };
+
   return (
     <div className="flex flex-col flex-1 items-center justify-center p-4">
       <main className="flex flex-col items-center gap-6 sm:gap-8 max-w-[clamp(20rem,28vw,32rem)] w-full">
@@ -282,12 +291,13 @@ function UnauthenticatedHome({ dict }: { dict: Record<string, unknown> }) {
         </div>
 
         <div className="flex flex-col gap-3 w-full">
-          <Link
-            href="/auth/login"
+          <button
+            type="button"
+            onClick={handleLoginClick}
             className="flex items-center justify-center h-[clamp(3rem,3.2vw,3.75rem)] w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium rounded-full hover:opacity-90 transition-opacity text-[clamp(1rem,1.1vw,1.25rem)]"
           >
             {t(dict, "home.home.login", "Log In")}
-          </Link>
+          </button>
 
           <Link
             href="/auth/signup"
