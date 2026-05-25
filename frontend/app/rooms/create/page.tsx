@@ -4,10 +4,18 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useRooms } from "@/lib/rooms-context";
+import type { RoomCategory } from "@/types/rooms";
+
+const CATEGORY_OPTIONS: { value: RoomCategory; label: string }[] = [
+  { value: "sports", label: "運動" },
+  { value: "study", label: "學習" },
+  { value: "entertainment", label: "娛樂" },
+  { value: "social", label: "社交" },
+];
 
 type CreateRoomFormData = {
   name: string;
-  category: string;
+  category: RoomCategory;
   description: string;
   location: string;
   eventTime: string;
@@ -22,7 +30,7 @@ function CreateRoomContent() {
 
   const [formData, setFormData] = useState<CreateRoomFormData>({
     name: "",
-    category: "運動",
+    category: "sports",
     description: "",
     location: "",
     eventTime: "",
@@ -107,6 +115,7 @@ function CreateRoomContent() {
         join_approval_required: formData.approvalMode === "manual",
         event_time: eventDate.toISOString(),
         location: formData.location.trim() || undefined,
+        category: formData.category,
       });
 
       router.push("/");
@@ -172,11 +181,11 @@ function CreateRoomContent() {
               onChange={handleChange}
               className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-zinc-900 outline-none transition focus:border-purple-400 focus:ring-2 focus:ring-purple-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:ring-purple-500/20"
             >
-              <option value="運動">運動</option>
-              <option value="學習">學習</option>
-              <option value="娛樂">娛樂</option>
-              <option value="社交">社交</option>
-              <option value="其他">其他</option>
+              {CATEGORY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
             </select>
           </div>
 

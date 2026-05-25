@@ -11,9 +11,18 @@
     "categories": {
       "all": "全部",
       "sports": "運動",
-      "learning": "學習",
+      "study": "學習",
       "entertainment": "娛樂",
       "social": "社交"
+    },
+    "sort": {
+      "label": "排序",
+      "newest": "最新建立",
+      "eventSoon": "活動即將開始",
+      "mostMembers": "人數最多"
+    },
+    "filter": {
+      "includeFull": "顯示已滿房間"
     },
     "status": {
       "pending": "待審核",

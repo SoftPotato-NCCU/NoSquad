@@ -6,7 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useRooms } from "@/lib/rooms-context";
 import { useDictionary, t } from "@/lib/i18n/useDictionary";
 import { handleAuthError, joinRoom, listRoomHall } from "@/lib/api";
-import type { HallRoom } from "@/types/rooms";
+import type { HallRoom, RoomCategory, RoomSortField, SortOrder } from "@/types/rooms";
 import ActivityCard from "@/components/ActivityCard";
 
 function formatRoomDate(value: string | null) {
@@ -92,7 +92,27 @@ function roomToActivity(
   };
 }
 
-const categoryKeys = ["all", "sports", "learning", "entertainment", "social"];
+// Category chip keys. "all" clears the filter; the rest map 1:1 to the backend
+// `category` enum (sports / study / entertainment / social).
+const categoryKeys: (RoomCategory | "all")[] = [
+  "all",
+  "sports",
+  "study",
+  "entertainment",
+  "social",
+];
+
+// Sort presets shown in the filter panel. Each maps to a backend
+// `sort_by` + `order` pair.
+const SORT_OPTIONS: {
+  key: string;
+  sort_by: RoomSortField;
+  order: SortOrder;
+}[] = [
+  { key: "newest", sort_by: "created_at", order: "desc" },
+  { key: "eventSoon", sort_by: "event_time", order: "asc" },
+  { key: "mostMembers", sort_by: "member_count", order: "desc" },
+];
 
 function ExploreContent() {
   const { user, isLoading: authLoading } = useAuth();
@@ -104,8 +124,19 @@ function ExploreContent() {
   const [isLoadingRooms, setIsLoadingRooms] = useState(true);
   const [roomError, setRoomError] = useState<string | null>(null);
   const [searchText, setSearchText] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<RoomCategory | "all">("all");
+  const [sortKey, setSortKey] = useState(SORT_OPTIONS[0].key);
+  const [includeFull, setIncludeFull] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
   const [joiningRoomId, setJoiningRoomId] = useState<string | null>(null);
   const [pendingRoomIds, setPendingRoomIds] = useState<Set<string>>(new Set());
+
+  // Debounce the search box so typing doesn't fire a request per keystroke.
+  useEffect(() => {
+    const handle = setTimeout(() => setDebouncedSearch(searchText), 300);
+    return () => clearTimeout(handle);
+  }, [searchText]);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -124,6 +155,8 @@ function ExploreContent() {
 
     let mounted = true;
 
+    const sort = SORT_OPTIONS.find((o) => o.key === sortKey) ?? SORT_OPTIONS[0];
+
     async function loadHallRooms() {
       try {
         setIsLoadingRooms(true);
@@ -131,7 +164,11 @@ function ExploreContent() {
 
         const response = await listRoomHall({
           include_joined: true,
-          include_full: true,
+          include_full: includeFull,
+          category: selectedCategory === "all" ? undefined : selectedCategory,
+          q: debouncedSearch.trim() || undefined,
+          sort_by: sort.sort_by,
+          order: sort.order,
         });
 
         if (mounted) {
@@ -155,7 +192,7 @@ function ExploreContent() {
     return () => {
       mounted = false;
     };
-  }, [user, dict]);
+  }, [user, dict, selectedCategory, debouncedSearch, sortKey, includeFull]);
 
   const createdRoomIds = useMemo(() => {
     return new Set(
@@ -183,22 +220,12 @@ function ExploreContent() {
     );
   }, [myRooms]);
 
-  const visibleRooms = useMemo(() => {
+  // Keyword search, category filter, and sorting are all applied server-side
+  // (see the loadHallRooms effect). The only client-side trimming left is
+  // hiding rooms the user owns, which the hall endpoint still returns.
+  const filteredRooms = useMemo(() => {
     return rooms.filter((room) => !createdRoomIds.has(room.id));
   }, [rooms, createdRoomIds]);
-
-  const filteredRooms = useMemo(() => {
-    const keyword = searchText.trim().toLowerCase();
-
-    if (!keyword) return visibleRooms;
-
-    return visibleRooms.filter((room) => {
-      return (
-        room.name.toLowerCase().includes(keyword) ||
-        room.description?.toLowerCase().includes(keyword)
-      );
-    });
-  }, [visibleRooms, searchText]);
 
   const handleJoinRoom = async (room: HallRoom) => {
     const isPending =
@@ -313,7 +340,13 @@ function ExploreContent() {
 
           <button
             type="button"
-            className="flex h-14 items-center justify-center gap-2 rounded-2xl border border-zinc-200/70 bg-white/85 px-6 font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            aria-expanded={showFilters}
+            onClick={() => setShowFilters((prev) => !prev)}
+            className={`flex h-14 items-center justify-center gap-2 rounded-2xl border px-6 font-semibold shadow-sm transition ${
+              showFilters
+                ? "border-purple-300 bg-purple-50 text-purple-700 dark:border-purple-500/40 dark:bg-purple-500/10 dark:text-purple-300"
+                : "border-zinc-200/70 bg-white/85 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            }`}
           >
             <svg
               className="h-5 w-5"
@@ -332,20 +365,56 @@ function ExploreContent() {
           </button>
         </div>
 
+        {showFilters && (
+          <div className="flex flex-col gap-4 rounded-2xl border border-zinc-200/70 bg-white/85 p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70 sm:flex-row sm:items-center sm:justify-between">
+            <label className="flex items-center gap-3">
+              <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+                {t(dict, "explore.sort.label", "排序")}
+              </span>
+              <select
+                value={sortKey}
+                onChange={(e) => setSortKey(e.target.value)}
+                className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-900 outline-none transition focus:border-purple-400 focus:ring-2 focus:ring-purple-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:ring-purple-500/20"
+              >
+                {SORT_OPTIONS.map((opt) => (
+                  <option key={opt.key} value={opt.key}>
+                    {t(dict, `explore.sort.${opt.key}`, opt.key)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="flex cursor-pointer items-center gap-2 text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+              <input
+                type="checkbox"
+                checked={includeFull}
+                onChange={(e) => setIncludeFull(e.target.checked)}
+                className="h-4 w-4 rounded border-zinc-300"
+              />
+              {t(dict, "explore.filter.includeFull", "顯示已滿房間")}
+            </label>
+          </div>
+        )}
+
         <div className="flex flex-wrap gap-3">
-          {categoryKeys.map((key, index) => (
-            <button
-              key={key}
-              type="button"
-              className={`rounded-full px-5 py-2 text-sm font-semibold shadow-sm transition ${
-                index === 0
-                  ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-purple-500/20"
-                  : "border border-zinc-200/70 bg-white/85 text-zinc-600 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-300 dark:hover:bg-zinc-800"
-              }`}
-            >
-              {t(dict, `explore.categories.${key}`, key)}
-            </button>
-          ))}
+          {categoryKeys.map((key) => {
+            const isActive = selectedCategory === key;
+            return (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={isActive}
+                onClick={() => setSelectedCategory(key)}
+                className={`rounded-full px-5 py-2 text-sm font-semibold shadow-sm transition ${
+                  isActive
+                    ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-purple-500/20"
+                    : "border border-zinc-200/70 bg-white/85 text-zinc-600 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                }`}
+              >
+                {t(dict, `explore.categories.${key}`, key)}
+              </button>
+            );
+          })}
         </div>
       </section>
 

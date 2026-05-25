@@ -1,5 +1,24 @@
 import { expect, describe, test } from "bun:test";
-import { computeDisplayStatus, formatRoomDetails, formatMember } from "../../src/routes/v1/rooms";
+import { computeDisplayStatus, formatRoomDetails, formatMember, roleFilterClause } from "../../src/routes/v1/rooms";
+
+describe("roleFilterClause", () => {
+  test("returns empty clause and valid when role is undefined", () => {
+    expect(roleFilterClause(undefined)).toEqual({ clause: "", valid: true });
+  });
+
+  test("returns creator equality clause for owner", () => {
+    expect(roleFilterClause("owner")).toEqual({ clause: "AND r.creator_id = ?", valid: true });
+  });
+
+  test("returns creator inequality clause for member", () => {
+    expect(roleFilterClause("member")).toEqual({ clause: "AND r.creator_id <> ?", valid: true });
+  });
+
+  test("flags unknown role as invalid", () => {
+    expect(roleFilterClause("admin")).toEqual({ clause: "", valid: false });
+    expect(roleFilterClause("")).toEqual({ clause: "", valid: false });
+  });
+});
 
 describe("computeDisplayStatus", () => {
   test("returns cancelled when db status is cancelled", () => {

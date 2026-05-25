@@ -11,9 +11,18 @@
     "categories": {
       "all": "All",
       "sports": "Sports",
-      "learning": "Learning",
+      "study": "Study",
       "entertainment": "Entertainment",
       "social": "Social"
+    },
+    "sort": {
+      "label": "Sort",
+      "newest": "Newest",
+      "eventSoon": "Event starting soon",
+      "mostMembers": "Most members"
+    },
+    "filter": {
+      "includeFull": "Show full rooms"
     },
     "status": {
       "pending": "Pending",

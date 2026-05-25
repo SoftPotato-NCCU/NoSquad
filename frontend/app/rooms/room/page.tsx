@@ -316,6 +316,10 @@ function RoomDetailContent() {
 
   const isFull = room.member_count >= room.max_capacity;
   const isPending = !room.is_owner && room.membership_status === "pending";
+  // Once the activity is underway (or finished) leaving no longer makes sense,
+  // so the leave button is hidden for in_progress / ended rooms.
+  const hasStarted =
+    room.room_status === "in_progress" || room.room_status === "ended";
   const canJoin =
     room.room_status === "open" &&
     !room.is_member &&
@@ -507,7 +511,7 @@ function RoomDetailContent() {
                 </button>
               )}
 
-              {room.is_member && !room.is_owner && (
+              {room.is_member && !room.is_owner && !hasStarted && (
                 <button
                   type="button"
                   onClick={handleLeave}

@@ -11,6 +11,9 @@ import {
   RoomMember,
   RequestsResponse,
   RoomsResponse,
+  RoomCategory,
+  RoomSortField,
+  SortOrder,
   UpdateRoomRequest,
 } from "../types/rooms";
 
@@ -207,12 +210,20 @@ export async function listRoomHall(params?: {
   cursor?: string;
   include_joined?: boolean;
   include_full?: boolean;
+  category?: RoomCategory | null;
+  q?: string;
+  sort_by?: RoomSortField;
+  order?: SortOrder;
 }): Promise<{ data: RoomHallResponse }> {
   const query = new URLSearchParams();
   if (params?.limit) query.set("limit", String(params.limit));
   if (params?.cursor) query.set("cursor", params.cursor);
   if (params?.include_joined) query.set("include_joined", "true");
   if (params?.include_full) query.set("include_full", "true");
+  if (params?.category) query.set("category", params.category);
+  if (params?.q && params.q.trim()) query.set("q", params.q.trim());
+  if (params?.sort_by) query.set("sort_by", params.sort_by);
+  if (params?.order) query.set("order", params.order);
 
   const endpoint = `/rooms/hall${query.toString() ? `?${query.toString()}` : ""}`;
   return apiFetch<{ data: RoomHallResponse }>(endpoint);

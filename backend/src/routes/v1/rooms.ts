@@ -18,6 +18,16 @@ function toISO(d: Date | string | null): string | null {
   return d instanceof Date ? d.toISOString() : new Date(d).toISOString();
 }
 
+// Validates the optional `role` query param for "my rooms" and returns the SQL
+// fragment used to restrict the listing. Returns `null` when the value is
+// invalid so the caller can emit a 400.
+function roleFilterClause(role: string | undefined): { clause: string; valid: boolean } {
+  if (role === undefined) return { clause: "", valid: true };
+  if (role === "owner") return { clause: "AND r.creator_id = ?", valid: true };
+  if (role === "member") return { clause: "AND r.creator_id <> ?", valid: true };
+  return { clause: "", valid: false };
+}
+
 // Computes frontend-facing status from DB status + event times.
 // Priority: cancelled > ended (by time) > in_progress > recruiting_closed > open
 function computeDisplayStatus(
@@ -114,7 +124,19 @@ rooms.get("/", async (c) => {
   const cursor = c.req.query("cursor");
   const includePending = c.req.query("include_pending") === "true";
 
+  // Optional role filter: "owner" → rooms the user created, "member" → rooms the
+  // user joined but does not own. Omitting it returns both.
+  const role = c.req.query("role");
+  const { clause: roleClause, valid: roleValid } = roleFilterClause(role);
+  if (!roleValid)
+    return apiError(c, 400, "VALIDATION_ERROR", "Invalid role", [
+      { field: "role", issue: "invalid_value", message: "role must be one of: owner, member" },
+    ]);
+
   const params: (string | number)[] = [userId];
+
+  if (roleClause) params.push(userId);
+
   let cursorClause = "";
   if (cursor) {
     cursorClause = "AND r.created_at < ?";
@@ -135,7 +157,7 @@ rooms.get("/", async (c) => {
      FROM rooms r
      LEFT JOIN room_members rm_me ON rm_me.room_id = r.uuid AND rm_me.user_id = ?
      LEFT JOIN room_members rm_all ON rm_all.room_id = r.uuid AND rm_all.approval_status = 'approved'
-     WHERE r.status IN ${ACTIVE_STATUSES} AND rm_me.user_id IS NOT NULL AND ${membershipFilter} ${cursorClause}
+     WHERE r.status IN ${ACTIVE_STATUSES} AND rm_me.user_id IS NOT NULL AND ${membershipFilter} ${roleClause} ${cursorClause}
      GROUP BY r.uuid
      ORDER BY r.created_at DESC
      LIMIT ?`,
@@ -1130,4 +1152,4 @@ rooms.delete("/:room_id", async (c) => {
 });
 
 export default rooms;
-export { toISO, formatMyRoom, formatHallRoom, computeDisplayStatus, formatRoomDetails, formatMember };
+export { toISO, formatMyRoom, formatHallRoom, computeDisplayStatus, formatRoomDetails, formatMember, roleFilterClause };
