@@ -368,10 +368,11 @@ rooms.post("/", async (c) => {
   const location =
     typeof body.location === "string" ? body.location : null;
   const validCategories = ["sports", "study", "entertainment", "social"];
-  const category =
-    typeof body.category === "string" && validCategories.includes(body.category)
-      ? body.category
-      : null;
+  if (body.category !== undefined && (typeof body.category !== "string" || !validCategories.includes(body.category)))
+    return apiError(c, 400, "VALIDATION_ERROR", "Invalid request data", [
+      { field: "category", issue: "invalid_value", message: `category must be one of: ${validCategories.join(", ")}` },
+    ]);
+  const category = typeof body.category === "string" ? body.category : null;
   const eventTime = new Date(body.event_time as string);
   const eventEndTime =
     typeof body.event_end_time === "string"
@@ -526,6 +527,15 @@ rooms.patch("/:room_id", async (c) => {
   if (typeof body.location === "string" || body.location === null) {
     updates.push("location = ?");
     params.push(body.location);
+  }
+  if (body.category !== undefined) {
+    const validCategories = ["sports", "study", "entertainment", "social"];
+    if (body.category !== null && (typeof body.category !== "string" || !validCategories.includes(body.category as string)))
+      return apiError(c, 400, "VALIDATION_ERROR", "Invalid request data", [
+        { field: "category", issue: "invalid_value", message: `category must be one of: ${validCategories.join(", ")}` },
+      ]);
+    updates.push("category = ?");
+    params.push(body.category as string | null);
   }
 
   if (updates.length === 0)
