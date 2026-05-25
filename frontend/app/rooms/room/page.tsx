@@ -94,7 +94,7 @@ function RoomDetailContent() {
   const [waitlist, setWaitlist] = useState<RoomMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"members" | "requests" | "waitlist">("members");
+  const [activeTab, setActiveTab] = useState<"members" | "waiting">("members");
   const [isActionLoading, setIsActionLoading] = useState(false);
 
   const fetchRoomData = async () => {
@@ -383,6 +383,41 @@ function RoomDetailContent() {
     ? [ownerFallback, ...approvedMembersFromApi]
     : approvedMembersFromApi;
 
+  // Owners see a single "waiting to join" queue that merges two underlying
+  // reasons: pending approval requests and waitlist entries (room was full).
+  // The reason is shown as a badge; the admit action routes to the right
+  // backend call. Both require a free slot, so the admit button is disabled
+  // when the room is full.
+  const waitingEntries: {
+    user_id: string;
+    name: string;
+    username: string;
+    kind: "pending" | "waitlisted";
+  }[] = [
+    ...requests.map((r) => ({
+      user_id: r.user_id,
+      name: r.name,
+      username: r.username,
+      kind: "pending" as const,
+    })),
+    ...waitlist.map((w) => ({
+      user_id: w.user_id,
+      name: w.name,
+      username: w.username,
+      kind: "waitlisted" as const,
+    })),
+  ];
+
+  const handleAdmit = (entry: { user_id: string; kind: "pending" | "waitlisted" }) =>
+    entry.kind === "pending"
+      ? handleApprove(entry.user_id)
+      : handlePromote(entry.user_id);
+
+  const handleDecline = (entry: { user_id: string; kind: "pending" | "waitlisted" }) =>
+    entry.kind === "pending"
+      ? handleReject(entry.user_id)
+      : handleRemoveMember(entry.user_id);
+
   const displayOwner = owner || ownerFallback;
 
   return (
@@ -589,40 +624,27 @@ function RoomDetailContent() {
               {room.is_owner && (
                 <button
                   type="button"
-                  onClick={() => setActiveTab("requests")}
+                  onClick={() => setActiveTab("waiting")}
                   className={`rounded-full px-5 py-2 text-sm font-semibold transition ${
-                    activeTab === "requests"
+                    activeTab === "waiting"
                       ? "bg-white text-purple-600 shadow-sm dark:bg-zinc-900 dark:text-purple-300"
                       : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
                   }`}
                 >
-                  申請 ({requests.length})
-                </button>
-              )}
-
-              {room.is_owner && (
-                <button
-                  type="button"
-                  onClick={() => setActiveTab("waitlist")}
-                  className={`rounded-full px-5 py-2 text-sm font-semibold transition ${
-                    activeTab === "waitlist"
-                      ? "bg-white text-purple-600 shadow-sm dark:bg-zinc-900 dark:text-purple-300"
-                      : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-                  }`}
-                >
-                  候補 ({waitlist.length})
+                  等待加入 ({waitingEntries.length})
                 </button>
               )}
             </div>
 
-            {activeTab === "requests" && room.is_owner && requests.length > 0 && (
+            {activeTab === "waiting" && room.is_owner && requests.length > 0 && (
               <button
                 type="button"
                 onClick={handleApproveAll}
-                disabled={isActionLoading}
+                disabled={isActionLoading || isFull}
+                title={isFull ? "房間已滿，需先有名額" : undefined}
                 className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-md shadow-purple-500/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isActionLoading ? "處理中..." : "全部批准"}
+                {isActionLoading ? "處理中..." : "批准所有申請"}
               </button>
             )}
           </div>
@@ -678,114 +700,80 @@ function RoomDetailContent() {
             </div>
           )}
 
-          {activeTab === "requests" && room.is_owner && (
+          {activeTab === "waiting" && room.is_owner && (
             <div className="space-y-3">
-              {requests.length === 0 && (
+              {waitingEntries.length === 0 && (
                 <div className="rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-5 text-zinc-500 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-400">
-                  目前沒有待審核申請。
+                  目前沒有等待加入的人。需審核的申請與滿房後的候補都會出現在這裡。
                 </div>
               )}
 
-              {requests.map((request) => (
-                <div
-                  key={request.user_id}
-                  className="flex items-center justify-between gap-4 rounded-2xl border border-zinc-200/70 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-orange-100 font-bold text-orange-600 dark:bg-orange-500/15 dark:text-orange-300">
-                      {request.name[0]?.toUpperCase() || "U"}
-                    </div>
-
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold text-zinc-950 dark:text-zinc-50">
-                        {request.name}
-                      </p>
-                      <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
-                        @{request.username}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleApprove(request.user_id)}
-                      disabled={isActionLoading}
-                      className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-purple-500/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      批准
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleReject(request.user_id)}
-                      disabled={isActionLoading}
-                      className="rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                    >
-                      拒絕
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {activeTab === "waitlist" && room.is_owner && (
-            <div className="space-y-3">
-              {waitlist.length === 0 && (
-                <div className="rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-5 text-zinc-500 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-400">
-                  目前沒有候補名單。房間滿了之後，新加入者會排到這裡。
-                </div>
-              )}
-
-              {waitlist.length > 0 && (
-                <p className="px-1 text-sm text-zinc-500 dark:text-zinc-400">
-                  依登記時間排序。有名額時可手動遞補（房間已滿時遞補會失敗）。
+              {isFull && waitingEntries.length > 0 && (
+                <p className="px-1 text-sm text-amber-600 dark:text-amber-400">
+                  房間目前已滿，需先有名額（移除成員或有人離開）才能讓人加入。
                 </p>
               )}
 
-              {waitlist.map((entry, index) => (
-                <div
-                  key={entry.user_id}
-                  className="flex items-center justify-between gap-4 rounded-2xl border border-zinc-200/70 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-100 font-bold text-amber-600 dark:bg-amber-500/15 dark:text-amber-300">
-                      {index + 1}
+              {waitingEntries.map((entry) => {
+                const isWaitlistKind = entry.kind === "waitlisted";
+                return (
+                  <div
+                    key={`${entry.kind}-${entry.user_id}`}
+                    className="flex items-center justify-between gap-4 rounded-2xl border border-zinc-200/70 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
+                  >
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div
+                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full font-bold ${
+                          isWaitlistKind
+                            ? "bg-amber-100 text-amber-600 dark:bg-amber-500/15 dark:text-amber-300"
+                            : "bg-orange-100 text-orange-600 dark:bg-orange-500/15 dark:text-orange-300"
+                        }`}
+                      >
+                        {entry.name[0]?.toUpperCase() || "U"}
+                      </div>
+
+                      <div className="min-w-0">
+                        <p className="truncate font-semibold text-zinc-950 dark:text-zinc-50">
+                          {entry.name}
+                          <span
+                            className={`ml-2 rounded-full px-2 py-0.5 align-middle text-xs font-semibold ${
+                              isWaitlistKind
+                                ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+                                : "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300"
+                            }`}
+                          >
+                            {isWaitlistKind ? "候補" : "待審核"}
+                          </span>
+                        </p>
+                        <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
+                          @{entry.username}
+                        </p>
+                      </div>
                     </div>
 
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold text-zinc-950 dark:text-zinc-50">
-                        {entry.name}
-                      </p>
-                      <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
-                        @{entry.username}
-                      </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleAdmit(entry)}
+                        disabled={isActionLoading || isFull}
+                        title={isFull ? "房間已滿，需先有名額" : undefined}
+                        className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-purple-500/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        批准加入
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleDecline(entry)}
+                        disabled={isActionLoading}
+                        className="rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                      >
+                        {isWaitlistKind ? "移除" : "拒絕"}
+                      </button>
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handlePromote(entry.user_id)}
-                      disabled={isActionLoading || isFull}
-                      title={isFull ? "房間已滿，需先有名額" : undefined}
-                      className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-purple-500/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      遞補
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveMember(entry.user_id)}
-                      disabled={isActionLoading}
-                      className="rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                    >
-                      移除
-                    </button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
