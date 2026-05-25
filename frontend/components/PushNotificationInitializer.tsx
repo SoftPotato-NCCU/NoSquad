@@ -9,13 +9,26 @@ export default function PushNotificationInitializer() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
 
+  // Handle deep link navigation when app was launched from a closed state.
+  // iOS PWA ignores URLs passed to clients.openWindow(), so the SW encodes
+  // the target as /?navigate=<path> and we redirect here on startup.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const navigateTo = params.get("navigate");
+    if (navigateTo) {
+      console.log("[PUSH] Cold-start navigation to:", navigateTo);
+      router.replace(navigateTo);
+    }
+  }, [router]);
+
   // Listen for navigation messages from service worker
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const handleServiceWorkerMessage = (event: MessageEvent) => {
       if (event.data?.type === "NAVIGATE_TO") {
-        const path = event.data?.path;
+        const path = event.data?.navigation;
         if (path) {
           console.log("[PUSH] Navigating to:", path);
           router.push(path);
