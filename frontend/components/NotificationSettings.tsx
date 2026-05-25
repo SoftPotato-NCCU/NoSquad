@@ -2,12 +2,21 @@
 
 import { useState, useRef, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
+import { requestNotificationPermission } from "@/lib/push-notifications";
 
 export default function NotificationSettings() {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>("default");
   const [lastStatus, setLastStatus] = useState<"success" | "error" | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Check permission status on mount
+  useEffect(() => {
+    if ("Notification" in window) {
+      setPermissionStatus(Notification.permission);
+    }
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -24,6 +33,35 @@ export default function NotificationSettings() {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [isOpen]);
+
+  const handleRequestPermission = async () => {
+    setIsLoading(true);
+    try {
+      const permission = await requestNotificationPermission();
+      console.log("[PUSH] Permission result:", permission);
+      setPermissionStatus(permission);
+
+      if (permission === "granted") {
+        setLastStatus("success");
+        setTimeout(() => {
+          setLastStatus(null);
+        }, 2000);
+      } else {
+        setLastStatus("error");
+        setTimeout(() => {
+          setLastStatus(null);
+        }, 2000);
+      }
+    } catch (error) {
+      console.error("[PUSH] Failed to request permission:", error);
+      setLastStatus("error");
+      setTimeout(() => {
+        setLastStatus(null);
+      }, 2000);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleTestNotification = async () => {
     setIsLoading(true);
@@ -98,14 +136,42 @@ export default function NotificationSettings() {
 
       {isOpen && (
         <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-2xl border border-zinc-200/70 bg-white shadow-lg dark:border-zinc-800 dark:bg-zinc-900">
-          <button
-            type="button"
-            onClick={handleTestNotification}
-            disabled={isLoading}
-            className="w-full px-4 py-3 text-left text-sm font-medium text-zinc-700 hover:bg-zinc-50 first:rounded-t-2xl last:rounded-b-2xl disabled:opacity-50 disabled:cursor-not-allowed transition dark:text-zinc-200 dark:hover:bg-zinc-800"
-          >
-            {isLoading ? "發送中..." : "📬 要求測試推播通知"}
-          </button>
+          {permissionStatus !== "granted" && (
+            <button
+              type="button"
+              onClick={handleRequestPermission}
+              disabled={isLoading || permissionStatus === "denied"}
+              className="w-full px-4 py-3 text-left text-sm font-medium text-blue-600 hover:bg-blue-50 first:rounded-t-2xl disabled:opacity-50 disabled:cursor-not-allowed transition dark:text-blue-400 dark:hover:bg-blue-500/10"
+              title={
+                permissionStatus === "denied"
+                  ? "Permission denied by browser. Check browser settings to enable notifications."
+                  : ""
+              }
+            >
+              {isLoading
+                ? "請求中..."
+                : permissionStatus === "denied"
+                  ? "✗ 權限已拒絕"
+                  : "🔔 要求通知權限"}
+            </button>
+          )}
+
+          {permissionStatus === "granted" && (
+            <button
+              type="button"
+              onClick={handleTestNotification}
+              disabled={isLoading}
+              className="w-full px-4 py-3 text-left text-sm font-medium text-zinc-700 hover:bg-zinc-50 first:rounded-t-2xl last:rounded-b-2xl disabled:opacity-50 disabled:cursor-not-allowed transition dark:text-zinc-200 dark:hover:bg-zinc-800"
+            >
+              {isLoading ? "發送中..." : "📬 要求測試推播通知"}
+            </button>
+          )}
+
+          {permissionStatus === "denied" && (
+            <div className="px-4 py-3 text-xs text-red-600 dark:text-red-400 rounded-b-2xl last:rounded-b-2xl">
+              在瀏覽器設定中啟用通知權限
+            </div>
+          )}
         </div>
       )}
     </div>
