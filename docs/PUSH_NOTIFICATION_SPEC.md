@@ -273,21 +273,29 @@ When a notification is received:
 When user clicks the notification:
 
 1. Notification is closed
-2. If `data.path` provided:
-   - App window is focused (or opened)
-   - Frontend receives message to navigate to `path`
-3. If no `path`:
-   - App window is focused (or home page opened)
+2. `data.path` extracted (falls back to `/` if absent)
+3. Path converted to an absolute URL (required for iOS WebKit)
+4. Window priority:
+   - **Foreground (visible):** focus + send `NAVIGATE_TO` message
+   - **Background (hidden):** focus + send `NAVIGATE_TO` message
+   - **Closed:** open new window to absolute URL
 
 **Navigation flow:**
 ```
 User clicks notification
     ↓
-Service Worker extracts data.path
+Service Worker extracts event.notification.data.path || "/"
     ↓
-Is app window already open?
-    ├─ YES: Focus window + send NAVIGATE_TO message
-    └─ NO: Open new window to path
+new URL(targetPath, self.location.origin) → absolute targetUrl
+    ↓
+clients.matchAll({ type: "window", includeUncontrolled: true })
+    ↓
+Foreground window (visibilityState === "visible")?
+    ├─ YES: postMessage NAVIGATE_TO + focus
+    └─ NO ↓
+Background window ("focus" in client)?
+    ├─ YES: postMessage NAVIGATE_TO + focus
+    └─ NO: clients.openWindow(targetUrl)
     ↓
 Frontend router navigates to path
 ```
@@ -386,7 +394,7 @@ The frontend automatically listens for navigation messages from the Service Work
 // Happens in PushNotificationInitializer component
 navigator.serviceWorker.addEventListener("message", (event) => {
   if (event.data?.type === "NAVIGATE_TO") {
-    router.push(event.data.path);
+    router.push(event.data.navigation);
   }
 });
 ```
