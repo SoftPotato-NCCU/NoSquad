@@ -3,7 +3,7 @@ import { pool } from '../db/connection';
 import webpush from 'web-push';
 
 webpush.setVapidDetails(
-  `mailto:${process.env.VAPID_EMAIL || 'noreply@nosquad.local'}`,
+  `mailto:${process.env.VAPID_EMAIL || 'mail@example.com'}`,
   process.env.VAPID_PUBLIC_KEY || '',
   process.env.VAPID_PRIVATE_KEY || '',
 );

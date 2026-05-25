@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { initializePushNotifications } from "@/lib/push-notifications";
@@ -8,7 +8,6 @@ import { initializePushNotifications } from "@/lib/push-notifications";
 export default function PushNotificationInitializer() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
-  const initializationAttempted = useRef(false);
 
   // Listen for navigation messages from service worker
   useEffect(() => {
@@ -31,19 +30,12 @@ export default function PushNotificationInitializer() {
     };
   }, [router]);
 
+  // Re-subscribe on every cold start for the logged-in user.
+  // Keyed on user.id so it runs once per login session.
+  // Subscription upsert on the backend makes this idempotent.
   useEffect(() => {
-    console.log("[PUSH] Initializer: isLoading=", isLoading, "user=", user?.id, "attempted=", initializationAttempted.current);
+    if (isLoading || !user) return;
 
-    if (isLoading || initializationAttempted.current) {
-      return;
-    }
-
-    if (!user) {
-      console.log("[PUSH] Initializer: No user, skipping push initialization");
-      return;
-    }
-
-    initializationAttempted.current = true;
     console.log("[PUSH] Initializer: Starting push notification initialization for user", user.id);
 
     initializePushNotifications()
@@ -53,7 +45,7 @@ export default function PushNotificationInitializer() {
       .catch((error) => {
         console.error("[PUSH] Initializer: Failed to initialize push notifications:", error);
       });
-  }, [user, isLoading]);
+  }, [user?.id, isLoading]);
 
   return null;
 }
