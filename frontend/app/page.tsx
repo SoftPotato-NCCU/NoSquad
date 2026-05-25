@@ -10,7 +10,6 @@ import Link from "next/link";
 import Image from "next/image";
 import RoomCard from "@/components/RoomCard";
 import StatCard from "@/components/StatCard";
-import { requestNotificationPermission } from "@/lib/push-notifications";
 
 function formatRoomDate(value: string | null) {
   if (!value) return "時間尚未設定";
@@ -262,9 +261,16 @@ function AuthenticatedHome({
 function UnauthenticatedHome({ dict }: { dict: Record<string, unknown> }) {
   const router = useRouter();
 
-  const handleLoginClick = async () => {
-    await requestNotificationPermission().catch(() => {});
-    router.push("/auth/login");
+  const handleLoginClick = () => {
+    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+      // Call requestPermission synchronously from the click handler so iOS
+      // treats it as user-initiated. Navigate after the dialog resolves.
+      Notification.requestPermission().finally(() => {
+        router.push("/auth/login");
+      });
+    } else {
+      router.push("/auth/login");
+    }
   };
 
   return (
