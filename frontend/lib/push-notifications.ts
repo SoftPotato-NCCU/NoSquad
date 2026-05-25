@@ -16,9 +16,22 @@ export function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
 }
 
 export async function getVapidPublicKey(): Promise<string> {
-  const response = await fetch(`${API_BASE}/api/v1/push/vapid_public_key`);
+  const response = await fetch(`${API_BASE}/api/v1/push/vapid-public-key`);
   const data = await response.json();
-  return data.public_key;
+  return data.vapidPublicKey;
+}
+
+export async function requestNotificationPermission(): Promise<NotificationPermission> {
+  if (!("Notification" in window)) {
+    console.warn("Notifications are not supported in this browser");
+    return "denied";
+  }
+
+  if (Notification.permission === "granted" || Notification.permission === "denied") {
+    return Notification.permission;
+  }
+
+  return await Notification.requestPermission();
 }
 
 export async function subscribeToPush(): Promise<PushSubscription | null> {
@@ -46,11 +59,11 @@ export async function subscribeToPush(): Promise<PushSubscription | null> {
 
     const serializedSub = JSON.parse(JSON.stringify(subscription));
 
-    await apiFetch("/push/subscribe/", {
+    await apiFetch("/push/subscribe", {
       method: "POST",
       body: JSON.stringify({
-        platform: "web",
-        pushSubscription: serializedSub,
+        endpoint: serializedSub.endpoint,
+        keys: serializedSub.keys,
       }),
     });
 
@@ -85,6 +98,39 @@ export async function isSubscribed(): Promise<boolean> {
     const subscription = await registration.pushManager.getSubscription();
     return subscription !== null;
   } catch {
+    return false;
+  }
+}
+
+export async function initializePushNotifications(): Promise<boolean> {
+  try {
+    const supported = await isPushSupported();
+    if (!supported) {
+      console.log("Push notifications not supported");
+      return false;
+    }
+
+    const permission = await requestNotificationPermission();
+    if (permission !== "granted") {
+      console.log("Notification permission not granted");
+      return false;
+    }
+
+    const alreadySubscribed = await isSubscribed();
+    if (alreadySubscribed) {
+      console.log("Already subscribed to push notifications");
+      return true;
+    }
+
+    const subscription = await subscribeToPush();
+    if (subscription) {
+      console.log("Successfully subscribed to push notifications");
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    console.error("Failed to initialize push notifications:", error);
     return false;
   }
 }

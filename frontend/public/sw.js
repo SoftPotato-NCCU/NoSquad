@@ -19,6 +19,16 @@ self.addEventListener("fetch", (event) => {
 
 self.addEventListener("push", (event) => {
   const data = event.data ? event.data.json() : {};
+  const isSilent = data.silent === true;
+
+  if (isSilent) {
+    // Silent notification - process data without showing UI
+    console.log("[PUSH] Silent notification received:", data);
+    event.waitUntil(Promise.resolve());
+    return;
+  }
+
+  // Show visual notification
   const title = data.title || "NoSquad";
   const options = {
     body: data.body || "",
@@ -33,14 +43,24 @@ self.addEventListener("push", (event) => {
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+
+  // Get target path from notification data
+  const targetPath = event.notification.data?.path || "/";
+  const targetUrl = new URL(targetPath, self.location.origin).href;
+
   event.waitUntil(
     clients.matchAll({ type: "window" }).then((clientList) => {
+      // Try to focus existing window
       for (const client of clientList) {
-        if (client.url === "/" && "focus" in client) {
-          return client.focus();
+        if ("focus" in client) {
+          client.focus();
+          // Navigate to target path
+          client.postMessage({ type: "NAVIGATE_TO", path: targetPath });
+          return;
         }
       }
-      return clients.openWindow("/");
+      // No window found, open new one with target path
+      return clients.openWindow(targetUrl);
     })
   );
 });

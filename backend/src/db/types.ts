@@ -44,3 +44,14 @@ export interface UserTokenRow {
   expires_at: Date | null;
   revoked_at: Date | null;
 }
+
+export interface PushSubscriptionRow {
+  uuid: string;
+  user_id: string;
+  endpoint: string;
+  platform: "web" | "fcm" | "apns";
+  p256dh: string | null;
+  auth: string | null;
+  created_at: Date;
+  updated_at: Date;
+}
