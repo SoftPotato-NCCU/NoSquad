@@ -508,7 +508,7 @@ function RoomDetailContent() {
                 </button>
               )}
 
-{room.is_member && !room.is_owner && (
+              {room.is_member && !room.is_owner && (
                 <button
                   type="button"
                   onClick={handleLeave}
