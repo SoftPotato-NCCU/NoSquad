@@ -24,11 +24,13 @@ export interface BaseRoom {
 export interface MyRoom extends BaseRoom {
   event_time: string | null;
   event_end_time: string | null;
+  location: string | null;
   is_owner: boolean;
   membership_status: MembershipStatus;
 }
 
 export interface HallRoom extends BaseRoom {
+  location: string | null;
   is_joined: boolean;
   is_full: boolean;
 }
