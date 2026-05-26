@@ -15,6 +15,15 @@ interface ChatMessage {
   timestamp: Date;
 }
 
+interface StoredMessage {
+  id: string;
+  text: string;
+  senderName: string;
+  senderInitial: string;
+  isMine: boolean;
+  timestamp: string;
+}
+
 function formatTime(date: Date) {
   return date.toLocaleTimeString("zh-TW", {
     hour: "2-digit",
@@ -50,6 +59,23 @@ function ChatContent() {
           return;
         }
         setRoom(roomData);
+
+        try {
+          const stored: StoredMessage[] = JSON.parse(
+            localStorage.getItem(`nosquad_chat_messages_${roomId}`) ?? "[]",
+          );
+          const loaded: ChatMessage[] = stored.map((m) => ({
+            ...m,
+            timestamp: new Date(m.timestamp),
+          }));
+          setMessages(loaded);
+          localStorage.setItem(
+            `nosquad_chat_read_${roomId}`,
+            String(stored.length),
+          );
+        } catch {
+          // ignore corrupt storage
+        }
       })
       .catch((e) => {
         setError(e instanceof Error ? e.message : "無法載入房間資訊");
@@ -62,7 +88,7 @@ function ChatContent() {
   }, [messages]);
 
   const sendMessage = () => {
-    if (!input.trim() || !user || isSending) return;
+    if (!input.trim() || !user || isSending || !roomId) return;
 
     const text = input.trim();
     setInput("");
@@ -77,7 +103,23 @@ function ChatContent() {
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, msg]);
+    setMessages((prev) => {
+      const next = [...prev, msg];
+      try {
+        const toStore: StoredMessage[] = next.map((m) => ({
+          ...m,
+          timestamp: m.timestamp.toISOString(),
+        }));
+        localStorage.setItem(
+          `nosquad_chat_messages_${roomId}`,
+          JSON.stringify(toStore),
+        );
+        localStorage.setItem(`nosquad_chat_read_${roomId}`, String(next.length));
+      } catch {
+        // ignore storage errors
+      }
+      return next;
+    });
     setIsSending(false);
 
     setTimeout(() => inputRef.current?.focus(), 0);
@@ -92,14 +134,13 @@ function ChatContent() {
 
   const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
-    // auto-resize
     e.target.style.height = "auto";
     e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
   };
 
   if (authLoading || isLoading) {
     return (
-      <div className="-m-4 md:-m-8 flex flex-col h-[calc(100dvh-4rem)] md:h-[calc(100dvh-5rem)]">
+      <div className="flex flex-col h-full">
         <div className="flex-1 flex items-center justify-center">
           <div className="animate-spin w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full" />
         </div>
@@ -114,11 +155,11 @@ function ChatContent() {
 
   if (error || !room) {
     return (
-      <div className="-m-4 md:-m-8 flex flex-col h-[calc(100dvh-4rem)] md:h-[calc(100dvh-5rem)]">
+      <div className="flex flex-col h-full">
         <div className="flex items-center gap-3 px-4 py-3 border-b border-zinc-200/70 dark:border-zinc-800 bg-white/85 dark:bg-zinc-900/70 backdrop-blur shrink-0">
           <button
             type="button"
-            onClick={() => router.back()}
+            onClick={() => router.push(`/rooms/room?room_id=${roomId}`)}
             className="flex items-center justify-center w-9 h-9 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-zinc-600 dark:text-zinc-300"
           >
             <svg
@@ -149,7 +190,7 @@ function ChatContent() {
   }
 
   return (
-    <div className="-m-4 md:-m-8 flex flex-col h-[calc(100dvh-4rem)] md:h-[calc(100dvh-5rem)]">
+    <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 py-3 border-b border-zinc-200/70 dark:border-zinc-800 bg-white/85 dark:bg-zinc-900/70 backdrop-blur shrink-0">
         <button
@@ -222,7 +263,7 @@ function ChatContent() {
       </div>
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-zinc-50/60 dark:bg-zinc-950/60">
+      <div className="scrollbar-hide min-h-0 flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-zinc-50/60 dark:bg-zinc-950/60">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-3 text-zinc-400 dark:text-zinc-500 select-none">
             <div className="flex items-center justify-center w-16 h-16 rounded-full bg-zinc-100 dark:bg-zinc-800">
@@ -286,8 +327,8 @@ function ChatContent() {
 
       {/* Input area */}
       <div className="shrink-0 border-t border-zinc-200/70 dark:border-zinc-800 bg-white/85 dark:bg-zinc-900/70 backdrop-blur px-4 py-3">
-        <div className="flex items-end gap-2 max-w-3xl mx-auto">
-          <div className="flex-1 min-w-0 rounded-2xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-4 py-2.5 focus-within:border-purple-400 dark:focus-within:border-purple-500 transition-colors">
+        <div className="flex items-end gap-3 max-w-2xl mx-auto">
+          <div className="flex-1 min-w-0 rounded-3xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-4 py-2.5 focus-within:border-purple-400 dark:focus-within:border-purple-500 transition-colors">
             <textarea
               ref={inputRef}
               value={input}
@@ -304,7 +345,7 @@ function ChatContent() {
             type="button"
             onClick={sendMessage}
             disabled={!input.trim() || isSending}
-            className="flex shrink-0 items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 text-white shadow-md shadow-purple-500/20 transition hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex shrink-0 items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-purple-600 to-blue-600 text-white shadow-md shadow-purple-500/20 transition hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <svg
               className="w-4 h-4 translate-x-0.5"
@@ -324,7 +365,7 @@ export default function ChatPage() {
   return (
     <Suspense
       fallback={
-        <div className="-m-4 md:-m-8 flex items-center justify-center h-[calc(100dvh-4rem)] md:h-[calc(100dvh-5rem)]">
+        <div className="-m-4 md:-m-8 flex items-center justify-center h-full">
           <div className="animate-spin w-8 h-8 border-2 border-purple-600 border-t-transparent rounded-full" />
         </div>
       }
