@@ -508,30 +508,7 @@ function RoomDetailContent() {
                 </button>
               )}
 
-              {canViewMembers && (
-                <button
-                  type="button"
-                  onClick={() => router.push(`/rooms/chat?room_id=${roomId}`)}
-                  className="flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-6 py-3 text-sm font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
-                >
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                    />
-                  </svg>
-                  群聊
-                </button>
-              )}
-
-              {room.is_member && !room.is_owner && (
+{room.is_member && !room.is_owner && (
                 <button
                   type="button"
                   onClick={handleLeave}
