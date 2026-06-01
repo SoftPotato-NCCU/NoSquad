@@ -7,7 +7,7 @@ import { useRooms } from "@/lib/rooms-context";
 import { useDictionary, t } from "@/lib/i18n/useDictionary";
 import { type Lang, supported } from "@/lib/i18n/useLang";
 import { langConfigs } from "@/lib/i18n/langConfig";
-import { logout, clearToken } from "@/lib/api";
+import { logout, clearToken, getMyPoints } from "@/lib/api";
 import StatCard from "@/components/StatCard";
 import ProfileInfoRow from "@/components/ProfileInfoRow";
 import NotificationSettings from "@/components/NotificationSettings";
@@ -54,7 +54,10 @@ function SettingSelect({ value, options, onChange }: {
             <button
               key={opt.value}
               type="button"
-              onClick={() => { onChange(opt.value); setOpen(false); }}
+              onClick={() => {
+                onChange(opt.value);
+                setOpen(false);
+              }}
               className={`flex w-full items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-colors ${
                 value === opt.value
                   ? "bg-purple-50 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300"
@@ -87,6 +90,9 @@ function ProfileContent() {
     fetchRooms,
   } = useRooms();
 
+  const [myPoints, setMyPoints] = useState<number | null>(null);
+  const [isLoadingPoints, setIsLoadingPoints] = useState(false);
+
   useEffect(() => {
     if (!authLoading && !user) {
       router.push("/auth/login");
@@ -97,6 +103,39 @@ function ProfileContent() {
     if (!user) return;
     fetchRooms(true);
   }, [user, fetchRooms]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    let ignore = false;
+
+    const fetchPoints = async () => {
+      try {
+        setIsLoadingPoints(true);
+        const result = await getMyPoints();
+
+        if (!ignore) {
+          setMyPoints(result.data.points);
+        }
+      } catch (error) {
+        console.error("Failed to load user points:", error);
+
+        if (!ignore) {
+          setMyPoints(null);
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoadingPoints(false);
+        }
+      }
+    };
+
+    fetchPoints();
+
+    return () => {
+      ignore = true;
+    };
+  }, [user]);
 
   const [lang, setLang] = useState<Lang>("en");
   const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
@@ -109,6 +148,7 @@ function ProfileContent() {
       const browser = navigator.language?.slice(0, 2) as Lang | undefined;
       if (browser && (supported as readonly string[]).includes(browser)) setLang(browser);
     }
+
     const storedTheme = localStorage.getItem("theme") as "light" | "dark" | "system" | null;
     setTheme(storedTheme || "system");
   }, []);
@@ -122,9 +162,11 @@ function ProfileContent() {
   const switchTheme = (next: "light" | "dark" | "system") => {
     setTheme(next);
     localStorage.setItem("theme", next);
+
     const isDark = next === "system"
       ? window.matchMedia("(prefers-color-scheme: dark)").matches
       : next === "dark";
+
     document.documentElement.classList.toggle("dark", isDark);
   };
 
@@ -162,6 +204,8 @@ function ProfileContent() {
   const createdRoomCount = myRooms.filter((room) => room.is_owner).length;
   const joinedRoomCount = myRooms.filter((room) => !room.is_owner).length;
 
+  const pointValue = isLoadingPoints ? 0 : myPoints ?? 0;
+
   const langOptions: SelectOption[] = supported.map((code) => ({
     value: code,
     label: langConfigs[code]?.nativeName || code,
@@ -169,8 +213,8 @@ function ProfileContent() {
 
   const themeOptions: SelectOption[] = [
     { value: "light", label: t(dict, "profile.settings.themeLight", "Light") },
-    { value: "dark",  label: t(dict, "profile.settings.themeDark",  "Dark")  },
-    { value: "system",label: t(dict, "profile.settings.themeSystem","System")},
+    { value: "dark", label: t(dict, "profile.settings.themeDark", "Dark") },
+    { value: "system", label: t(dict, "profile.settings.themeSystem", "System") },
   ];
 
   return (
@@ -200,7 +244,7 @@ function ProfileContent() {
               @{username}
             </p>
 
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <StatCard
                 label={t(dict, "profile.stats.joinedRooms", "加入房間")}
                 value={isLoadingRooms ? 0 : joinedRoomCount}
@@ -215,6 +259,11 @@ function ProfileContent() {
                 label={t(dict, "profile.stats.friends", "好友")}
                 value={0}
                 tone="green"
+              />
+              <StatCard
+                label="目前點數"
+                value={pointValue}
+                tone="purple"
               />
             </div>
           </div>

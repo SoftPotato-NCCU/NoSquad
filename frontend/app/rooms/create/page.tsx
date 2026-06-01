@@ -3,8 +3,11 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { getMyPoints } from "@/lib/api";
 import { useRooms } from "@/lib/rooms-context";
 import type { RoomCategory } from "@/types/rooms";
+
+const REQUIRED_POINTS_TO_CREATE_ROOM = 8;
 
 const CATEGORY_OPTIONS: { value: RoomCategory; label: string }[] = [
   { value: "sports", label: "運動" },
@@ -23,6 +26,22 @@ type CreateRoomFormData = {
   approvalMode: "auto" | "manual";
 };
 
+function getApiErrorCode(error: unknown): string | null {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "error" in error &&
+    typeof error.error === "object" &&
+    error.error !== null &&
+    "code" in error.error &&
+    typeof error.error.code === "string"
+  ) {
+    return error.error.code;
+  }
+
+  return null;
+}
+
 function CreateRoomContent() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
@@ -38,6 +57,8 @@ function CreateRoomContent() {
     approvalMode: "manual",
   });
 
+  const [myPoints, setMyPoints] = useState<number | null>(null);
+  const [isLoadingPoints, setIsLoadingPoints] = useState(false);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -46,6 +67,37 @@ function CreateRoomContent() {
       router.push("/");
     }
   }, [isLoading, user, router]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    let ignore = false;
+
+    const fetchPoints = async () => {
+      try {
+        setIsLoadingPoints(true);
+        const result = await getMyPoints();
+        if (!ignore) {
+          setMyPoints(result.data.points);
+        }
+      } catch (error) {
+        console.error("Failed to load user points:", error);
+        if (!ignore) {
+          setMyPoints(null);
+        }
+      } finally {
+        if (!ignore) {
+          setIsLoadingPoints(false);
+        }
+      }
+    };
+
+    fetchPoints();
+
+    return () => {
+      ignore = true;
+    };
+  }, [user]);
 
   if (isLoading) {
     return (
@@ -58,6 +110,9 @@ function CreateRoomContent() {
   if (!user) {
     return null;
   }
+
+  const hasEnoughPoints =
+    myPoints === null || myPoints >= REQUIRED_POINTS_TO_CREATE_ROOM;
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -104,6 +159,11 @@ function CreateRoomContent() {
       return;
     }
 
+    if (myPoints !== null && myPoints < REQUIRED_POINTS_TO_CREATE_ROOM) {
+      setError(`點數不足，建立房間需要至少 ${REQUIRED_POINTS_TO_CREATE_ROOM} 點。`);
+      return;
+    }
+
     try {
       setIsSubmitting(true);
       setError("");
@@ -121,7 +181,13 @@ function CreateRoomContent() {
       router.push("/");
     } catch (error) {
       console.error("Create room failed:", error);
-      setError("建立房間失敗，請稍後再試");
+
+      const errorCode = getApiErrorCode(error);
+      if (errorCode === "INSUFFICIENT_POINTS") {
+        setError(`點數不足，建立房間需要至少 ${REQUIRED_POINTS_TO_CREATE_ROOM} 點。`);
+      } else {
+        setError("建立房間失敗，請稍後再試");
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -137,6 +203,33 @@ function CreateRoomContent() {
           設定活動資訊，找到適合一起參與的人。
         </p>
       </div>
+
+      <section
+        className={`rounded-3xl border p-5 shadow-sm ${
+          hasEnoughPoints
+            ? "border-purple-200/70 bg-purple-50/70 text-purple-900 dark:border-purple-500/20 dark:bg-purple-500/10 dark:text-purple-100"
+            : "border-red-200 bg-red-50 text-red-700 dark:border-red-900/60 dark:bg-red-500/10 dark:text-red-300"
+        }`}
+      >
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-bold">
+              建立房間需要 {REQUIRED_POINTS_TO_CREATE_ROOM} 點
+            </p>
+            <p className="mt-1 text-sm opacity-80">
+              點數不足時將無法建立新房間
+            </p>
+          </div>
+
+          <div className="rounded-2xl bg-white/70 px-4 py-3 text-sm font-semibold shadow-sm dark:bg-zinc-950/30">
+            {isLoadingPoints
+              ? "目前點數：載入中..."
+              : myPoints === null
+                ? "目前點數：尚未取得"
+                : `目前點數：${myPoints} 點`}
+          </div>
+        </div>
+      </section>
 
       <form
         onSubmit={handleSubmit}
@@ -319,7 +412,7 @@ function CreateRoomContent() {
 
           <button
             type="submit"
-            disabled={isSubmitting}
+            disabled={isSubmitting || isLoadingPoints || (myPoints !== null && myPoints < REQUIRED_POINTS_TO_CREATE_ROOM)}
             className="h-12 rounded-2xl bg-gradient-to-r from-purple-600 to-blue-600 px-6 font-semibold text-white shadow-lg shadow-purple-500/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSubmitting ? "建立中..." : "建立房間"}

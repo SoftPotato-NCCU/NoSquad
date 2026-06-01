@@ -19,8 +19,27 @@ import {
   openRecruiting,
   listWaitlist,
   promoteFromWaitlist,
+  getMyPoints,
 } from "@/lib/api";
 import type { RoomDetails, RoomMember, JoinRequest } from "@/types/rooms";
+
+const REQUIRED_POINTS_TO_JOIN_ROOM = 3;
+
+function getApiErrorCode(error: unknown): string | null {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "error" in error &&
+    typeof error.error === "object" &&
+    error.error !== null &&
+    "code" in error.error &&
+    typeof error.error.code === "string"
+  ) {
+    return error.error.code;
+  }
+
+  return null;
+}
 
 function formatDate(value: string | null) {
   if (!value) return "尚未設定";
@@ -61,8 +80,13 @@ function getJoinButtonText(
   room: RoomDetails,
   isFull: boolean,
   isActionLoading: boolean,
+  isLoadingPoints: boolean,
+  hasEnoughPoints: boolean,
 ) {
   if (isActionLoading) return "加入中...";
+  if (isLoadingPoints) return "確認點數中...";
+  if (!hasEnoughPoints) return "點數不足";
+
   // A full but still-open room can be joined as a waitlist entry.
   if (isFull && room.room_status === "open") return "加入候補";
   if (isFull) return "房間已滿";
@@ -93,10 +117,25 @@ function RoomDetailContent() {
   const [members, setMembers] = useState<RoomMember[]>([]);
   const [requests, setRequests] = useState<JoinRequest[]>([]);
   const [waitlist, setWaitlist] = useState<RoomMember[]>([]);
+  const [myPoints, setMyPoints] = useState<number | null>(null);
+  const [isLoadingPoints, setIsLoadingPoints] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"members" | "waiting">("members");
   const [isActionLoading, setIsActionLoading] = useState(false);
+
+  const fetchMyPoints = async () => {
+    try {
+      setIsLoadingPoints(true);
+      const result = await getMyPoints();
+      setMyPoints(result.data.points);
+    } catch (error) {
+      console.error("Failed to load user points:", error);
+      setMyPoints(null);
+    } finally {
+      setIsLoadingPoints(false);
+    }
+  };
 
   const fetchRoomData = async () => {
     if (!roomId) {
@@ -153,16 +192,34 @@ function RoomDetailContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, roomId]);
 
+  useEffect(() => {
+    if (user) {
+      fetchMyPoints();
+    }
+  }, [user]);
+
   const handleJoin = async () => {
     if (!roomId) return;
+
+    if (myPoints !== null && myPoints < REQUIRED_POINTS_TO_JOIN_ROOM) {
+      setError(`點數不足，加入房間需要至少 ${REQUIRED_POINTS_TO_JOIN_ROOM} 點`);
+      return;
+    }
 
     setIsActionLoading(true);
     try {
       await joinRoom(roomId);
       await fetchRoomData();
+      await fetchMyPoints();
     } catch (e) {
       console.error("Failed to join room:", e);
-      setError(e instanceof Error ? e.message : "Failed to join room");
+
+      const errorCode = getApiErrorCode(e);
+      if (errorCode === "INSUFFICIENT_POINTS") {
+        setError(`點數不足，加入房間需要至少 ${REQUIRED_POINTS_TO_JOIN_ROOM} 點。`);
+      } else {
+        setError(e instanceof Error ? e.message : "Failed to join room");
+      }
     } finally {
       setIsActionLoading(false);
     }
@@ -342,17 +399,23 @@ function RoomDetailContent() {
   const isFull = room.member_count >= room.max_capacity;
   const isPending = !room.is_owner && room.membership_status === "pending";
   const isWaitlisted = !room.is_owner && room.membership_status === "waitlisted";
+  const hasEnoughPointsToJoin =
+    myPoints === null || myPoints >= REQUIRED_POINTS_TO_JOIN_ROOM;
+
   // Once the activity is underway (or finished) leaving no longer makes sense,
   // so the leave button is hidden for in_progress / ended rooms.
   const hasStarted =
     room.room_status === "in_progress" || room.room_status === "ended";
+
   // A full room is still joinable — the join lands on the waitlist — so being
   // full no longer blocks the button (only non-open / already-in states do).
   const canJoin =
     room.room_status === "open" &&
     !room.is_member &&
     !isPending &&
-    !isWaitlisted;
+    !isWaitlisted &&
+    !isLoadingPoints &&
+    hasEnoughPointsToJoin;
 
   const canViewMembers =
     room.is_owner || room.membership_status === "approved";
@@ -562,6 +625,27 @@ function RoomDetailContent() {
               </p>
             )}
 
+            {!room.is_member && !isPending && !isWaitlisted && (
+              <div
+                className={`mt-5 rounded-2xl border px-4 py-3 text-sm ${
+                  hasEnoughPointsToJoin
+                    ? "border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-500/20 dark:bg-purple-500/10 dark:text-purple-300"
+                    : "border-red-200 bg-red-50 text-red-600 dark:border-red-900/60 dark:bg-red-500/10 dark:text-red-400"
+                }`}
+              >
+                <p className="font-semibold">
+                  加入房間需要 {REQUIRED_POINTS_TO_JOIN_ROOM} 點
+                </p>
+                <p className="mt-1">
+                  {isLoadingPoints
+                    ? "目前點數：載入中..."
+                    : myPoints === null
+                      ? "目前點數：尚未取得"
+                      : `目前點數：${myPoints} 點`}
+                </p>
+              </div>
+            )}
+
             {error && (
               <div className="mt-5 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900/60 dark:bg-red-500/10 dark:text-red-400">
                 {error}
@@ -582,7 +666,13 @@ function RoomDetailContent() {
                   disabled={!canJoin || isActionLoading}
                   className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {getJoinButtonText(room, isFull, isActionLoading)}
+                  {getJoinButtonText(
+                    room,
+                    isFull,
+                    isActionLoading,
+                    isLoadingPoints,
+                    hasEnoughPointsToJoin,
+                  )}
                 </button>
               )}
 

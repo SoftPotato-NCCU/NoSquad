@@ -190,6 +190,10 @@ export async function getMe() {
   }>("/auth/me");
 }
 
+export async function getMyPoints(): Promise<{ data: { points: number } }> {
+  return apiFetch<{ data: { points: number } }>("/users/me/points");
+}
+
 export type { CreateRoomRequest, UpdateRoomRequest } from "../types/rooms";
 
 export async function listMyRooms(params?: {
