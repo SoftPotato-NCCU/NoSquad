@@ -106,7 +106,7 @@ push.post('/test', async (c) => {
     const result = await notifyUser(userId, {
       title: 'Test Push Notification',
       body: 'This is a push notification test',
-      data: { hello: 'world' },
+      data: { hello: 'world', path: '/explore' },
     });
 
     return c.json(

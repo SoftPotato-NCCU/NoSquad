@@ -71,7 +71,7 @@ function roomToActivity(
   return {
     title: room.name,
     time: formatRoomDate(room.created_at),
-    location: room.description || t(dict, "explore.noDescription", "尚未提供活動說明"),
+    location: room.location || t(dict, "explore.noLocation", "尚未設定地點"),
     members: `${room.member_count}/${room.max_capacity}`,
     status: statusLabel,
     statusTone: isPending

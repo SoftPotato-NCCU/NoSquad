@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
@@ -107,8 +108,6 @@ function TopBar() {
             </p>
           </div>
         </div>
-
-        <SettingsMenu variant="inline" />
       </div>
     </header>
   );
@@ -128,6 +127,20 @@ function MobileCreateRoomButton() {
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
+  const pathname = usePathname();
+  const isChatPage = pathname?.startsWith("/rooms/chat");
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handler = () => {
+      const stored = localStorage.getItem("theme");
+      if (!stored || stored === "system") {
+        document.documentElement.classList.toggle("dark", mediaQuery.matches);
+      }
+    };
+    mediaQuery.addEventListener("change", handler);
+    return () => mediaQuery.removeEventListener("change", handler);
+  }, []);
 
   if (isLoading) {
     return <div className="flex flex-col flex-1">{children}</div>;
@@ -150,12 +163,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden pb-16 md:pb-0">
           <TopBar />
 
-          <main className="flex-1 overflow-y-auto p-4 md:p-8">
+          <main className={isChatPage ? "flex-1 overflow-hidden" : "flex-1 overflow-y-auto p-4 md:p-8"}>
             {children}
           </main>
         </div>
 
-        <MobileCreateRoomButton />
+        {!isChatPage && <MobileCreateRoomButton />}
 
         <div className="md:hidden">
           <BottomNav />
