@@ -1,13 +1,80 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useRooms } from "@/lib/rooms-context";
 import { useDictionary, t } from "@/lib/i18n/useDictionary";
+import { type Lang, supported } from "@/lib/i18n/useLang";
+import { langConfigs } from "@/lib/i18n/langConfig";
 import { logout, clearToken } from "@/lib/api";
 import StatCard from "@/components/StatCard";
 import ProfileInfoRow from "@/components/ProfileInfoRow";
+
+type SelectOption = { value: string; label: string };
+
+function SettingSelect({ value, options, onChange }: {
+  value: string;
+  options: SelectOption[];
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const current = options.find((o) => o.value === value);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-2 rounded-xl border border-zinc-200 bg-white px-3.5 py-2 text-sm font-medium text-zinc-800 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700/70"
+      >
+        {current?.label}
+        <svg
+          className={`h-4 w-4 text-zinc-400 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          viewBox="0 0 20 20"
+          fill="currentColor"
+        >
+          <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full z-10 mt-1.5 min-w-full overflow-hidden rounded-xl border border-zinc-200 bg-white py-1 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              className={`flex w-full items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm font-medium transition-colors ${
+                value === opt.value
+                  ? "bg-purple-50 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300"
+                  : "text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              }`}
+            >
+              <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+                {value === opt.value && (
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </span>
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ProfileContent() {
   const router = useRouter();
@@ -29,6 +96,36 @@ function ProfileContent() {
     if (!user) return;
     fetchRooms(true);
   }, [user, fetchRooms]);
+
+  const [lang, setLang] = useState<Lang>("en");
+  const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
+
+  useEffect(() => {
+    const storedLang = localStorage.getItem("lang") as Lang | null;
+    if (storedLang && (supported as readonly string[]).includes(storedLang)) {
+      setLang(storedLang);
+    } else {
+      const browser = navigator.language?.slice(0, 2) as Lang | undefined;
+      if (browser && (supported as readonly string[]).includes(browser)) setLang(browser);
+    }
+    const storedTheme = localStorage.getItem("theme") as "light" | "dark" | "system" | null;
+    setTheme(storedTheme || "system");
+  }, []);
+
+  const switchLang = (next: Lang) => {
+    localStorage.setItem("lang", next);
+    setLang(next);
+    window.location.reload();
+  };
+
+  const switchTheme = (next: "light" | "dark" | "system") => {
+    setTheme(next);
+    localStorage.setItem("theme", next);
+    const isDark = next === "system"
+      ? window.matchMedia("(prefers-color-scheme: dark)").matches
+      : next === "dark";
+    document.documentElement.classList.toggle("dark", isDark);
+  };
 
   const handleLogout = async () => {
     try {
@@ -63,6 +160,17 @@ function ProfileContent() {
 
   const createdRoomCount = myRooms.filter((room) => room.is_owner).length;
   const joinedRoomCount = myRooms.filter((room) => !room.is_owner).length;
+
+  const langOptions: SelectOption[] = supported.map((code) => ({
+    value: code,
+    label: langConfigs[code]?.nativeName || code,
+  }));
+
+  const themeOptions: SelectOption[] = [
+    { value: "light", label: t(dict, "profile.settings.themeLight", "Light") },
+    { value: "dark",  label: t(dict, "profile.settings.themeDark",  "Dark")  },
+    { value: "system",label: t(dict, "profile.settings.themeSystem","System")},
+  ];
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
@@ -176,26 +284,30 @@ function ProfileContent() {
           </div>
 
           <div className="space-y-1">
-            <ProfileInfoRow
-              icon={
+            <div className="flex w-full items-center gap-4 rounded-2xl px-4 py-4 text-zinc-800 dark:text-zinc-100">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-purple-100 text-purple-600 dark:bg-purple-500/15 dark:text-purple-300">
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3a9 9 0 100 18 9 9 0 000-18z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" />
                 </svg>
-              }
-              label={t(dict, "profile.settings.language", "語言設定")}
-              value="繁體中文"
-            />
+              </div>
+              <p className="min-w-0 flex-1 font-semibold">
+                {t(dict, "profile.settings.language", "語言設定")}
+              </p>
+              <SettingSelect value={lang} options={langOptions} onChange={(v) => switchLang(v as Lang)} />
+            </div>
 
-            <ProfileInfoRow
-              icon={
+            <div className="flex w-full items-center gap-4 rounded-2xl px-4 py-4 text-zinc-800 dark:text-zinc-100">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-purple-100 text-purple-600 dark:bg-purple-500/15 dark:text-purple-300">
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.36 6.36l-1.42-1.42M7.06 7.06L5.64 5.64m12.72 0l-1.42 1.42M7.06 16.94l-1.42 1.42M12 8a4 4 0 100 8 4 4 0 000-8z" />
                 </svg>
-              }
-              label={t(dict, "profile.settings.theme", "主題設定")}
-              value="跟隨系統"
-            />
+              </div>
+              <p className="min-w-0 flex-1 font-semibold">
+                {t(dict, "profile.settings.theme", "主題設定")}
+              </p>
+              <SettingSelect value={theme} options={themeOptions} onChange={(v) => switchTheme(v as "light" | "dark" | "system")} />
+            </div>
 
             <ProfileInfoRow
               icon={

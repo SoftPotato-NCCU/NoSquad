@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NoSquad · Issue Board 完成報告</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#1a1d27; --card2:#222634; --line:#2c3142;
+    --txt:#e6e8ee; --muted:#9aa3b2; --green:#34d399; --amber:#fbbf24;
+    --red:#f87171; --blue:#60a5fa; --purple:#a78bfa;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,"Segoe UI","Noto Sans TC",system-ui,sans-serif;
+    background:linear-gradient(160deg,#0f1117,#141826);color:var(--txt);
+    line-height:1.6;padding:32px 20px;min-height:100vh}
+  .wrap{max-width:1100px;margin:0 auto}
+  header{text-align:center;margin-bottom:36px}
+  header h1{font-size:30px;font-weight:800;letter-spacing:-.5px}
+  header h1 .grad{background:linear-gradient(90deg,#a78bfa,#60a5fa);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  header p{color:var(--muted);margin-top:8px;font-size:14px}
+  .branch{display:inline-block;margin-top:14px;font-family:ui-monospace,monospace;
+    font-size:13px;background:var(--card2);border:1px solid var(--line);
+    padding:6px 14px;border-radius:999px;color:var(--blue)}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:28px 0}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:18px;text-align:center}
+  .stat .n{font-size:30px;font-weight:800}
+  .stat .l{font-size:12px;color:var(--muted);margin-top:4px}
+  .n.g{color:var(--green)}.n.a{color:var(--amber)}.n.b{color:var(--blue)}.n.p{color:var(--purple)}
+  section{margin:34px 0}
+  section h2{font-size:18px;font-weight:700;margin-bottom:16px;
+    display:flex;align-items:center;gap:10px}
+  section h2 .bar{width:4px;height:18px;border-radius:2px;
+    background:linear-gradient(180deg,#a78bfa,#60a5fa)}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:760px){.grid,.stats{grid-template-columns:1fr 1fr}}
+  @media(max-width:520px){.grid,.stats{grid-template-columns:1fr}}
+  .issue{background:var(--card);border:1px solid var(--line);border-radius:14px;
+    padding:16px 18px;position:relative;overflow:hidden}
+  .issue::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px}
+  .issue.done::before{background:var(--green)}
+  .issue.partial::before{background:var(--amber)}
+  .issue.skip::before{background:var(--muted)}
+  .issue .id{font-family:ui-monospace,monospace;font-size:12px;color:var(--purple);font-weight:700}
+  .issue .title{font-size:14.5px;font-weight:600;margin:4px 0 8px}
+  .issue .desc{font-size:13px;color:var(--muted)}
+  .tag{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;
+    border-radius:999px;margin-left:8px;vertical-align:middle}
+  .tag.done{background:rgba(52,211,153,.15);color:var(--green)}
+  .tag.partial{background:rgba(251,191,36,.15);color:var(--amber)}
+  .tag.skip{background:rgba(154,163,178,.15);color:var(--muted)}
+  .tag.be{background:rgba(96,165,250,.15);color:var(--blue)}
+  .tag.fe{background:rgba(167,139,250,.15);color:var(--purple)}
+  .verify{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:520px){.verify{grid-template-columns:1fr}}
+  .vcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+  .vcard .t{font-size:13px;color:var(--muted)}
+  .vcard .v{font-size:22px;font-weight:800;color:var(--green);margin-top:6px}
+  .vcard .s{font-size:12px;color:var(--muted);margin-top:4px;font-family:ui-monospace,monospace}
+  table{width:100%;border-collapse:collapse;background:var(--card);
+    border:1px solid var(--line);border-radius:14px;overflow:hidden;font-size:13px}
+  th,td{padding:11px 14px;text-align:left;border-bottom:1px solid var(--line)}
+  th{background:var(--card2);font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}
+  tr:last-child td{border-bottom:none}
+  td code{font-family:ui-monospace,monospace;font-size:12px;color:var(--blue)}
+  .note{background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);
+    border-radius:12px;padding:14px 16px;font-size:13px;color:#fcd96b;margin-top:14px}
+  footer{text-align:center;color:var(--muted);font-size:12px;margin-top:40px;
+    padding-top:20px;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>NoSquad · <span class="grad">Issue Board 完成報告</span></h1>
+    <p>依 GitLab issue board（<code>nccu_se_2026/softpotato/NoSquad</code>）對應並完成 · 2026-05-25</p>
+    <div class="branch">feat/issue-board-completion ← develop</div>
+  </header>
+
+  <div class="stats">
+    <div class="stat"><div class="n g">7</div><div class="l">完成 / 修復</div></div>
+    <div class="stat"><div class="n a">1</div><div class="l">部分完成</div></div>
+    <div class="stat"><div class="n b">75</div><div class="l">測試全通過</div></div>
+    <div class="stat"><div class="n p">11</div><div class="l">檔案變更</div></div>
+  </div>
+
+  <section>
+    <h2><span class="bar"></span>後端（develop · Bun + Hono）</h2>
+    <div class="grid">
+      <div class="issue done">
+        <div class="id">#32 · X-1 <span class="tag be">backend</span><span class="tag done">完成</span></div>
+        <div class="title">API_SPEC：role 參數 / 狀態規則</div>
+        <div class="desc">實作 <code>GET /rooms?role=owner|member</code> 過濾（抽出純函式 <code>roleFilterClause()</code> 並加 4 條單元測試），補進 API_SPEC 查詢參數表。其餘 <code>recruiting_closed</code> / 動態 <code>ended</code> / <code>ROOM_FULL</code> 規則原已記載。</div>
+      </div>
+      <div class="issue done">
+        <div class="id">#33 + #47 · X-2 / X-4 <span class="tag done">完成</span></div>
+        <div class="title">重寫 backend/CHANGELOG.md</div>
+        <div class="desc">補上 Unreleased 區塊（category、hall 篩選/排序、role、招募開關、審核流程、web push），並修正過時且錯誤的內容（原寫 JWT/jose，實際是 opaque token；DELETE 原寫 <code>'closed'</code> 非合法 enum）。</div>
+      </div>
+      <div class="issue done">
+        <div class="id">#35 · B5-2 <span class="tag be">backend</span><span class="tag done">已實作</span></div>
+        <div class="title">POST/PATCH /rooms 支援 category</div>
+        <div class="desc">develop 上 code 早已完成（INSERT/PATCH + enum 驗證 + 三個 format 回傳 category）。本次驗證確認 → 可關閉 issue。</div>
+      </div>
+      <div class="issue done">
+        <div class="id">#46 · X-3 <span class="tag done">已完成</span></div>
+        <div class="title">API_SPEC（搜尋與篩選）</div>
+        <div class="desc">category / sort_by / q / POST·PATCH category 均已記載於 API_SPEC → 可關閉 issue。</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="bar"></span>前端（Next.js 16 · search-and-discover）</h2>
+    <div class="grid">
+      <div class="issue done">
+        <div class="id">#39 · F5-1 <span class="tag fe">frontend</span><span class="tag done">修復 bug</span></div>
+        <div class="title">建立房間「分類」select</div>
+        <div class="desc">原 select 值是中文（運動/學習…）且 <code>createRoom()</code> 根本沒送出 category。改為後端 enum（sports/study/entertainment/social）並實際送出。</div>
+      </div>
+      <div class="issue done">
+        <div class="id">#40 · F5-2 <span class="tag fe">frontend</span><span class="tag done">已實作</span></div>
+        <div class="title">RoomCard / ActivityCard 分類徽章</div>
+        <div class="desc">兩張卡片皆已有 <code>CATEGORY_CONFIG</code> 徽章（icon + 配色）→ 驗證確認可關閉。</div>
+      </div>
+      <div class="issue done">
+        <div class="id">#41~#44 · F5-3~6 <span class="tag fe">frontend</span><span class="tag done">完成</span></div>
+        <div class="title">explore：chips / 搜尋 / 篩選面板 / 排序</div>
+        <div class="desc">分類 chips 綁定 state 並打 API（#41）；搜尋改 debounce 後送 <code>q</code> 參數（#42）；「篩選」按鈕展開面板含排序選單與「顯示已滿」開關（#43/#44）。全面從 client-side 過濾改為 server-side。</div>
+      </div>
+      <div class="issue done">
+        <div class="id">#45 · F5-7 <span class="tag fe">frontend</span><span class="tag done">完成</span></div>
+        <div class="title">i18n keys（分類 / 篩選 / 排序）</div>
+        <div class="desc">zh + en 字典修正 <code>learning → study</code>（對齊後端 enum），新增 <code>sort.*</code> 與 <code>filter.includeFull</code> keys。</div>
+      </div>
+      <div class="issue done">
+        <div class="id">#49 · BUG <span class="tag fe">frontend</span><span class="tag done">修復</span></div>
+        <div class="title">活動開始後拿掉「離開房間」按鈕</div>
+        <div class="desc">room 詳情頁新增 <code>hasStarted</code>（room_status 為 in_progress / ended），按鈕在活動開始/結束後隱藏。</div>
+      </div>
+      <div class="issue skip">
+        <div class="id">#48 · BUG <span class="tag fe">frontend</span><span class="tag skip">待澄清</span></div>
+        <div class="title">手機版建立房間 UI 改位置</div>
+        <div class="desc">描述未指明目標位置，缺設計稿。為避免誤改 layout，暫不處理，待 PO 補充期望位置與裝置範圍。</div>
+      </div>
+    </div>
+    <div class="note">⚠️ #48 為唯一未動的 issue：屬於需要設計判斷的 UI 位置調整，描述不足以確定正確改法，已標記待澄清。</div>
+  </section>
+
+  <section>
+    <h2><span class="bar"></span>測試與建置驗證</h2>
+    <div class="verify">
+      <div class="vcard"><div class="t">後端測試 (bun test)</div><div class="v">40 / 40 ✓</div><div class="s">+4 roleFilterClause 測試</div></div>
+      <div class="vcard"><div class="t">前端測試 (vitest)</div><div class="v">35 / 35 ✓</div><div class="s">3 test files</div></div>
+      <div class="vcard"><div class="t">前端 build (static export)</div><div class="v">PASS ✓</div><div class="s">TypeScript + 10 pages</div></div>
+    </div>
+    <div class="note" style="background:rgba(52,211,153,.08);border-color:rgba(52,211,153,.25);color:#7ee2b8">
+      ✓ Lint：後端我的改動 0 新增錯誤（既有 6 個 <code>as any</code> 在未動的 room.test.ts）；前端 0 error / 6 warning（皆既有）。
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="bar"></span>變更檔案（11 個 · +247 / −51）</h2>
+    <table>
+      <thead><tr><th>檔案</th><th>對應 issue</th><th>說明</th></tr></thead>
+      <tbody>
+        <tr><td><code>backend/src/routes/v1/rooms.ts</code></td><td>#32</td><td>role 過濾 + roleFilterClause()</td></tr>
+        <tr><td><code>backend/tests/lib/room-helpers.test.ts</code></td><td>#32</td><td>roleFilterClause 單元測試 ×4</td></tr>
+        <tr><td><code>backend/CHANGELOG.md</code></td><td>#33 #47</td><td>重寫 + 修正過時 JWT 內容</td></tr>
+        <tr><td><code>docs/API_SPEC.md</code></td><td>#32</td><td>GET /rooms role 參數說明</td></tr>
+        <tr><td><code>frontend/types/rooms.ts</code></td><td>#39 #41-44</td><td>category 入 create/update + sort 型別</td></tr>
+        <tr><td><code>frontend/lib/api.ts</code></td><td>#41-44</td><td>listRoomHall 加 category/q/sort_by/order</td></tr>
+        <tr><td><code>frontend/app/rooms/create/page.tsx</code></td><td>#39</td><td>category enum 值 + 實際送出</td></tr>
+        <tr><td><code>frontend/app/explore/page.tsx</code></td><td>#41-44</td><td>chips/搜尋/篩選面板/排序 → server-side</td></tr>
+        <tr><td><code>frontend/app/rooms/room/page.tsx</code></td><td>#49</td><td>hasStarted 隱藏離開鈕</td></tr>
+        <tr><td><code>frontend/public/locales/explore/{zh,en}.json</code></td><td>#45</td><td>learning→study + sort/filter keys</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <footer>
+    NoSquad · 由 Claude Code 產生 · 分支 feat/issue-board-completion（自 develop）<br>
+    建議後續：關閉 #35 #46、依本報告核對後關閉已完成 issue、與 PO 確認 #48。
+  </footer>
+</div>
+</body>
+</html>

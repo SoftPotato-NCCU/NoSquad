@@ -38,7 +38,7 @@ function roomToCard(room: MyRoom) {
   return {
     title: room.name,
     date: formatRoomDate(room.event_time),
-    location: room.description || "尚未提供活動說明",
+    location: room.location || "尚未設定地點",
     members: `${room.member_count}/${room.max_capacity}`,
     status:
       room.room_status === "recruiting_closed"
