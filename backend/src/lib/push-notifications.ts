@@ -2,11 +2,13 @@ import type { PushSubscriptionRow } from '../db/types';
 import { pool } from '../db/connection';
 import webpush from 'web-push';
 
-webpush.setVapidDetails(
-  `mailto:${process.env.VAPID_EMAIL || 'mail@example.com'}`,
-  process.env.VAPID_PUBLIC_KEY || '',
-  process.env.VAPID_PRIVATE_KEY || '',
-);
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(
+    `mailto:${process.env.VAPID_EMAIL || 'mail@example.com'}`,
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY,
+  );
+}
 
 export interface PushNotificationPayload {
   title?: string;

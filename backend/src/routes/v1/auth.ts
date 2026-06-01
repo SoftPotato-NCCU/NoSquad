@@ -33,8 +33,22 @@ function publicUser(u: UserRow) {
     username: u.username,
     email: u.email,
     phone: u.phone,
+    credit_score: u.credit_score,
   };
 }
+
+async function resetCreditScoreIfDue(userId: string, currentResetAt: Date): Promise<void> {
+  const sixMonthsAgo = new Date();
+  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+  if (new Date(currentResetAt) <= sixMonthsAgo) {
+    await pool.execute(
+      "UPDATE users SET credit_score = 10, credit_score_reset_at = NOW() WHERE uuid = ?",
+      [userId],
+    );
+  }
+}
+
+export { resetCreditScoreIfDue };
 
 export { publicUser };
 
@@ -249,7 +263,13 @@ auth.get("/me", authMiddleware, async (c) => {
     return apiError(c, 404, "USER_NOT_FOUND", "User not found");
 
   const user = rows[0] as UserRow;
-  return c.json({ data: { user: publicUser(user) } });
+  await resetCreditScoreIfDue(userId, user.credit_score_reset_at);
+
+  const [refreshed] = await pool.execute<RowDataPacket[]>(
+    "SELECT * FROM users WHERE uuid = ?",
+    [userId],
+  );
+  return c.json({ data: { user: publicUser(refreshed[0] as UserRow) } });
 });
 
 // ── POST /logout ──────────────────────────────────────────────────────────────

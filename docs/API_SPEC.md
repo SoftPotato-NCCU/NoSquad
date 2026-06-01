@@ -2517,3 +2517,104 @@ This API uses cursor-based pagination for list endpoints.
 | has_next | boolean | Whether more pages exist |
 | next_cursor | string | Cursor for next page (null when no more pages) |
 | limit | integer | Number of items per page |
+
+---
+
+## Credit Score System
+
+Each user starts with a credit score of **10**. Room owners can deduct points from members after an activity ends. A user with a credit score of **8 or below** cannot create rooms.
+
+### Deduction reasons
+
+| Reason | Code | Points Deducted |
+|--------|------|-----------------|
+| Late | `late` | -1 |
+| Attack | `attack` | -2 |
+| Harassment | `harassment` | -1 |
+
+Each `(room, member, reason)` combination can only be deducted once. Credit score minimum is 0.
+
+---
+
+### Get Member Credit Scores
+
+<details>
+<summary><strong>GET</strong> `/api/v1/rooms/:room_id/members/credit-scores` | Auth: Required | Owner only</summary>
+
+Returns the credit scores of all approved members (excluding the owner). Available for rooms of any status.
+
+#### Response (200 OK)
+
+```json
+{
+  "data": {
+    "members": [
+      {
+        "user_id": "uuid",
+        "name": "John Doe",
+        "username": "johndoe",
+        "credit_score": 9,
+        "joined_at": "2025-01-01T00:00:00.000Z"
+      }
+    ]
+  }
+}
+```
+
+#### Error Responses
+
+| Code | Status | Description |
+|------|--------|-------------|
+| `ROOM_NOT_FOUND` | 404 | Room does not exist |
+| `NOT_OWNER` | 403 | Requester is not the room owner |
+
+</details>
+
+---
+
+### Deduct Credit Score
+
+<details>
+<summary><strong>POST</strong> `/api/v1/rooms/:room_id/members/:user_id/deduct` | Auth: Required | Owner only</summary>
+
+Deducts credit score from a member. Only available after the activity has ended.
+
+#### Request
+
+```json
+{
+  "reason": "late"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| reason | string | Yes | One of: `late`, `attack`, `harassment` |
+
+#### Response (200 OK)
+
+```json
+{
+  "data": {
+    "success": true,
+    "user_id": "uuid",
+    "reason": "late",
+    "points_deducted": 1,
+    "new_credit_score": 9
+  }
+}
+```
+
+#### Error Responses
+
+| Code | Status | Description |
+|------|--------|-------------|
+| `ROOM_NOT_FOUND` | 404 | Room does not exist |
+| `NOT_OWNER` | 403 | Requester is not the room owner |
+| `ROOM_NOT_ENDED` | 400 | Activity has not ended yet |
+| `CANNOT_DEDUCT_SELF` | 400 | Owner cannot deduct their own score |
+| `MEMBER_NOT_FOUND` | 404 | Target user is not an approved member |
+| `ALREADY_DEDUCTED` | 409 | This reason was already applied for this member in this room |
+| `VALIDATION_ERROR` | 400 | Invalid or missing `reason` |
+
+</details>

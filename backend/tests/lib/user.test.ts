@@ -16,6 +16,7 @@ describe('publicUser', () => {
       created_at: new Date(),
       rating_avg: 0,
       rating_count: 0,
+      credit_score: 10,
     };
 
     const result = publicUser(userRow);
@@ -41,6 +42,7 @@ describe('publicUser', () => {
       created_at: new Date(),
       rating_avg: 4.5,
       rating_count: 10,
+      credit_score: 10,
     };
 
     const result = publicUser(userRow);

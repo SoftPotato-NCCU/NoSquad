@@ -1,9 +1,12 @@
 import {
   CreateRoomRequest,
+  CreditScoreMember,
+  EvaluateResponse,
   GenericSuccessResponse,
   HallRoom,
   JoinRequest,
   JoinRoomResponse,
+  MemberEvaluation,
   MembersResponse,
   MyRoom,
   RoomDetails,
@@ -181,6 +184,7 @@ export async function getMe() {
         username: string;
         email: string;
         phone: string;
+        credit_score: number;
       };
     };
   }>("/auth/me");
@@ -334,4 +338,38 @@ export async function openRecruiting(
     `/rooms/${roomId}/recruiting/open`,
     { method: "POST" },
   );
+}
+
+export async function getEvaluationStatus(
+  roomId: string,
+): Promise<{ data: { has_evaluated: boolean } }> {
+  return apiFetch(`/rooms/${roomId}/evaluation-status`);
+}
+
+export async function getMemberCreditScores(
+  roomId: string,
+): Promise<{ data: { members: CreditScoreMember[] } }> {
+  return apiFetch<{ data: { members: CreditScoreMember[] } }>(
+    `/rooms/${roomId}/members/credit-scores`,
+  );
+}
+
+export async function evaluateOwner(
+  roomId: string,
+  violations: string[],
+): Promise<{ data: { success: boolean; points_change: number; owner_new_credit_score: number } }> {
+  return apiFetch(`/rooms/${roomId}/owner/evaluate`, {
+    method: "POST",
+    body: JSON.stringify({ violations }),
+  });
+}
+
+export async function evaluateMembers(
+  roomId: string,
+  evaluations: MemberEvaluation[],
+): Promise<{ data: EvaluateResponse }> {
+  return apiFetch<{ data: EvaluateResponse }>(`/rooms/${roomId}/evaluate`, {
+    method: "POST",
+    body: JSON.stringify({ evaluations }),
+  });
 }

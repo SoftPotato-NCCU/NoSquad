@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useRooms } from "@/lib/rooms-context";
+import { getMe } from "@/lib/api";
 
 type CreateRoomFormData = {
   name: string;
@@ -32,6 +33,11 @@ function CreateRoomContent() {
 
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [creditScore, setCreditScore] = useState<number | null>(null);
+
+  useEffect(() => {
+    getMe().then((res) => setCreditScore(res.data.user.credit_score)).catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -112,7 +118,14 @@ function CreateRoomContent() {
       router.push("/");
     } catch (error) {
       console.error("Create room failed:", error);
-      setError("建立房間失敗，請稍後再試");
+      const apiMsg =
+        error != null &&
+        typeof error === "object" &&
+        "error" in error &&
+        typeof (error as { error: { message?: string } }).error?.message === "string"
+          ? (error as { error: { message: string } }).error.message
+          : null;
+      setError(apiMsg ?? "建立房間失敗，請稍後再試");
     } finally {
       setIsSubmitting(false);
     }
@@ -133,6 +146,12 @@ function CreateRoomContent() {
         onSubmit={handleSubmit}
         className="rounded-3xl border border-zinc-200/70 bg-white/85 p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70 md:p-8"
       >
+        {creditScore !== null && creditScore < 8 && (
+          <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600 dark:border-red-900/60 dark:bg-red-500/10 dark:text-red-400">
+            ⚠ 信用分數不足（{creditScore}/10），無法建立房間。需達 8 分以上才能擔任房主。
+          </div>
+        )}
+
         {error && (
           <div className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-600 dark:border-red-900/60 dark:bg-red-500/10 dark:text-red-400">
             {error}
@@ -309,8 +328,13 @@ function CreateRoomContent() {
           </button>
 
           <button
-            type="submit"
+            type={creditScore !== null && creditScore < 8 ? "button" : "submit"}
             disabled={isSubmitting}
+            onClick={
+              creditScore !== null && creditScore < 8
+                ? () => alert(`信用分數不足（${creditScore}/10），無法建立房間。\n需達 8 分以上才能擔任房主。`)
+                : undefined
+            }
             className="h-12 rounded-2xl bg-gradient-to-r from-purple-600 to-blue-600 px-6 font-semibold text-white shadow-lg shadow-purple-500/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isSubmitting ? "建立中..." : "建立房間"}
