@@ -2,11 +2,26 @@ import type { PushSubscriptionRow } from '../db/types';
 import { pool } from '../db/connection';
 import webpush from 'web-push';
 
-webpush.setVapidDetails(
-  `mailto:${process.env.VAPID_EMAIL || 'mail@example.com'}`,
-  process.env.VAPID_PUBLIC_KEY || '',
-  process.env.VAPID_PRIVATE_KEY || '',
+// Configure VAPID only when both keys are present. web-push throws on an empty
+// public key, so calling this unconditionally at module load would crash the
+// whole backend whenever VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY are unset.
+// Without keys, push sends fail gracefully (see sendPushToSubscription) instead
+// of taking the server down on startup.
+export const isPushConfigured = Boolean(
+  process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY,
 );
+
+if (isPushConfigured) {
+  webpush.setVapidDetails(
+    `mailto:${process.env.VAPID_EMAIL || 'mail@example.com'}`,
+    process.env.VAPID_PUBLIC_KEY!,
+    process.env.VAPID_PRIVATE_KEY!,
+  );
+} else {
+  console.warn(
+    '[PUSH] VAPID keys not set — web push disabled. Set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY to enable.',
+  );
+}
 
 export interface PushNotificationPayload {
   title?: string;
@@ -101,6 +116,11 @@ async function sendPushToSubscription(
   subscription: PushSubscriptionRow,
   payload: PushNotificationPayload,
 ): Promise<boolean> {
+  if (!isPushConfigured) {
+    console.log('[PUSH] VAPID keys not configured. Skipping send.');
+    return false;
+  }
+
   if (subscription.platform !== 'web') {
     console.log(
       `[PUSH] Platform "${subscription.platform}" not yet implemented. Skipping ${subscription.endpoint}`,

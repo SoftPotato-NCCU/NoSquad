@@ -27,7 +27,7 @@ interface RoomsContextType {
   error: string | null;
   fetchRooms: (includePending?: boolean) => Promise<void>;
   createRoom: (data: CreateRoomRequest) => Promise<MyRoom>;
-  joinRoom: (roomId: string) => Promise<"approved" | "pending">;
+  joinRoom: (roomId: string) => Promise<"approved" | "pending" | "waitlisted">;
   leaveRoom: (roomId: string) => Promise<void>;
   dismissRoom: (roomId: string) => Promise<void>;
   getRoomDetails: (roomId: string) => Promise<RoomDetails>;
