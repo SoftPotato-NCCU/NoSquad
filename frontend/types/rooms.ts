@@ -5,6 +5,8 @@ export type RoomStatus =
   | "ended"
   | "cancelled";
 
+export type RoomCategory = "sports" | "study" | "entertainment" | "social";
+
 export type MembershipStatus = "approved" | "pending" | "rejected" | "waitlisted";
 
 export interface BaseRoom {
@@ -12,6 +14,7 @@ export interface BaseRoom {
   name: string;
   description: string | null;
   room_status: RoomStatus;
+  category: RoomCategory | null;
   member_count: number;
   max_capacity: number;
   join_approval_required: boolean;
