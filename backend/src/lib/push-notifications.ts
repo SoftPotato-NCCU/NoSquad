@@ -58,21 +58,18 @@ export async function notifyUser(
   const subscriptions = await getPushSubscriptionsByUser(userId);
 
   if (!subscriptions.length) {
-    console.log(
-      `[PUSH] No subscriptions found for user ${userId}. Notification not sent.`,
-    );
+    console.log(`[PUSH] No subscriptions for user ${userId}`);
     return { sent: 0, failed: 0 };
   }
 
-  // Fire-and-forget: spawn sends without blocking response
-  Promise.all(
+  const results = await Promise.all(
     subscriptions.map((sub) => sendPushToSubscription(sub, payload)),
-  ).catch((error) => {
-    console.error(`[PUSH] Background send failed for user ${userId}:`, error);
-  });
+  );
 
-  // Return immediately with subscription count
-  return { sent: subscriptions.length, failed: 0 };
+  const sent = results.filter(Boolean).length;
+  const failed = results.length - sent;
+  console.log(`[PUSH] user ${userId}: ${sent} sent, ${failed} failed`);
+  return { sent, failed };
 }
 
 export async function notifyAllUsers(
@@ -82,19 +79,18 @@ export async function notifyAllUsers(
   const subscriptions = rows as PushSubscriptionRow[];
 
   if (!subscriptions.length) {
-    console.log('[PUSH] No subscriptions found. Notification not sent.');
+    console.log('[PUSH] No subscriptions found');
     return { sent: 0, failed: 0 };
   }
 
-  // Fire-and-forget: spawn sends without blocking response
-  Promise.all(
+  const results = await Promise.all(
     subscriptions.map((sub) => sendPushToSubscription(sub, payload)),
-  ).catch((error) => {
-    console.error('[PUSH] Background broadcast failed:', error);
-  });
+  );
 
-  // Return immediately with subscription count
-  return { sent: subscriptions.length, failed: 0 };
+  const sent = results.filter(Boolean).length;
+  const failed = results.length - sent;
+  console.log(`[PUSH] broadcast: ${sent} sent, ${failed} failed`);
+  return { sent, failed };
 }
 
 async function sendPushToSubscription(
@@ -137,7 +133,6 @@ async function sendPushToSubscription(
       message,
     );
 
-    console.log(`[PUSH] Successfully sent to ${subscription.endpoint}`);
     return true;
   } catch (error: unknown) {
     const err = error as Record<string, unknown>;
