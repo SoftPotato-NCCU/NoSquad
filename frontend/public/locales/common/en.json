@@ -70,5 +70,11 @@
     "ruleViolation": "Rule Violation",
     "paymentDefault": "Non-Payment / Delayed Payment",
     "paymentDispute": "Backed Out of Split Payment"
-  }
+  },
+  "groupChat": "Group Chat",
+  "noMessages": "No messages yet",
+  "startConversation": "Start the conversation!",
+  "typeMessage": "Type a message…",
+  "send": "Send",
+  "roomInfo": "Room Info"
 }

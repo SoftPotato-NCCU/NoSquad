@@ -70,5 +70,11 @@
     "ruleViolation": "違反規定",
     "paymentDefault": "不付費／拖欠費用",
     "paymentDispute": "AA制臨時反悔"
-  }
+  },
+  "groupChat": "群聊",
+  "noMessages": "目前還沒有訊息",
+  "startConversation": "來開始對話吧！",
+  "typeMessage": "傳送訊息…",
+  "send": "送出",
+  "roomInfo": "房間資訊"
 }

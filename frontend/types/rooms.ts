@@ -5,20 +5,20 @@ export type RoomStatus =
   | "ended"
   | "cancelled";
 
-export type MembershipStatus = "approved" | "pending" | "rejected";
-
 export type RoomCategory = "sports" | "study" | "entertainment" | "social";
+
+export type MembershipStatus = "approved" | "pending" | "rejected" | "waitlisted";
 
 export interface BaseRoom {
   id: string;
   name: string;
   description: string | null;
   room_status: RoomStatus;
+  category: RoomCategory | null;
   member_count: number;
   max_capacity: number;
   join_approval_required: boolean;
   created_at: string;
-  category: RoomCategory | null;
 }
 
 export interface MyRoom extends BaseRoom {
@@ -129,6 +129,7 @@ export interface CreateRoomRequest {
   event_time: string;
   event_end_time?: string;
   location?: string;
+  category?: RoomCategory | null;
 }
 
 export interface UpdateRoomRequest {
@@ -139,12 +140,20 @@ export interface UpdateRoomRequest {
   event_time?: string | null;
   event_end_time?: string | null;
   location?: string | null;
+  category?: RoomCategory | null;
 }
+
+export type RoomSortField = "created_at" | "event_time" | "member_count";
+export type SortOrder = "asc" | "desc";
 
 export interface JoinRoomResponse {
   success: boolean;
   room_id: string;
-  status: "approved" | "pending";
+  status: "approved" | "pending" | "waitlisted";
+}
+
+export interface WaitlistResponse {
+  waitlist: RoomMember[];
 }
 
 export interface GenericSuccessResponse {

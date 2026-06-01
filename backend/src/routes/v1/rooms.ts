@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import type { Context } from "hono";
 import type { RowDataPacket } from "mysql2/promise";
 import { pool } from "../../db/connection";
 import { apiError } from "../../lib/errors";
@@ -17,6 +18,28 @@ type RoomDisplayStatus = "open" | "recruiting_closed" | "in_progress" | "ended" 
 function toISO(d: Date | string | null): string | null {
   if (!d) return null;
   return d instanceof Date ? d.toISOString() : new Date(d).toISOString();
+}
+
+// Decides what membership status a join attempt should produce. A full room
+// puts the user on the waitlist (manual promotion by the owner); otherwise an
+// approval-required room queues a pending request, and an open room admits
+// immediately. Waitlist takes precedence over the approval requirement.
+function computeJoinStatus(
+  isFull: boolean,
+  approvalRequired: boolean,
+): "waitlisted" | "pending" | "approved" {
+  if (isFull) return "waitlisted";
+  return approvalRequired ? "pending" : "approved";
+}
+
+// Validates the optional `role` query param for "my rooms" and returns the SQL
+// fragment used to restrict the listing. Returns `null` when the value is
+// invalid so the caller can emit a 400.
+function roleFilterClause(role: string | undefined): { clause: string; valid: boolean } {
+  if (role === undefined) return { clause: "", valid: true };
+  if (role === "owner") return { clause: "AND r.creator_id = ?", valid: true };
+  if (role === "member") return { clause: "AND r.creator_id <> ?", valid: true };
+  return { clause: "", valid: false };
 }
 
 // Computes frontend-facing status from DB status + event times.
@@ -132,7 +155,19 @@ rooms.get("/", async (c) => {
   const cursor = c.req.query("cursor");
   const includePending = c.req.query("include_pending") === "true";
 
+  // Optional role filter: "owner" → rooms the user created, "member" → rooms the
+  // user joined but does not own. Omitting it returns both.
+  const role = c.req.query("role");
+  const { clause: roleClause, valid: roleValid } = roleFilterClause(role);
+  if (!roleValid)
+    return apiError(c, 400, "VALIDATION_ERROR", "Invalid role", [
+      { field: "role", issue: "invalid_value", message: "role must be one of: owner, member" },
+    ]);
+
   const params: (string | number)[] = [userId];
+
+  if (roleClause) params.push(userId);
+
   let cursorClause = "";
   if (cursor) {
     cursorClause = "AND r.created_at < ?";
@@ -153,7 +188,7 @@ rooms.get("/", async (c) => {
      FROM rooms r
      LEFT JOIN room_members rm_me ON rm_me.room_id = r.uuid AND rm_me.user_id = ?
      LEFT JOIN room_members rm_all ON rm_all.room_id = r.uuid AND rm_all.approval_status = 'approved'
-     WHERE r.status IN ${ACTIVE_STATUSES} AND rm_me.user_id IS NOT NULL AND ${membershipFilter} ${cursorClause}
+     WHERE r.status IN ${ACTIVE_STATUSES} AND rm_me.user_id IS NOT NULL AND ${membershipFilter} ${roleClause} ${cursorClause}
      GROUP BY r.uuid
      ORDER BY r.created_at DESC
      LIMIT ?`,
@@ -639,16 +674,18 @@ rooms.post("/:room_id/join", async (c) => {
         );
       if (room.status !== "open")
         return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
+      const rejoinFull =
+        Number(room.member_count) >= (room.max_members as number);
+      const rejoinStatus = computeJoinStatus(
+        rejoinFull,
+        !!room.join_approval_required,
+      );
       await pool.execute(
         "UPDATE room_members SET approval_status = ?, joined_at = NOW() WHERE room_id = ? AND user_id = ?",
-        [room.join_approval_required ? "pending" : "approved", roomId, userId],
+        [rejoinStatus, roomId, userId],
       );
-      if (!room.join_approval_required)
-        return c.json({
-          data: { success: true, room_id: roomId, status: "approved" },
-        });
       return c.json({
-        data: { success: true, room_id: roomId, status: "pending" },
+        data: { success: true, room_id: roomId, status: rejoinStatus },
       });
     }
   }
@@ -664,27 +701,17 @@ rooms.post("/:room_id/join", async (c) => {
   if (room.status !== "open")
     return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
 
-  if (Number(room.member_count) >= (room.max_members as number))
-    return apiError(
-      c,
-      400,
-      "ROOM_FULL",
-      "This room has reached its maximum capacity",
-    );
-
-  const approvalStatus = room.join_approval_required ? "pending" : "approved";
+  // A full room no longer hard-blocks: the user joins the waitlist and the
+  // owner promotes them manually once a spot opens.
+  const isFull = Number(room.member_count) >= (room.max_members as number);
+  const approvalStatus = computeJoinStatus(isFull, !!room.join_approval_required);
   await pool.execute(
     "INSERT INTO room_members (room_id, user_id, approval_status) VALUES (?, ?, ?)",
     [roomId, userId, approvalStatus],
   );
 
-  if (room.join_approval_required)
-    return c.json({
-      data: { success: true, room_id: roomId, status: "pending" },
-    });
-
   return c.json({
-    data: { success: true, room_id: roomId, status: "approved" },
+    data: { success: true, room_id: roomId, status: approvalStatus },
   });
 });
 
@@ -1058,8 +1085,10 @@ rooms.delete("/:room_id/members/:user_id", async (c) => {
       "Cannot remove the room owner",
     );
 
+  // Match any membership row (approved member, waitlisted, or pending) so the
+  // owner can remove from the roster as well as the waitlist.
   const [memberRows] = await pool.execute<RowDataPacket[]>(
-    "SELECT * FROM room_members WHERE room_id = ? AND user_id = ? AND approval_status = 'approved'",
+    "SELECT * FROM room_members WHERE room_id = ? AND user_id = ?",
     [roomId, targetUserId],
   );
   if (!memberRows[0])
@@ -1150,6 +1179,81 @@ rooms.get("/:room_id/members/credit-scores", async (c) => {
         joined_at: toISO(r.joined_at as Date),
       })),
     },
+  });
+});
+
+// ── LIST WAITLIST ─────────────────────────────────────────────────────────────────
+// GET /api/v1/rooms/:room_id/waitlist - List users waiting for a spot (owner only)
+rooms.get("/:room_id/waitlist", async (c) => {
+  const userId = c.get("userId");
+  const roomId = c.req.param("room_id");
+
+  const [roomRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT * FROM rooms WHERE uuid = ?",
+    [roomId],
+  );
+  if (!roomRows[0])
+    return apiError(c, 404, "ROOM_NOT_FOUND", "The specified room does not exist");
+
+  if (roomRows[0].status !== "open" && roomRows[0].status !== "recruiting_closed")
+    return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
+
+  if (roomRows[0].creator_id !== userId)
+    return apiError(c, 403, "NOT_OWNER", "Only the room owner can view the waitlist");
+
+  const [waitlistRows] = await pool.execute<RowDataPacket[]>(
+    `SELECT rm.*, u.name, u.username
+     FROM room_members rm
+     JOIN users u ON u.uuid = rm.user_id
+     WHERE rm.room_id = ? AND rm.approval_status = 'waitlisted'
+     ORDER BY rm.joined_at ASC`,
+    [roomId],
+  );
+
+  return c.json({ data: { waitlist: waitlistRows.map(formatMember) } });
+});
+
+// ── PROMOTE FROM WAITLIST ───────────────────────────────────────────────────────────
+// POST /api/v1/rooms/:room_id/waitlist/:user_id/promote - Promote a waitlisted user to member (owner only)
+rooms.post("/:room_id/waitlist/:user_id/promote", async (c) => {
+  const userId = c.get("userId");
+  const roomId = c.req.param("room_id");
+  const targetUserId = c.req.param("user_id");
+
+  const [roomRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT * FROM rooms WHERE uuid = ?",
+    [roomId],
+  );
+  if (!roomRows[0])
+    return apiError(c, 404, "ROOM_NOT_FOUND", "The specified room does not exist");
+
+  if (roomRows[0].status !== "open" && roomRows[0].status !== "recruiting_closed")
+    return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
+
+  if (roomRows[0].creator_id !== userId)
+    return apiError(c, 403, "NOT_OWNER", "Only the room owner can promote from the waitlist");
+
+  const [memberRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT * FROM room_members WHERE room_id = ? AND user_id = ? AND approval_status = 'waitlisted'",
+    [roomId, targetUserId],
+  );
+  if (!memberRows[0])
+    return apiError(c, 404, "WAITLIST_ENTRY_NOT_FOUND", "No waitlist entry found for this user");
+
+  const [currentCount] = await pool.execute<RowDataPacket[]>(
+    "SELECT COUNT(*) as count FROM room_members WHERE room_id = ? AND approval_status = 'approved'",
+    [roomId],
+  );
+  if (!currentCount[0] || Number(currentCount[0].count) >= roomRows[0].max_members)
+    return apiError(c, 400, "ROOM_FULL", "Room is at maximum capacity");
+
+  await pool.execute(
+    "UPDATE room_members SET approval_status = 'approved' WHERE room_id = ? AND user_id = ?",
+    [roomId, targetUserId],
+  );
+
+  return c.json({
+    data: { success: true, user_id: targetUserId, status: "approved" },
   });
 });
 
@@ -1558,5 +1662,104 @@ rooms.delete("/:room_id", async (c) => {
   return c.json({ data: { success: true, room_id: roomId } });
 });
 
+// ── MESSAGES ────────────────────────────────────────────────────────────────────
+
+// Asserts the caller is the owner or an approved member of the room.
+// Returns the room row on success, or an apiError Response on failure.
+async function assertRoomMember(c: Context, roomId: string, userId: string) {
+  const [roomRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT creator_id FROM rooms WHERE uuid = ?",
+    [roomId],
+  );
+  if (!roomRows[0])
+    return apiError(c, 404, "ROOM_NOT_FOUND", "The specified room does not exist");
+
+  if (roomRows[0].creator_id !== userId) {
+    const [member] = await pool.execute<RowDataPacket[]>(
+      "SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ? AND approval_status = 'approved'",
+      [roomId, userId],
+    );
+    if (!member[0])
+      return apiError(c, 403, "NOT_MEMBER", "You must be a member of this room");
+  }
+
+  return roomRows[0];
+}
+
+// GET /api/v1/rooms/:room_id/messages?after=<id>&limit=50 - List messages (members only)
+rooms.get("/:room_id/messages", async (c) => {
+  const userId = c.get("userId");
+  const roomId = c.req.param("room_id");
+  const after = Number(c.req.query("after") ?? 0);
+  const limit = Math.min(Number(c.req.query("limit") ?? 50), 100);
+
+  const room = await assertRoomMember(c, roomId, userId);
+  if (room instanceof Response) return room;
+
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    `SELECT msg.id, msg.user_id, msg.body, msg.created_at, u.name AS sender_name
+       FROM room_messages msg
+       JOIN users u ON u.uuid = msg.user_id
+      WHERE msg.room_id = ? AND msg.id > ?
+      ORDER BY msg.id ASC
+      LIMIT ?`,
+    [roomId, after, limit],
+  );
+
+  return c.json({
+    data: {
+      messages: rows.map((r) => ({
+        id: Number(r.id),
+        user_id: r.user_id,
+        sender_name: r.sender_name,
+        body: r.body,
+        created_at: toISO(r.created_at as Date),
+      })),
+    },
+  });
+});
+
+// POST /api/v1/rooms/:room_id/messages - Send a message (members only)
+rooms.post("/:room_id/messages", async (c) => {
+  const userId = c.get("userId");
+  const roomId = c.req.param("room_id");
+  const payload = await c.req.json().catch(() => ({}));
+  const body = typeof payload.body === "string" ? payload.body.trim() : "";
+
+  if (!body)
+    return apiError(c, 400, "VALIDATION_ERROR", "Message body is required", [
+      { field: "body", issue: "required", message: "Message body is required" },
+    ]);
+  if (body.length > 2000)
+    return apiError(c, 400, "VALIDATION_ERROR", "Message too long (max 2000)", [
+      { field: "body", issue: "too_long", message: "Message too long (max 2000 characters)" },
+    ]);
+
+  const room = await assertRoomMember(c, roomId, userId);
+  if (room instanceof Response) return room;
+
+  const [result] = await pool.execute(
+    "INSERT INTO room_messages (room_id, user_id, body) VALUES (?, ?, ?)",
+    [roomId, userId, body],
+  );
+  const insertId = (result as { insertId: number }).insertId;
+
+  const [senderRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT name FROM users WHERE uuid = ?",
+    [userId],
+  );
+  const senderName = (senderRows[0]?.name as string | undefined) ?? "";
+
+  return c.json({
+    data: {
+      id: insertId,
+      user_id: userId,
+      sender_name: senderName,
+      body,
+      created_at: new Date().toISOString(),
+    },
+  });
+});
+
 export default rooms;
-export { toISO, formatMyRoom, formatHallRoom, computeDisplayStatus, formatRoomDetails, formatMember };
+export { toISO, formatMyRoom, formatHallRoom, computeDisplayStatus, formatRoomDetails, formatMember, roleFilterClause, computeJoinStatus };

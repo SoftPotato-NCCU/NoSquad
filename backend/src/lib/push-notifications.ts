@@ -2,11 +2,24 @@ import type { PushSubscriptionRow } from '../db/types';
 import { pool } from '../db/connection';
 import webpush from 'web-push';
 
-if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+// Configure VAPID only when both keys are present. web-push throws on an empty
+// public key, so calling this unconditionally at module load would crash the
+// whole backend whenever VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY are unset.
+// Without keys, push sends fail gracefully (see sendPushToSubscription) instead
+// of taking the server down on startup.
+export const isPushConfigured = Boolean(
+  process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY,
+);
+
+if (isPushConfigured) {
   webpush.setVapidDetails(
     `mailto:${process.env.VAPID_EMAIL || 'mail@example.com'}`,
-    process.env.VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY,
+    process.env.VAPID_PUBLIC_KEY!,
+    process.env.VAPID_PRIVATE_KEY!,
+  );
+} else {
+  console.warn(
+    '[PUSH] VAPID keys not set — web push disabled. Set VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY to enable.',
   );
 }
 
@@ -60,21 +73,18 @@ export async function notifyUser(
   const subscriptions = await getPushSubscriptionsByUser(userId);
 
   if (!subscriptions.length) {
-    console.log(
-      `[PUSH] No subscriptions found for user ${userId}. Notification not sent.`,
-    );
+    console.log(`[PUSH] No subscriptions for user ${userId}`);
     return { sent: 0, failed: 0 };
   }
 
-  // Fire-and-forget: spawn sends without blocking response
-  Promise.all(
+  const results = await Promise.all(
     subscriptions.map((sub) => sendPushToSubscription(sub, payload)),
-  ).catch((error) => {
-    console.error(`[PUSH] Background send failed for user ${userId}:`, error);
-  });
+  );
 
-  // Return immediately with subscription count
-  return { sent: subscriptions.length, failed: 0 };
+  const sent = results.filter(Boolean).length;
+  const failed = results.length - sent;
+  console.log(`[PUSH] user ${userId}: ${sent} sent, ${failed} failed`);
+  return { sent, failed };
 }
 
 export async function notifyAllUsers(
@@ -84,25 +94,29 @@ export async function notifyAllUsers(
   const subscriptions = rows as PushSubscriptionRow[];
 
   if (!subscriptions.length) {
-    console.log('[PUSH] No subscriptions found. Notification not sent.');
+    console.log('[PUSH] No subscriptions found');
     return { sent: 0, failed: 0 };
   }
 
-  // Fire-and-forget: spawn sends without blocking response
-  Promise.all(
+  const results = await Promise.all(
     subscriptions.map((sub) => sendPushToSubscription(sub, payload)),
-  ).catch((error) => {
-    console.error('[PUSH] Background broadcast failed:', error);
-  });
+  );
 
-  // Return immediately with subscription count
-  return { sent: subscriptions.length, failed: 0 };
+  const sent = results.filter(Boolean).length;
+  const failed = results.length - sent;
+  console.log(`[PUSH] broadcast: ${sent} sent, ${failed} failed`);
+  return { sent, failed };
 }
 
 async function sendPushToSubscription(
   subscription: PushSubscriptionRow,
   payload: PushNotificationPayload,
 ): Promise<boolean> {
+  if (!isPushConfigured) {
+    console.log('[PUSH] VAPID keys not configured. Skipping send.');
+    return false;
+  }
+
   if (subscription.platform !== 'web') {
     console.log(
       `[PUSH] Platform "${subscription.platform}" not yet implemented. Skipping ${subscription.endpoint}`,
@@ -147,7 +161,6 @@ async function sendPushToSubscription(
 
     console.log(`[PUSH] Failed to send to ${subscription.endpoint}:`, error);
 
-    // Remove expired/invalid subscriptions
     if (statusCode === 410 || statusCode === 404) {
       console.log(
         `[PUSH] Subscription expired (${statusCode}). Removing ${subscription.endpoint}`,

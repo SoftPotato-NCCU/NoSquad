@@ -710,6 +710,7 @@ Returns rooms the authenticated user is a member of.
 | limit | integer | 20 | Number of rooms per page (max 50) |
 | cursor | string | null | Timestamp cursor for pagination |
 | include_pending | boolean | false | Include rooms with pending approval status |
+| role | string | null | Filter by the caller's role in the room: `owner` (rooms the user created) or `member` (rooms the user joined but does not own). Omit to return both. Returns 400 if an unrecognised value is supplied. |
 
 #### Response (200 OK)
 

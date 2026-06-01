@@ -11,9 +11,18 @@
     "categories": {
       "all": "全部",
       "sports": "運動",
-      "learning": "學習",
+      "study": "學習",
       "entertainment": "娛樂",
       "social": "社交"
+    },
+    "sort": {
+      "label": "排序",
+      "newest": "最新建立",
+      "eventSoon": "活動即將開始",
+      "mostMembers": "人數最多"
+    },
+    "filter": {
+      "includeFull": "顯示已滿房間"
     },
     "status": {
       "pending": "待審核",
@@ -26,7 +35,9 @@
       "needsApproval": "需審核",
       "joinable": "可加入",
       "joining": "加入中...",
-      "join": "加入"
+      "join": "加入",
+      "joinWaitlist": "加入候補",
+      "waitlisted": "候補中"
     },
     "loading": "房間大廳載入中...",
     "noRoomsDisplay": "目前沒有可以顯示的房間。",
