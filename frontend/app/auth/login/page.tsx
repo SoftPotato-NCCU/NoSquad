@@ -4,6 +4,7 @@ import { Suspense, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { login, setToken } from "@/lib/api";
+import { subscribeToPush } from "@/lib/push-notifications";
 import { useDictionary, t } from "@/lib/i18n/useDictionary";
 import SettingsMenu from "@/components/SettingsMenu";
 
@@ -41,6 +42,11 @@ function LoginContent() {
       console.log("[Login] Got response, setting token");
       setToken(response.data.access_token);
       localStorage.setItem("user", JSON.stringify(response.data.user));
+
+      // Subscribe to push notifications after login (permission already requested
+      // on the main page login button click).
+      await subscribeToPush().catch(() => {});
+
       console.log("[Login] Token set, redirecting to /");
       window.location.href = "/";
     } catch (err: unknown) {
