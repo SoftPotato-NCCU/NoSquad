@@ -39,5 +39,11 @@
   "status": "狀態",
   "dismissRoom": "解散房間",
   "dismissing": "解散中...",
-  "clearCache": "清除翻譯快取"
+  "clearCache": "清除翻譯快取",
+  "groupChat": "群聊",
+  "noMessages": "目前還沒有訊息",
+  "startConversation": "來開始對話吧！",
+  "typeMessage": "傳送訊息…",
+  "send": "送出",
+  "roomInfo": "房間資訊"
 }

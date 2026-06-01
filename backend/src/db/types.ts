@@ -45,6 +45,14 @@ export interface UserTokenRow {
   revoked_at: Date | null;
 }
 
+export interface RoomMessageRow {
+  id: number;
+  room_id: string;
+  user_id: string;
+  body: string;
+  created_at: Date;
+}
+
 export interface PushSubscriptionRow {
   uuid: string;
   user_id: string;
