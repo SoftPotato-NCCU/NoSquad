@@ -42,7 +42,8 @@
     "loading": "Loading room hall...",
     "noRoomsDisplay": "No rooms to display.",
     "loadError": "Failed to load room hall",
-    "joinError": "Failed to join room, please try again"
+    "joinError": "Failed to join room, please try again",
+    "joinErrorInsufficientCredit": "Insufficient credit score"
   },
   "roomHall": "Room Hall",
   "createRoom": "Create Room",

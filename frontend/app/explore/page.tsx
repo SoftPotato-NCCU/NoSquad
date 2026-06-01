@@ -291,7 +291,19 @@ function ExploreContent() {
       await fetchRooms(true);
     } catch (error) {
       if (handleAuthError(error)) return;
-      setRoomError(t(dict, "explore.joinError", "加入房間失敗，請稍後再試"));
+      const code =
+        typeof error === "object" &&
+        error !== null &&
+        "error" in error &&
+        typeof (error as { error: unknown }).error === "object" &&
+        (error as { error: { code?: unknown } }).error !== null
+          ? (error as { error: { code?: unknown } }).error.code
+          : undefined;
+      if (code === "INSUFFICIENT_CREDIT_SCORE") {
+        setRoomError(t(dict, "explore.joinErrorInsufficientCredit", "信用分數不足"));
+      } else {
+        setRoomError(t(dict, "explore.joinError", "加入房間失敗，請稍後再試"));
+      }
     } finally {
       setJoiningRoomId(null);
     }

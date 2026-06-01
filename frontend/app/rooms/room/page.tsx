@@ -155,8 +155,12 @@ function RoomDetailContent() {
           ),
         );
 
-        const waitlistRes = await listWaitlist(roomId);
-        setWaitlist(waitlistRes.data.waitlist);
+        try {
+          const waitlistRes = await listWaitlist(roomId);
+          setWaitlist(waitlistRes.data.waitlist);
+        } catch (_e) {
+          setWaitlist([]);
+        }
 
         if (roomData.room_status === "ended") {
           try {
@@ -181,6 +185,16 @@ function RoomDetailContent() {
       } else {
         setRequests([]);
         setWaitlist([]);
+        if (roomData.room_status === "ended" && roomData.is_member) {
+          try {
+            const statusRes = await getEvaluationStatus(roomId);
+            if (statusRes.data.has_evaluated) {
+              setOwnerEvalSuccess(true);
+            }
+          } catch (_e) {
+            // Not critical
+          }
+        }
       }
     } catch (e) {
       console.error("Failed to load room:", e);
@@ -756,7 +770,7 @@ function RoomDetailContent() {
                 </button>
               )}
 
-              {room.is_owner && room.room_status === "ended" && (
+              {room.room_status === "ended" && (room.is_owner || room.is_member) && (
                 <button
                   type="button"
                   onClick={() => setActiveTab("evaluate")}
@@ -935,85 +949,6 @@ function RoomDetailContent() {
             </div>
           )}
 
-          {activeTab === "members" && !room.is_owner && room.is_member && room.room_status === "ended" && (
-            <div className="mt-4 space-y-3 border-t border-zinc-200/70 pt-4 dark:border-zinc-800">
-              <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">評分房主</p>
-              {!ownerEvalSuccess && (
-                <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  勾選房主的不合格行為，未勾選將給予 +1 信用積分。
-                </p>
-              )}
-              {ownerEvalSuccess ? (
-                <div className="rounded-2xl border border-green-200/70 bg-green-50/70 p-4 text-sm text-green-700 dark:border-green-900/40 dark:bg-green-500/10 dark:text-green-400">
-                  ✓ 已提交評分
-                </div>
-              ) : (
-                <>
-                  {ownerEvalError && (
-                    <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900/60 dark:bg-red-500/10 dark:text-red-400">
-                      {ownerEvalError}
-                    </div>
-                  )}
-                  <div className="space-y-2">
-                    {([
-                      { group: "出席問題", items: [
-                        { reason: "late" as ViolationReason, label: "遲到" },
-                        { reason: "last_minute_cancel" as ViolationReason, label: "臨時取消" },
-                        { reason: "ghost" as ViolationReason, label: "爽約無通知" },
-                        { reason: "no_show" as ViolationReason, label: "無故缺席" },
-                        { reason: "early_leave" as ViolationReason, label: "提早離場" },
-                        { reason: "midway_leave" as ViolationReason, label: "中途落跑" },
-                      ]},
-                      { group: "行為問題", items: [
-                        { reason: "attack" as ViolationReason, label: "攻擊行為" },
-                        { reason: "harassment" as ViolationReason, label: "騷擾" },
-                        { reason: "verbal_abuse" as ViolationReason, label: "言語不當" },
-                        { reason: "discrimination" as ViolationReason, label: "歧視行為" },
-                        { reason: "rule_violation" as ViolationReason, label: "違反規定" },
-                      ]},
-                      { group: "費用問題", items: [
-                        { reason: "payment_default" as ViolationReason, label: "不付費／拖欠費用" },
-                        { reason: "payment_dispute" as ViolationReason, label: "AA制臨時反悔" },
-                      ]},
-                    ] as const).map(({ group, items }) => (
-                      <div key={group}>
-                        <p className="mb-1.5 text-xs font-semibold text-zinc-400 dark:text-zinc-500">{group}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {items.map(({ reason, label }) => {
-                            const checked = ownerViolations.has(reason);
-                            return (
-                              <button key={reason} type="button"
-                                onClick={() => toggleOwnerViolation(reason)}
-                                disabled={ownerEvalLoading}
-                                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed ${
-                                  checked
-                                    ? "border-red-400 bg-red-100 text-red-700 dark:border-red-500/60 dark:bg-red-500/20 dark:text-red-300"
-                                    : "border-zinc-200 bg-white text-zinc-600 hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:border-red-700 dark:hover:bg-red-500/10 dark:hover:text-red-400"
-                                }`}>
-                                <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border text-xs ${
-                                  checked ? "border-red-500 bg-red-500 text-white" : "border-zinc-300 dark:border-zinc-600"
-                                }`}>{checked ? "✓" : ""}</span>
-                                {label}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex items-center justify-between pt-1">
-                    <span className={`text-sm font-semibold ${ownerViolations.size > 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>
-                      {ownerViolations.size > 0 ? `−${ownerViolations.size} 分` : "+1 分"}
-                    </span>
-                    <button type="button" onClick={handleEvaluateOwner} disabled={ownerEvalLoading}
-                      className="rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-amber-500/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
-                      {ownerEvalLoading ? "提交中..." : "提交評分"}
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          )}
 
           {activeTab === "evaluate" && room.is_owner && room.room_status === "ended" && (
             <div className="space-y-4">
@@ -1167,6 +1102,123 @@ function RoomDetailContent() {
                           className="rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-500/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {evaluateLoading ? "提交中..." : "提交評分"}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {activeTab === "evaluate" && !room.is_owner && room.is_member && room.room_status === "ended" && (
+            <div className="space-y-4">
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                請為房主評分。勾選不合格行為（可複選），未勾選將給予 +1 信用積分獎勵。
+              </p>
+
+              {ownerEvalSuccess ? (
+                <div className="rounded-2xl border border-green-200/70 bg-green-50/70 p-5 text-green-700 dark:border-green-900/40 dark:bg-green-500/10 dark:text-green-400">
+                  ✓ 已提交評分
+                </div>
+              ) : (
+                <>
+                  {ownerEvalError && (
+                    <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900/60 dark:bg-red-500/10 dark:text-red-400">
+                      {ownerEvalError}
+                    </div>
+                  )}
+
+                  {displayOwner && (
+                    <>
+                      <div className={`rounded-2xl border p-4 shadow-sm transition ${
+                        ownerViolations.size > 0
+                          ? "border-red-200/70 bg-red-50/40 dark:border-red-900/40 dark:bg-red-500/5"
+                          : "border-green-200/70 bg-green-50/40 dark:border-green-900/40 dark:bg-green-500/5"
+                      }`}>
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full font-bold ${
+                              ownerViolations.size > 0
+                                ? "bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-300"
+                                : "bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-300"
+                            }`}>
+                              {displayOwner.name[0]?.toUpperCase() || "U"}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="truncate font-semibold text-zinc-950 dark:text-zinc-50">
+                                {displayOwner.name}
+                              </p>
+                              <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
+                                @{displayOwner.username} · 目前信用：{room.owner_credit_score} 分
+                              </p>
+                            </div>
+                          </div>
+                          <div className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
+                            ownerViolations.size > 0
+                              ? "bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-300"
+                              : "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300"
+                          }`}>
+                            {ownerViolations.size > 0 ? `−${ownerViolations.size} 分` : "+1 分"}
+                          </div>
+                        </div>
+
+                        <div className="mt-3 space-y-2">
+                          {(
+                            [
+                              { group: "出席問題", items: [
+                                { reason: "late" as ViolationReason, label: "遲到" },
+                                { reason: "last_minute_cancel" as ViolationReason, label: "臨時取消" },
+                                { reason: "ghost" as ViolationReason, label: "爽約無通知" },
+                                { reason: "no_show" as ViolationReason, label: "無故缺席" },
+                                { reason: "early_leave" as ViolationReason, label: "提早離場" },
+                                { reason: "midway_leave" as ViolationReason, label: "中途落跑" },
+                              ]},
+                              { group: "行為問題", items: [
+                                { reason: "attack" as ViolationReason, label: "攻擊行為" },
+                                { reason: "harassment" as ViolationReason, label: "騷擾" },
+                                { reason: "verbal_abuse" as ViolationReason, label: "言語不當" },
+                                { reason: "property_damage" as ViolationReason, label: "損壞財物" },
+                                { reason: "discrimination" as ViolationReason, label: "歧視行為" },
+                                { reason: "rule_violation" as ViolationReason, label: "違反規定" },
+                              ]},
+                              { group: "費用問題", items: [
+                                { reason: "payment_default" as ViolationReason, label: "不付費／拖欠費用" },
+                                { reason: "payment_dispute" as ViolationReason, label: "AA制臨時反悔" },
+                              ]},
+                            ] as const
+                          ).map(({ group, items }) => (
+                            <div key={group}>
+                              <p className="mb-1.5 text-xs font-semibold text-zinc-400 dark:text-zinc-500">{group}</p>
+                              <div className="flex flex-wrap gap-2">
+                                {items.map(({ reason, label }) => {
+                                  const checked = ownerViolations.has(reason);
+                                  return (
+                                    <button key={reason} type="button"
+                                      onClick={() => toggleOwnerViolation(reason)}
+                                      disabled={ownerEvalLoading}
+                                      className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed ${
+                                        checked
+                                          ? "border-red-400 bg-red-100 text-red-700 dark:border-red-500/60 dark:bg-red-500/20 dark:text-red-300"
+                                          : "border-zinc-200 bg-white text-zinc-600 hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:border-red-700 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+                                      }`}>
+                                      <span className={`h-4 w-4 shrink-0 rounded border flex items-center justify-center text-xs ${
+                                        checked ? "border-red-500 bg-red-500 text-white" : "border-zinc-300 dark:border-zinc-600"
+                                      }`}>{checked ? "✓" : ""}</span>
+                                      {label}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end pt-2">
+                        <button type="button" onClick={handleEvaluateOwner} disabled={ownerEvalLoading}
+                          className="rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-500/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
+                          {ownerEvalLoading ? "提交中..." : "提交評分"}
                         </button>
                       </div>
                     </>
