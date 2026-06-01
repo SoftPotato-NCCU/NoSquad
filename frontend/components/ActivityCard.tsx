@@ -1,5 +1,4 @@
 import Link from "next/link";
-import type { RoomCategory } from "@/types/rooms";
 
 // explore page 的卡片格式
 
@@ -11,7 +10,6 @@ type ActivityCardProps = {
   status: string;
   statusTone?: "blue" | "green" | "purple" | "orange";
   icon?: string;
-  category?: RoomCategory | null;
   detailHref?: string;
   actionLabel?: string;
   actionDisabled?: boolean;
@@ -28,36 +26,6 @@ const statusClassMap = {
     "bg-orange-100 text-orange-600 dark:bg-orange-500/15 dark:text-orange-300",
 };
 
-const CATEGORY_CONFIG: Record<
-  RoomCategory,
-  { label: string; icon: string; bg: string; badge: string }
-> = {
-  sports: {
-    label: "運動",
-    icon: "🏃",
-    bg: "from-green-50 to-emerald-50 dark:from-green-500/10 dark:to-emerald-500/10",
-    badge: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300",
-  },
-  study: {
-    label: "學習",
-    icon: "📚",
-    bg: "from-blue-50 to-sky-50 dark:from-blue-500/10 dark:to-sky-500/10",
-    badge: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300",
-  },
-  entertainment: {
-    label: "娛樂",
-    icon: "🎮",
-    bg: "from-purple-50 to-pink-50 dark:from-purple-500/10 dark:to-pink-500/10",
-    badge: "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300",
-  },
-  social: {
-    label: "社交",
-    icon: "🤝",
-    bg: "from-orange-50 to-amber-50 dark:from-orange-500/10 dark:to-amber-500/10",
-    badge: "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300",
-  },
-};
-
 export default function ActivityCard({
   title,
   time,
@@ -66,34 +34,22 @@ export default function ActivityCard({
   status,
   statusTone = "green",
   icon = "⚡",
-  category,
   detailHref,
   actionLabel = "加入",
   actionDisabled = false,
   onActionClick,
 }: ActivityCardProps) {
-  const cat = category ? CATEGORY_CONFIG[category] : null;
-
   return (
     <article className="flex gap-4 rounded-3xl border border-zinc-200/70 bg-white/85 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900/70">
-      <div
-        className={`flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br text-4xl ${cat ? cat.bg : "from-purple-50 to-blue-50 dark:from-purple-500/10 dark:to-blue-500/10"}`}
-      >
-        {cat ? cat.icon : null}
+      <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-purple-50 to-blue-50 text-4xl dark:from-purple-500/10 dark:to-blue-500/10">
+        {/* {icon} */}
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col">
         <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <h3 className="truncate text-lg font-bold text-zinc-950 dark:text-zinc-50">
-              {title}
-            </h3>
-            {cat && (
-              <span className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${cat.badge}`}>
-                {cat.icon} {cat.label}
-              </span>
-            )}
-          </div>
+          <h3 className="truncate text-lg font-bold text-zinc-950 dark:text-zinc-50">
+            {title}
+          </h3>
 
           <span
             className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${statusClassMap[statusTone]}`}

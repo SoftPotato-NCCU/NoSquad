@@ -88,7 +88,6 @@ function roomToActivity(
             ? ("purple" as const)
             : ("green" as const),
     icon: "⚡",
-    category: room.category,
   };
 }
 
