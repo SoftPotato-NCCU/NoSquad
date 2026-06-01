@@ -153,6 +153,7 @@ async function sendPushToSubscription(
       message,
     );
 
+    console.log(`[PUSH] Successfully sent to ${subscription.endpoint}`);
     return true;
   } catch (error: unknown) {
     const err = error as Record<string, unknown>;
@@ -160,7 +161,6 @@ async function sendPushToSubscription(
 
     console.log(`[PUSH] Failed to send to ${subscription.endpoint}:`, error);
 
-    // Remove expired/invalid subscriptions
     if (statusCode === 410 || statusCode === 404) {
       console.log(
         `[PUSH] Subscription expired (${statusCode}). Removing ${subscription.endpoint}`,

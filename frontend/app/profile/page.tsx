@@ -4,10 +4,10 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useRooms } from "@/lib/rooms-context";
-import { useDictionary, t } from "@/lib/i18n/useDictionary";
+import { useDictionary, t, tpl } from "@/lib/i18n/useDictionary";
 import { type Lang, supported } from "@/lib/i18n/useLang";
 import { langConfigs } from "@/lib/i18n/langConfig";
-import { logout, clearToken } from "@/lib/api";
+import { logout, clearToken, getMe } from "@/lib/api";
 import StatCard from "@/components/StatCard";
 import ProfileInfoRow from "@/components/ProfileInfoRow";
 import NotificationSettings from "@/components/NotificationSettings";
@@ -100,6 +100,18 @@ function ProfileContent() {
 
   const [lang, setLang] = useState<Lang>("en");
   const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
+  const [creditScore, setCreditScore] = useState<number>(
+    user?.credit_score ?? 10,
+  );
+
+  useEffect(() => {
+    getMe()
+      .then((res) => {
+        const score = res.data.user.credit_score;
+        if (typeof score === "number") setCreditScore(score);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const storedLang = localStorage.getItem("lang") as Lang | null;
@@ -162,6 +174,14 @@ function ProfileContent() {
   const createdRoomCount = myRooms.filter((room) => room.is_owner).length;
   const joinedRoomCount = myRooms.filter((room) => !room.is_owner).length;
 
+  const creditTone =
+    creditScore >= 8 ? "green" : creditScore >= 5 ? "amber" : "red";
+  const creditAlerts: { text: string; level: "red" | "amber" }[] = [];
+  if (creditScore < 3)
+    creditAlerts.push({ text: tpl(dict, "profile.credit.lowJoin", { score: String(creditScore) }, `信用分數不足（${creditScore}/10），無法加入任何活動。`), level: "red" });
+  if (creditScore < 8)
+    creditAlerts.push({ text: tpl(dict, "profile.credit.lowCreate", { score: String(creditScore) }, `信用分數不足（${creditScore}/10），無法擔任房主建立房間。（需達 8 分）`), level: "amber" });
+
   const langOptions: SelectOption[] = supported.map((code) => ({
     value: code,
     label: langConfigs[code]?.nativeName || code,
@@ -200,7 +220,7 @@ function ProfileContent() {
               @{username}
             </p>
 
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
               <StatCard
                 label={t(dict, "profile.stats.joinedRooms", "加入房間")}
                 value={isLoadingRooms ? 0 : joinedRoomCount}
@@ -216,7 +236,34 @@ function ProfileContent() {
                 value={0}
                 tone="green"
               />
+              <StatCard
+                label={t(dict, "profile.stats.creditScore", "Credit Score")}
+                value={`${creditScore} ${t(dict, "profile.stats.pts", "pts")}`}
+                tone={creditTone as "green" | "amber" | "red"}
+                icon={
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                }
+              />
             </div>
+
+            {creditAlerts.length > 0 && (
+              <div className="mt-4 space-y-2">
+                {creditAlerts.map((alert) => (
+                  <div
+                    key={alert.text}
+                    className={`rounded-2xl px-4 py-3 text-sm font-medium ${
+                      alert.level === "red"
+                        ? "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"
+                        : "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"
+                    }`}
+                  >
+                    ⚠ {alert.text}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </section>

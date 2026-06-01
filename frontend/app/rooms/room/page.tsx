@@ -17,10 +17,20 @@ import {
   removeMember,
   closeRecruiting,
   openRecruiting,
+  getMemberCreditScores,
+  evaluateMembers,
+  evaluateOwner,
+  getEvaluationStatus,
   listWaitlist,
   promoteFromWaitlist,
 } from "@/lib/api";
-import type { RoomDetails, RoomMember, JoinRequest } from "@/types/rooms";
+import type {
+  RoomDetails,
+  RoomMember,
+  JoinRequest,
+  CreditScoreMember,
+  ViolationReason,
+} from "@/types/rooms";
 
 function formatDate(value: string | null) {
   if (!value) return "尚未設定";
@@ -95,8 +105,22 @@ function RoomDetailContent() {
   const [waitlist, setWaitlist] = useState<RoomMember[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"members" | "waiting">("members");
+  const [activeTab, setActiveTab] = useState<"members" | "waiting" | "evaluate">("members");
   const [isActionLoading, setIsActionLoading] = useState(false);
+
+  // Credit score evaluation state (owner only)
+  const [creditScoreMembers, setCreditScoreMembers] = useState<CreditScoreMember[]>([]);
+  const [violations, setViolations] = useState<Record<string, Set<ViolationReason>>>({});
+  const [evaluateLoading, setEvaluateLoading] = useState(false);
+  const [evaluateError, setEvaluateError] = useState<string | null>(null);
+  const [evaluateSuccess, setEvaluateSuccess] = useState(false);
+
+  // Member evaluates owner state
+  const [ownerViolations, setOwnerViolations] = useState<Set<ViolationReason>>(new Set());
+  const [ownerEvalLoading, setOwnerEvalLoading] = useState(false);
+  const [ownerEvalError, setOwnerEvalError] = useState<string | null>(null);
+  const [ownerEvalSuccess, setOwnerEvalSuccess] = useState(false);
+  const [alreadyEvaluated, setAlreadyEvaluated] = useState(false);
 
   const fetchRoomData = async () => {
     if (!roomId) {
@@ -125,7 +149,6 @@ function RoomDetailContent() {
 
       if (roomData.is_owner) {
         const requestsRes = await listJoinRequests(roomId);
-
         setRequests(
           requestsRes.data.requests.filter(
             (request) => request.user_id !== user?.id,
@@ -134,6 +157,27 @@ function RoomDetailContent() {
 
         const waitlistRes = await listWaitlist(roomId);
         setWaitlist(waitlistRes.data.waitlist);
+
+        if (roomData.room_status === "ended") {
+          try {
+            const [creditRes, statusRes] = await Promise.all([
+              getMemberCreditScores(roomId),
+              getEvaluationStatus(roomId),
+            ]);
+            const scoreMembers = creditRes.data.members;
+            setCreditScoreMembers(scoreMembers);
+            const init: Record<string, Set<ViolationReason>> = {};
+            for (const m of scoreMembers) init[m.user_id] = new Set();
+            setViolations(init);
+            setAlreadyEvaluated(statusRes.data.has_evaluated);
+            if (statusRes.data.has_evaluated) {
+              setEvaluateSuccess(true);
+              setOwnerEvalSuccess(true);
+            }
+          } catch (_e) {
+            // Not critical if this fails
+          }
+        }
       } else {
         setRequests([]);
         setWaitlist([]);
@@ -271,6 +315,69 @@ function RoomDetailContent() {
       setError(e instanceof Error ? e.message : "Failed to approve requests");
     } finally {
       setIsActionLoading(false);
+    }
+  };
+
+  const toggleViolation = (memberId: string, reason: ViolationReason) => {
+    setViolations((prev) => {
+      const next = { ...prev };
+      const set = new Set(next[memberId] ?? []);
+      if (set.has(reason)) set.delete(reason);
+      else set.add(reason);
+      next[memberId] = set;
+      return next;
+    });
+  };
+
+  const handleEvaluate = async () => {
+    if (!roomId) return;
+    setEvaluateLoading(true);
+    setEvaluateError(null);
+    try {
+      const evaluations = creditScoreMembers.map((m) => ({
+        user_id: m.user_id,
+        violations: Array.from(violations[m.user_id] ?? []),
+      }));
+      await evaluateMembers(roomId, evaluations);
+      setEvaluateSuccess(true);
+    } catch (e: unknown) {
+      const msg =
+        e &&
+        typeof e === "object" &&
+        "error" in e &&
+        typeof (e as { error: { message?: string } }).error?.message === "string"
+          ? (e as { error: { message: string } }).error.message
+          : "評分提交失敗";
+      setEvaluateError(msg);
+    } finally {
+      setEvaluateLoading(false);
+    }
+  };
+
+  const toggleOwnerViolation = (reason: ViolationReason) => {
+    setOwnerViolations((prev) => {
+      const next = new Set(prev);
+      if (next.has(reason)) next.delete(reason); else next.add(reason);
+      return next;
+    });
+  };
+
+  const handleEvaluateOwner = async () => {
+    if (!roomId) return;
+    setOwnerEvalLoading(true);
+    setOwnerEvalError(null);
+    try {
+      await evaluateOwner(roomId, Array.from(ownerViolations));
+      setOwnerEvalSuccess(true);
+    } catch (e: unknown) {
+      const msg =
+        e && typeof e === "object" && "error" in e &&
+        typeof (e as { error: { message?: string } }).error?.message === "string"
+          ? (e as { error: { message: string } }).error.message
+          : "評分提交失敗";
+      setOwnerEvalError(msg);
+    } finally {
+      setOwnerEvalLoading(false);
     }
   };
 
@@ -525,6 +632,17 @@ function RoomDetailContent() {
                 </p>
               </div>
 
+              {!room.is_owner && (
+                <div className="rounded-2xl border border-amber-200/70 bg-amber-50/70 p-4 dark:border-amber-900/40 dark:bg-amber-500/10">
+                  <p className="text-sm text-amber-700 dark:text-amber-400">
+                    房主信用分數
+                  </p>
+                  <p className={`mt-1 text-xl font-bold ${room.owner_credit_score < 8 ? "text-red-600 dark:text-red-400" : "text-amber-700 dark:text-amber-300"}`}>
+                    {room.owner_credit_score} 分
+                  </p>
+                </div>
+              )}
+
               <div className="rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-800/50">
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">
                   活動時間
@@ -637,6 +755,20 @@ function RoomDetailContent() {
                   等待加入 ({waitingEntries.length})
                 </button>
               )}
+
+              {room.is_owner && room.room_status === "ended" && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("evaluate")}
+                  className={`rounded-full px-5 py-2 text-sm font-semibold transition ${
+                    activeTab === "evaluate"
+                      ? "bg-white text-amber-600 shadow-sm dark:bg-zinc-900 dark:text-amber-300"
+                      : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                  }`}
+                >
+                  活動評分
+                </button>
+              )}
             </div>
 
             <Link
@@ -695,6 +827,18 @@ function RoomDetailContent() {
                     {member.is_owner && (
                       <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-600 dark:bg-purple-500/15 dark:text-purple-300">
                         擁有者
+                      </span>
+                    )}
+
+                    {room.is_owner && typeof member.credit_score === "number" && (
+                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                        member.credit_score >= 8
+                          ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300"
+                          : member.credit_score >= 5
+                            ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
+                            : "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-300"
+                      }`}>
+                        ★ {member.credit_score} 分
                       </span>
                     )}
 
@@ -788,6 +932,247 @@ function RoomDetailContent() {
                   </div>
                 );
               })}
+            </div>
+          )}
+
+          {activeTab === "members" && !room.is_owner && room.is_member && room.room_status === "ended" && (
+            <div className="mt-4 space-y-3 border-t border-zinc-200/70 pt-4 dark:border-zinc-800">
+              <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">評分房主</p>
+              {!ownerEvalSuccess && (
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  勾選房主的不合格行為，未勾選將給予 +1 信用積分。
+                </p>
+              )}
+              {ownerEvalSuccess ? (
+                <div className="rounded-2xl border border-green-200/70 bg-green-50/70 p-4 text-sm text-green-700 dark:border-green-900/40 dark:bg-green-500/10 dark:text-green-400">
+                  ✓ 已提交評分
+                </div>
+              ) : (
+                <>
+                  {ownerEvalError && (
+                    <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900/60 dark:bg-red-500/10 dark:text-red-400">
+                      {ownerEvalError}
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    {([
+                      { group: "出席問題", items: [
+                        { reason: "late" as ViolationReason, label: "遲到" },
+                        { reason: "last_minute_cancel" as ViolationReason, label: "臨時取消" },
+                        { reason: "ghost" as ViolationReason, label: "爽約無通知" },
+                        { reason: "no_show" as ViolationReason, label: "無故缺席" },
+                        { reason: "early_leave" as ViolationReason, label: "提早離場" },
+                        { reason: "midway_leave" as ViolationReason, label: "中途落跑" },
+                      ]},
+                      { group: "行為問題", items: [
+                        { reason: "attack" as ViolationReason, label: "攻擊行為" },
+                        { reason: "harassment" as ViolationReason, label: "騷擾" },
+                        { reason: "verbal_abuse" as ViolationReason, label: "言語不當" },
+                        { reason: "discrimination" as ViolationReason, label: "歧視行為" },
+                        { reason: "rule_violation" as ViolationReason, label: "違反規定" },
+                      ]},
+                      { group: "費用問題", items: [
+                        { reason: "payment_default" as ViolationReason, label: "不付費／拖欠費用" },
+                        { reason: "payment_dispute" as ViolationReason, label: "AA制臨時反悔" },
+                      ]},
+                    ] as const).map(({ group, items }) => (
+                      <div key={group}>
+                        <p className="mb-1.5 text-xs font-semibold text-zinc-400 dark:text-zinc-500">{group}</p>
+                        <div className="flex flex-wrap gap-2">
+                          {items.map(({ reason, label }) => {
+                            const checked = ownerViolations.has(reason);
+                            return (
+                              <button key={reason} type="button"
+                                onClick={() => toggleOwnerViolation(reason)}
+                                disabled={ownerEvalLoading}
+                                className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed ${
+                                  checked
+                                    ? "border-red-400 bg-red-100 text-red-700 dark:border-red-500/60 dark:bg-red-500/20 dark:text-red-300"
+                                    : "border-zinc-200 bg-white text-zinc-600 hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:border-red-700 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+                                }`}>
+                                <span className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border text-xs ${
+                                  checked ? "border-red-500 bg-red-500 text-white" : "border-zinc-300 dark:border-zinc-600"
+                                }`}>{checked ? "✓" : ""}</span>
+                                {label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between pt-1">
+                    <span className={`text-sm font-semibold ${ownerViolations.size > 0 ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>
+                      {ownerViolations.size > 0 ? `−${ownerViolations.size} 分` : "+1 分"}
+                    </span>
+                    <button type="button" onClick={handleEvaluateOwner} disabled={ownerEvalLoading}
+                      className="rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-amber-500/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
+                      {ownerEvalLoading ? "提交中..." : "提交評分"}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {activeTab === "evaluate" && room.is_owner && room.room_status === "ended" && (
+            <div className="space-y-4">
+              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                請為每位成員評分。勾選不合格行為（可複選），未勾選者將獲得 +1 信用積分獎勵。
+              </p>
+
+              {evaluateSuccess ? (
+                <div className="rounded-2xl border border-green-200/70 bg-green-50/70 p-5 text-green-700 dark:border-green-900/40 dark:bg-green-500/10 dark:text-green-400">
+                  ✓ 已提交評分
+                </div>
+              ) : (
+                <>
+                  {evaluateError && (
+                    <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600 dark:border-red-900/60 dark:bg-red-500/10 dark:text-red-400">
+                      {evaluateError}
+                    </div>
+                  )}
+
+                  {creditScoreMembers.length === 0 ? (
+                    <div className="rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-5 text-zinc-500 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-400">
+                      沒有可評分的成員。
+                    </div>
+                  ) : (
+                    <>
+                      {creditScoreMembers.map((member) => {
+                        const memberViolations = violations[member.user_id] ?? new Set<ViolationReason>();
+                        const hasViolations = memberViolations.size > 0;
+
+                        return (
+                          <div
+                            key={member.user_id}
+                            className={`rounded-2xl border p-4 shadow-sm transition ${
+                              hasViolations
+                                ? "border-red-200/70 bg-red-50/40 dark:border-red-900/40 dark:bg-red-500/5"
+                                : "border-green-200/70 bg-green-50/40 dark:border-green-900/40 dark:bg-green-500/5"
+                            }`}
+                          >
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <div className="flex min-w-0 items-center gap-3">
+                                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full font-bold ${
+                                  hasViolations
+                                    ? "bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-300"
+                                    : "bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-300"
+                                }`}>
+                                  {member.name[0]?.toUpperCase() || "U"}
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="truncate font-semibold text-zinc-950 dark:text-zinc-50">
+                                    {member.name}
+                                  </p>
+                                  <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
+                                    @{member.username} · 目前信用：{member.credit_score} 分
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
+                                hasViolations
+                                  ? "bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-300"
+                                  : "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300"
+                              }`}>
+                                {hasViolations ? `−${memberViolations.size} 分` : "+1 分"}
+                              </div>
+                            </div>
+
+                            <div className="mt-3 space-y-2">
+                              {(
+                                [
+                                  {
+                                    group: "出席問題",
+                                    items: [
+                                      { reason: "late" as ViolationReason, label: "遲到" },
+                                      { reason: "last_minute_cancel" as ViolationReason, label: "臨時取消" },
+                                      { reason: "ghost" as ViolationReason, label: "爽約無通知" },
+                                      { reason: "no_show" as ViolationReason, label: "無故缺席" },
+                                      { reason: "early_leave" as ViolationReason, label: "提早離場" },
+                                      { reason: "midway_leave" as ViolationReason, label: "中途落跑" },
+                                    ],
+                                  },
+                                  {
+                                    group: "人員問題",
+                                    items: [
+                                      { reason: "proxy_register" as ViolationReason, label: "替人報名但本人沒來" },
+                                      { reason: "bring_extra" as ViolationReason, label: "臨時帶人來" },
+                                    ],
+                                  },
+                                  {
+                                    group: "行為問題",
+                                    items: [
+                                      { reason: "attack" as ViolationReason, label: "攻擊行為" },
+                                      { reason: "harassment" as ViolationReason, label: "騷擾" },
+                                      { reason: "verbal_abuse" as ViolationReason, label: "言語不當" },
+                                      { reason: "property_damage" as ViolationReason, label: "損壞財物" },
+                                      { reason: "discrimination" as ViolationReason, label: "歧視行為" },
+                                      { reason: "rule_violation" as ViolationReason, label: "違反規定" },
+                                    ],
+                                  },
+                                  {
+                                    group: "費用問題",
+                                    items: [
+                                      { reason: "payment_default" as ViolationReason, label: "不付費／拖欠費用" },
+                                      { reason: "payment_dispute" as ViolationReason, label: "AA制臨時反悔" },
+                                    ],
+                                  },
+                                ] as const
+                              ).map(({ group, items }) => (
+                                <div key={group}>
+                                  <p className="mb-1.5 text-xs font-semibold text-zinc-400 dark:text-zinc-500">
+                                    {group}
+                                  </p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {items.map(({ reason, label }) => {
+                                      const checked = memberViolations.has(reason);
+                                      return (
+                                        <button
+                                          key={reason}
+                                          type="button"
+                                          onClick={() => toggleViolation(member.user_id, reason)}
+                                          disabled={evaluateLoading}
+                                          className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed ${
+                                            checked
+                                              ? "border-red-400 bg-red-100 text-red-700 dark:border-red-500/60 dark:bg-red-500/20 dark:text-red-300"
+                                              : "border-zinc-200 bg-white text-zinc-600 hover:border-red-200 hover:bg-red-50 hover:text-red-600 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:border-red-700 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+                                          }`}
+                                        >
+                                          <span className={`h-4 w-4 shrink-0 rounded border flex items-center justify-center text-xs ${
+                                            checked
+                                              ? "border-red-500 bg-red-500 text-white"
+                                              : "border-zinc-300 dark:border-zinc-600"
+                                          }`}>
+                                            {checked ? "✓" : ""}
+                                          </span>
+                                          {label}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      <div className="flex justify-end pt-2">
+                        <button
+                          type="button"
+                          onClick={handleEvaluate}
+                          disabled={evaluateLoading}
+                          className="rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-500/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {evaluateLoading ? "提交中..." : "提交評分"}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
             </div>
           )}
         </section>

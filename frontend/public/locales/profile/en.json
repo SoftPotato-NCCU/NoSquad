@@ -7,7 +7,9 @@
     "stats": {
       "joinedRooms": "Rooms Joined",
       "createdRooms": "Rooms Created",
-      "friends": "Friends"
+      "friends": "Friends",
+      "creditScore": "Credit Score",
+      "pts": "pts"
     },
     "sections": {
       "account": "Account Info",
@@ -23,6 +25,10 @@
       "themeSystem": "System",
       "notifications": "Notifications",
       "help": "Help Center"
+    },
+    "credit": {
+      "lowJoin": "Credit score too low ({score}/10). Cannot join any activities.",
+      "lowCreate": "Credit score too low ({score}/10). Cannot create rooms as host. (Minimum 8 pts required)"
     },
     "email": "Email",
     "phone": "Phone",
