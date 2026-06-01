@@ -9,6 +9,30 @@ export interface UserRow {
   created_at: Date;
   rating_avg: number;
   rating_count: number;
+  points: number;
+  points_reset_at: Date;
+}
+
+export interface ReportRow {
+  uuid: string;
+  room_id: string;
+  reporter_id: string;
+  reported_id: string;
+  reason: 'late' | 'absent' | 'harassing' | 'other';
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: Date;
+  resolved_at: Date | null;
+  resolved_by: string | null;
+}
+
+export interface PointTransactionRow {
+  uuid: string;
+  user_id: string;
+  delta: number;
+  reason: 'attendance' | 'late' | 'absent' | 'harassing' | 'other' | 'reset';
+  room_id: string | null;
+  report_id: string | null;
+  created_at: Date;
 }
 
 export interface RoomRow {

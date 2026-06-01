@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
 import { v1 } from './routes/v1';
+import { startPointResetJob } from './jobs/resetPoints';
 
 const app = new Hono();
 
@@ -18,3 +19,5 @@ const server = Bun.serve({
 });
 
 console.log(`Listening on ${server.url}`);
+
+startPointResetJob();

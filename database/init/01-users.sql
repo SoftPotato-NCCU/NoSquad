@@ -14,6 +14,9 @@ CREATE TABLE users (
     rating_avg DECIMAL(3,2) DEFAULT 0.00,
     rating_count INT DEFAULT 0,
 
+    points INT NOT NULL DEFAULT 10,
+    points_reset_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
     PRIMARY KEY (uuid),
     UNIQUE KEY uq_users_username (username),
     UNIQUE KEY uq_users_email (email)

@@ -363,6 +363,15 @@ rooms.post("/", async (c) => {
       },
     ]);
 
+  const [creatorPointRows] = await pool.execute<RowDataPacket[]>(
+    'SELECT points FROM users WHERE uuid = ?',
+    [userId],
+  );
+  if (!creatorPointRows[0] || Number(creatorPointRows[0].points) < 8)
+    return apiError(c, 403, 'INSUFFICIENT_POINTS', 'You do not have enough points to perform this action', [
+      { field: 'points', issue: 'insufficient', message: 'You need at least 8 points to create a room' },
+    ]);
+
   const joinApprovalRequired = body.join_approval_required === true;
   const roomId = crypto.randomUUID();
   const description =
@@ -575,6 +584,12 @@ rooms.post("/:room_id/join", async (c) => {
 
   const room = roomRows[0];
 
+  const [joinerPointRows] = await pool.execute<RowDataPacket[]>(
+    'SELECT points FROM users WHERE uuid = ?',
+    [userId],
+  );
+  const joinerPoints = joinerPointRows[0] ? Number(joinerPointRows[0].points) : 0;
+
   // Check existing membership FIRST so already-joined / pending users get the
   // correct error code (ALREADY_JOINED / PENDING_REQUEST) regardless of room status.
   const [memberRows] = await pool.execute<RowDataPacket[]>(
@@ -607,6 +622,10 @@ rooms.post("/:room_id/join", async (c) => {
         );
       if (room.status !== "open")
         return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
+      if (joinerPoints < 3)
+        return apiError(c, 403, 'INSUFFICIENT_POINTS', 'You do not have enough points to perform this action', [
+          { field: 'points', issue: 'insufficient', message: 'You need at least 3 points to join a room' },
+        ]);
       await pool.execute(
         "UPDATE room_members SET approval_status = ?, joined_at = NOW() WHERE room_id = ? AND user_id = ?",
         [room.join_approval_required ? "pending" : "approved", roomId, userId],
@@ -620,6 +639,11 @@ rooms.post("/:room_id/join", async (c) => {
       });
     }
   }
+
+  if (joinerPoints < 3)
+    return apiError(c, 403, 'INSUFFICIENT_POINTS', 'You do not have enough points to perform this action', [
+      { field: 'points', issue: 'insufficient', message: 'You need at least 3 points to join a room' },
+    ]);
 
   if (room.status === "recruiting_closed")
     return apiError(
@@ -1129,6 +1153,304 @@ rooms.delete("/:room_id", async (c) => {
   ]);
 
   return c.json({ data: { success: true, room_id: roomId } });
+});
+
+// ── GET MEMBERS POINTS ────────────────────────────────────────────────────────
+// GET /api/v1/rooms/:room_id/members/points - Owner views all members' points
+rooms.get("/:room_id/members/points", async (c) => {
+  const userId = c.get("userId");
+  const roomId = c.req.param("room_id");
+
+  const [roomRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT uuid, creator_id FROM rooms WHERE uuid = ?",
+    [roomId],
+  );
+  if (!roomRows[0])
+    return apiError(c, 404, "ROOM_NOT_FOUND", "The specified room does not exist");
+
+  if (roomRows[0].creator_id !== userId)
+    return apiError(c, 403, "NOT_OWNER", "Only the room owner can view all members' points");
+
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    `SELECT u.uuid AS user_id, u.name, u.username, u.points
+     FROM room_members rm
+     JOIN users u ON u.uuid = rm.user_id
+     WHERE rm.room_id = ? AND rm.approval_status = 'approved'
+     ORDER BY rm.joined_at ASC`,
+    [roomId],
+  );
+
+  return c.json({
+    data: {
+      members: rows.map((r) => ({
+        user_id: r.user_id,
+        name: r.name,
+        username: r.username,
+        points: Number(r.points),
+      })),
+    },
+  });
+});
+
+// ── GET OWNER POINTS ──────────────────────────────────────────────────────────
+// GET /api/v1/rooms/:room_id/owner/points - Member views the room owner's points
+rooms.get("/:room_id/owner/points", async (c) => {
+  const userId = c.get("userId");
+  const roomId = c.req.param("room_id");
+
+  const [roomRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT uuid, creator_id FROM rooms WHERE uuid = ?",
+    [roomId],
+  );
+  if (!roomRows[0])
+    return apiError(c, 404, "ROOM_NOT_FOUND", "The specified room does not exist");
+
+  const [memberCheck] = await pool.execute<RowDataPacket[]>(
+    "SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ? AND approval_status = 'approved'",
+    [roomId, userId],
+  );
+  if (memberCheck.length === 0)
+    return apiError(c, 403, "NOT_A_MEMBER", "Only room members can view the owner's points");
+
+  const [ownerRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT uuid, name, username, points FROM users WHERE uuid = ?",
+    [roomRows[0].creator_id],
+  );
+
+  return c.json({
+    data: {
+      owner_id: roomRows[0].creator_id,
+      name: ownerRows[0]?.name ?? null,
+      username: ownerRows[0]?.username ?? null,
+      points: Number(ownerRows[0]?.points ?? 0),
+    },
+  });
+});
+
+// ── CREATE REPORT ─────────────────────────────────────────────────────────────
+// POST /api/v1/rooms/:room_id/reports - Any approved member flags another member
+rooms.post("/:room_id/reports", async (c) => {
+  const userId = c.get("userId");
+  const roomId = c.req.param("room_id");
+
+  const [roomRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT uuid, creator_id FROM rooms WHERE uuid = ?",
+    [roomId],
+  );
+  if (!roomRows[0])
+    return apiError(c, 404, "ROOM_NOT_FOUND", "The specified room does not exist");
+
+  const [reporterCheck] = await pool.execute<RowDataPacket[]>(
+    "SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ? AND approval_status = 'approved'",
+    [roomId, userId],
+  );
+  if (reporterCheck.length === 0)
+    return apiError(c, 403, "NOT_A_MEMBER", "Only room members can file reports");
+
+  const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!body)
+    return apiError(c, 400, "VALIDATION_ERROR", "Invalid request data");
+
+  const validReasons = ["late", "absent", "harassing", "other"];
+
+  if (!body.reported_user_id || typeof body.reported_user_id !== "string")
+    return apiError(c, 400, "VALIDATION_ERROR", "Invalid request data", [
+      { field: "reported_user_id", issue: "required", message: "reported_user_id is required" },
+    ]);
+
+  if (!body.reason || !validReasons.includes(body.reason as string))
+    return apiError(c, 400, "VALIDATION_ERROR", "Invalid request data", [
+      { field: "reason", issue: "invalid_value", message: "reason must be one of: late, absent, harassing, other" },
+    ]);
+
+  if (body.reported_user_id === userId)
+    return apiError(c, 400, "CANNOT_REPORT_SELF", "You cannot report yourself");
+
+  const [reportedCheck] = await pool.execute<RowDataPacket[]>(
+    "SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ? AND approval_status = 'approved'",
+    [roomId, body.reported_user_id],
+  );
+  if (reportedCheck.length === 0)
+    return apiError(c, 404, "USER_NOT_IN_ROOM", "The reported user is not a member of this room");
+
+  const reportId = crypto.randomUUID();
+  await pool.execute(
+    "INSERT INTO reports (uuid, room_id, reporter_id, reported_id, reason) VALUES (?, ?, ?, ?, ?)",
+    [reportId, roomId, userId, body.reported_user_id, body.reason],
+  );
+
+  return c.json({ data: { success: true, report_id: reportId } }, 201);
+});
+
+// ── LIST REPORTS ──────────────────────────────────────────────────────────────
+// GET /api/v1/rooms/:room_id/reports - Owner lists pending reports
+rooms.get("/:room_id/reports", async (c) => {
+  const userId = c.get("userId");
+  const roomId = c.req.param("room_id");
+
+  const [roomRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT uuid, creator_id FROM rooms WHERE uuid = ?",
+    [roomId],
+  );
+  if (!roomRows[0])
+    return apiError(c, 404, "ROOM_NOT_FOUND", "The specified room does not exist");
+
+  if (roomRows[0].creator_id !== userId)
+    return apiError(c, 403, "NOT_OWNER", "Only the room owner can view reports");
+
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    `SELECT r.uuid AS report_id, r.reporter_id, r.reported_id, r.reason, r.status, r.created_at,
+            u.name AS reported_name, u.username AS reported_username
+     FROM reports r
+     JOIN users u ON u.uuid = r.reported_id
+     WHERE r.room_id = ? AND r.status = 'pending'
+     ORDER BY r.created_at ASC`,
+    [roomId],
+  );
+
+  return c.json({
+    data: {
+      reports: rows.map((r) => ({
+        report_id: r.report_id,
+        reporter_id: r.reporter_id,
+        reported_id: r.reported_id,
+        reported_name: r.reported_name,
+        reported_username: r.reported_username,
+        reason: r.reason,
+        status: r.status,
+        created_at: toISO(r.created_at as Date),
+      })),
+    },
+  });
+});
+
+// ── RESOLVE REPORT ────────────────────────────────────────────────────────────
+// PATCH /api/v1/rooms/:room_id/reports/:report_id - Owner approves or rejects a report
+rooms.patch("/:room_id/reports/:report_id", async (c) => {
+  const userId = c.get("userId");
+  const roomId = c.req.param("room_id");
+  const reportId = c.req.param("report_id");
+
+  const [roomRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT uuid, creator_id FROM rooms WHERE uuid = ?",
+    [roomId],
+  );
+  if (!roomRows[0])
+    return apiError(c, 404, "ROOM_NOT_FOUND", "The specified room does not exist");
+
+  if (roomRows[0].creator_id !== userId)
+    return apiError(c, 403, "NOT_OWNER", "Only the room owner can resolve reports");
+
+  const [reportRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT * FROM reports WHERE uuid = ? AND room_id = ? AND status = 'pending'",
+    [reportId, roomId],
+  );
+  if (!reportRows[0])
+    return apiError(c, 404, "REPORT_NOT_FOUND", "No pending report found with this ID");
+
+  const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!body)
+    return apiError(c, 400, "VALIDATION_ERROR", "Invalid request data");
+
+  if (body.status !== "approved" && body.status !== "rejected")
+    return apiError(c, 400, "VALIDATION_ERROR", "Invalid request data", [
+      { field: "status", issue: "invalid_value", message: "status must be approved or rejected" },
+    ]);
+
+  const report = reportRows[0];
+
+  if (body.status === "approved") {
+    const conn = await pool.getConnection();
+    try {
+      await conn.beginTransaction();
+      await conn.execute(
+        "UPDATE reports SET status = 'approved', resolved_at = NOW(), resolved_by = ? WHERE uuid = ?",
+        [userId, reportId],
+      );
+      await conn.execute(
+        "UPDATE users SET points = GREATEST(0, points - 1) WHERE uuid = ?",
+        [report.reported_id],
+      );
+      await conn.execute(
+        "INSERT INTO point_transactions (uuid, user_id, delta, reason, room_id, report_id) VALUES (?, ?, -1, ?, ?, ?)",
+        [crypto.randomUUID(), report.reported_id, report.reason, roomId, reportId],
+      );
+      await conn.commit();
+    } catch (e) {
+      await conn.rollback();
+      throw e;
+    } finally {
+      conn.release();
+    }
+  } else {
+    await pool.execute(
+      "UPDATE reports SET status = 'rejected', resolved_at = NOW(), resolved_by = ? WHERE uuid = ?",
+      [userId, reportId],
+    );
+  }
+
+  return c.json({ data: { success: true, report_id: reportId, status: body.status } });
+});
+
+// ── MARK ATTENDANCE ───────────────────────────────────────────────────────────
+// POST /api/v1/rooms/:room_id/attendance - Owner marks attendance (+1 point each)
+rooms.post("/:room_id/attendance", async (c) => {
+  const userId = c.get("userId");
+  const roomId = c.req.param("room_id");
+
+  const [roomRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT uuid, creator_id FROM rooms WHERE uuid = ?",
+    [roomId],
+  );
+  if (!roomRows[0])
+    return apiError(c, 404, "ROOM_NOT_FOUND", "The specified room does not exist");
+
+  if (roomRows[0].creator_id !== userId)
+    return apiError(c, 403, "NOT_OWNER", "Only the room owner can mark attendance");
+
+  const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!body || !Array.isArray(body.user_ids) || body.user_ids.length === 0)
+    return apiError(c, 400, "VALIDATION_ERROR", "Invalid request data", [
+      { field: "user_ids", issue: "required", message: "user_ids must be a non-empty array" },
+    ]);
+
+  const userIds = body.user_ids as string[];
+  const placeholders = userIds.map(() => "?").join(", ");
+  const [memberRows] = await pool.execute<RowDataPacket[]>(
+    `SELECT user_id FROM room_members WHERE room_id = ? AND user_id IN (${placeholders}) AND approval_status = 'approved'`,
+    [roomId, ...userIds],
+  );
+
+  const validUserIds = new Set(memberRows.map((r) => r.user_id as string));
+  const invalidIds = userIds.filter((id) => !validUserIds.has(id));
+
+  if (invalidIds.length > 0)
+    return apiError(c, 400, "INVALID_MEMBERS", "Some users are not approved members of this room", [
+      { field: "user_ids", issue: "invalid_value", message: `Not found as members: ${invalidIds.join(", ")}` },
+    ]);
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    for (const memberId of userIds) {
+      await conn.execute(
+        "UPDATE users SET points = points + 1 WHERE uuid = ?",
+        [memberId],
+      );
+      await conn.execute(
+        "INSERT INTO point_transactions (uuid, user_id, delta, reason, room_id) VALUES (?, ?, 1, 'attendance', ?)",
+        [crypto.randomUUID(), memberId, roomId],
+      );
+    }
+    await conn.commit();
+  } catch (e) {
+    await conn.rollback();
+    throw e;
+  } finally {
+    conn.release();
+  }
+
+  return c.json({ data: { success: true, marked_count: userIds.length } });
 });
 
 export default rooms;
