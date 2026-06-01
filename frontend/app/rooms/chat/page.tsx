@@ -3,7 +3,12 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
-import { getRoomDetails } from "@/lib/api";
+import {
+  getRoomDetails,
+  listRoomMessages,
+  sendRoomMessage,
+  type ChatMessageDto,
+} from "@/lib/api";
 import type { RoomDetails } from "@/types/rooms";
 
 interface ChatMessage {
@@ -15,14 +20,7 @@ interface ChatMessage {
   timestamp: Date;
 }
 
-interface StoredMessage {
-  id: string;
-  text: string;
-  senderName: string;
-  senderInitial: string;
-  isMine: boolean;
-  timestamp: string;
-}
+const POLL_INTERVAL_MS = 3000;
 
 function formatTime(date: Date) {
   return date.toLocaleTimeString("zh-TW", {
@@ -45,12 +43,28 @@ function ChatContent() {
   const [isSending, setIsSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const lastIdRef = useRef(0);
+
+  const toChatMessage = (m: ChatMessageDto): ChatMessage => {
+    // The send endpoint doesn't echo back sender_name, so fall back to the
+    // current user's name (a sent message is always mine) and stay defensive.
+    const senderName =
+      m.sender_name ?? (m.user_id === user?.id ? user?.name : undefined) ?? "";
+    return {
+      id: String(m.id),
+      text: m.body,
+      senderName,
+      senderInitial: senderName[0]?.toUpperCase() ?? "U",
+      isMine: m.user_id === user?.id,
+      timestamp: new Date(m.created_at),
+    };
+  };
 
   useEffect(() => {
     if (!roomId || !user) return;
 
     getRoomDetails(roomId)
-      .then((res) => {
+      .then(async (res) => {
         const roomData = res.data.room;
         const canChat =
           roomData.is_owner || roomData.membership_status === "approved";
@@ -60,69 +74,60 @@ function ChatContent() {
         }
         setRoom(roomData);
 
-        try {
-          const stored: StoredMessage[] = JSON.parse(
-            localStorage.getItem(`nosquad_chat_messages_${roomId}`) ?? "[]",
-          );
-          const loaded: ChatMessage[] = stored.map((m) => ({
-            ...m,
-            timestamp: new Date(m.timestamp),
-          }));
-          setMessages(loaded);
-          localStorage.setItem(
-            `nosquad_chat_read_${roomId}`,
-            String(stored.length),
-          );
-        } catch {
-          // ignore corrupt storage
-        }
+        const initial = await listRoomMessages(roomId);
+        const loaded = initial.data.messages;
+        setMessages(loaded.map(toChatMessage));
+        lastIdRef.current = loaded.at(-1)?.id ?? 0;
       })
       .catch((e) => {
         setError(e instanceof Error ? e.message : "無法載入房間資訊");
       })
       .finally(() => setIsLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomId, user, router]);
+
+  // Poll for new messages every few seconds (no SSR/WebSocket in static export).
+  useEffect(() => {
+    if (!roomId || !user || error) return;
+    const timer = setInterval(async () => {
+      try {
+        const res = await listRoomMessages(roomId, lastIdRef.current);
+        const fresh = res.data.messages;
+        if (fresh.length) {
+          setMessages((prev) => [...prev, ...fresh.map(toChatMessage)]);
+          lastIdRef.current = fresh.at(-1)!.id;
+        }
+      } catch {
+        // ignore transient polling errors; next tick retries
+      }
+    }, POLL_INTERVAL_MS);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomId, user, error]);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const sendMessage = () => {
+  const sendMessage = async () => {
     if (!input.trim() || !user || isSending || !roomId) return;
 
     const text = input.trim();
     setInput("");
     setIsSending(true);
 
-    const msg: ChatMessage = {
-      id: `${Date.now()}-${Math.random()}`,
-      text,
-      senderName: user.name,
-      senderInitial: user.name[0]?.toUpperCase() ?? "U",
-      isMine: true,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => {
-      const next = [...prev, msg];
-      try {
-        const toStore: StoredMessage[] = next.map((m) => ({
-          ...m,
-          timestamp: m.timestamp.toISOString(),
-        }));
-        localStorage.setItem(
-          `nosquad_chat_messages_${roomId}`,
-          JSON.stringify(toStore),
-        );
-        localStorage.setItem(`nosquad_chat_read_${roomId}`, String(next.length));
-      } catch {
-        // ignore storage errors
-      }
-      return next;
-    });
-    setIsSending(false);
-
-    setTimeout(() => inputRef.current?.focus(), 0);
+    try {
+      const res = await sendRoomMessage(roomId, text);
+      setMessages((prev) => [...prev, toChatMessage(res.data)]);
+      lastIdRef.current = Math.max(lastIdRef.current, res.data.id);
+    } catch {
+      // A send failure shouldn't blow away the whole chat view — just put the
+      // text back so the user can retry.
+      setInput(text);
+    } finally {
+      setIsSending(false);
+      setTimeout(() => inputRef.current?.focus(), 0);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
