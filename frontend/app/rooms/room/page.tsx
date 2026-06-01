@@ -636,7 +636,7 @@ function RoomDetailContent() {
               )}
             </div>
 
-            {activeTab === "requests" && room.is_owner && requests.length > 0 && (
+            {activeTab === "waiting" && room.is_owner && requests.length > 0 && (
               <button
                 type="button"
                 onClick={handleApproveAll}
