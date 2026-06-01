@@ -642,7 +642,7 @@ function RoomDetailContent() {
                   房主
                 </p>
                 <p className="mt-1 truncate text-xl font-bold text-zinc-950 dark:text-zinc-50">
-                  {displayOwner ? displayOwner.name : "尚未取得"}
+                  {displayOwner?.name ?? room.owner_name ?? "尚未取得"}
                 </p>
               </div>
 

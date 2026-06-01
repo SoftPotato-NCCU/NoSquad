@@ -118,6 +118,7 @@ function formatRoomDetails(r: RowDataPacket, userId: string) {
     is_member: !!Number(r.is_member),
     membership_status: r.membership_status ?? null,
     owner_credit_score: Number(r.owner_credit_score),
+    owner_name: r.owner_name ?? null,
   };
 }
 
@@ -346,7 +347,8 @@ rooms.get("/:room_id", async (c) => {
        COUNT(CASE WHEN rm.approval_status = 'approved' THEN 1 END) AS member_count,
        MAX(CASE WHEN rm.user_id = ? THEN 1 ELSE 0 END) AS is_member,
        MAX(CASE WHEN rm.user_id = ? THEN rm.approval_status ELSE NULL END) AS membership_status,
-       u.credit_score AS owner_credit_score
+       u.credit_score AS owner_credit_score,
+       u.name AS owner_name
      FROM rooms r
      LEFT JOIN room_members rm ON rm.room_id = r.uuid
      JOIN users u ON u.uuid = r.creator_id

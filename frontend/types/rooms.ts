@@ -43,6 +43,7 @@ export interface RoomDetails extends BaseRoom {
   is_member: boolean;
   membership_status: MembershipStatus | null;
   owner_credit_score: number;
+  owner_name: string | null;
 }
 
 export type ViolationReason =

@@ -93,6 +93,7 @@ describe("formatRoomDetails", () => {
       is_member: 1,
       membership_status: "approved",
       owner_credit_score: 10,
+      owner_name: "Alice",
     };
 
     const result = formatRoomDetails(row, "user-1");
@@ -114,6 +115,7 @@ describe("formatRoomDetails", () => {
       is_member: true,
       membership_status: "approved",
       owner_credit_score: 10,
+      owner_name: "Alice",
     });
   });
 
