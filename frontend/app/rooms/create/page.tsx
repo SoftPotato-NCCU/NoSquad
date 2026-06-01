@@ -221,7 +221,7 @@ function CreateRoomContent() {
               type="datetime-local"
               value={formData.eventTime}
               onChange={handleChange}
-              className="w-full rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-zinc-900 outline-none transition focus:border-purple-400 focus:ring-2 focus:ring-purple-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:ring-purple-500/20"
+              className="w-full min-w-0 rounded-2xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-zinc-900 outline-none transition focus:border-purple-400 focus:ring-2 focus:ring-purple-200 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:focus:ring-purple-500/20"
             />
           </div>
 
