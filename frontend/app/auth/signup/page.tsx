@@ -23,59 +23,19 @@ interface SignupFormData {
 function PasswordToggleIcon({ visible }: { visible: boolean }) {
   if (visible) {
     return (
-      <svg
-        className="w-5 h-5"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"
-        />
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M12 15a3 3 0 100-6 3 3 0 000 6z"
-        />
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15a3 3 0 100-6 3 3 0 000 6z" />
       </svg>
     );
   }
 
   return (
-    <svg
-      className="w-5 h-5"
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M3 3l18 18"
-      />
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M10.58 10.58A2 2 0 0012 14a2 2 0 001.42-.58"
-      />
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M9.88 4.24A10.45 10.45 0 0112 4c5 0 9 4 10 8a11.74 11.74 0 01-2.18 3.72"
-      />
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M6.1 6.1C4.18 7.44 2.75 9.5 2 12c1 4 5 8 10 8a10.6 10.6 0 005.9-1.9"
-      />
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3l18 18" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.58 10.58A2 2 0 0012 14a2 2 0 001.42-.58" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.88 4.24A10.45 10.45 0 0112 4c5 0 9 4 10 8a11.74 11.74 0 01-2.18 3.72" />
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6.1 6.1C4.18 7.44 2.75 9.5 2 12c1 4 5 8 10 8a10.6 10.6 0 005.9-1.9" />
     </svg>
   );
 }
@@ -173,21 +133,6 @@ function SignupContent() {
       return false;
     }
 
-    if (
-      !/(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[^A-Za-z0-9])/.test(
-        formData.password,
-      )
-    ) {
-      setError(
-        t(
-          dict,
-          "errors.passwordComplexity",
-          "Password must contain uppercase, lowercase, number, and special character",
-        ),
-      );
-      return false;
-    }
-
     if (formData.password !== formData.confirmPassword) {
       setError(t(dict, "errors.passwordsNotMatch", "Passwords do not match"));
       return false;
@@ -201,7 +146,7 @@ function SignupContent() {
     return true;
   };
 
-  const handleSubmit = async (e: React.SubmitEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!validateForm()) {
@@ -293,7 +238,11 @@ function SignupContent() {
               className="block opacity-0 animate-fadeInUp"
               style={{ animationDelay: "0.6s", animationFillMode: "forwards" }}
             >
-              {t(dict, "signup.subtitle.line3", "to the one who hosts it all.")}
+              {t(
+                dict,
+                "signup.subtitle.line3",
+                "to the one who hosts it all.",
+              )}
             </span>
           </p>
         </div>
@@ -494,15 +443,17 @@ function SignupContent() {
                     type="button"
                     onClick={() => setShowPassword((prev) => !prev)}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-zinc-500 hover:text-gray-600 dark:hover:text-zinc-300 transition-colors"
-                    aria-label={
-                      showPassword ? "Hide password" : "Show password"
-                    }
+                    aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     <PasswordToggleIcon visible={showPassword} />
                   </button>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  {t(dict, "signupForm.passwordHint", "At least 8 characters")}
+                  {t(
+                    dict,
+                    "signupForm.passwordHint",
+                    "At least 8 characters",
+                  )}
                 </p>
               </div>
 
@@ -511,7 +462,11 @@ function SignupContent() {
                   htmlFor="confirmPassword"
                   className="block text-[clamp(0.95rem,1.1vw,1.25rem)] font-semibold text-gray-700 dark:text-zinc-300 mb-2"
                 >
-                  {t(dict, "signupForm.confirmPassword", "Confirm Password")}
+                  {t(
+                    dict,
+                    "signupForm.confirmPassword",
+                    "Confirm Password",
+                  )}
                 </label>
                 <div className="relative group">
                   <input
@@ -573,7 +528,11 @@ function SignupContent() {
                 {isLoading ? (
                   <div className="flex items-center justify-center gap-2">
                     <div className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin"></div>
-                    {t(dict, "signupForm.submitting", "Creating account...")}
+                    {t(
+                      dict,
+                      "signupForm.submitting",
+                      "Creating account...",
+                    )}
                   </div>
                 ) : (
                   t(dict, "signupForm.submit", "Create Account")
