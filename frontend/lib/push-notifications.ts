@@ -16,22 +16,9 @@ export function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
 }
 
 export async function getVapidPublicKey(): Promise<string> {
-  const response = await fetch(`${API_BASE}/api/v1/push/vapid-public-key`);
+  const response = await fetch(`${API_BASE}/api/v1/push/vapid_public_key`);
   const data = await response.json();
-  return data.vapidPublicKey;
-}
-
-export async function requestNotificationPermission(): Promise<NotificationPermission> {
-  if (!("Notification" in window)) {
-    console.warn("Notifications are not supported in this browser");
-    return "denied";
-  }
-
-  if (Notification.permission === "granted" || Notification.permission === "denied") {
-    return Notification.permission;
-  }
-
-  return await Notification.requestPermission();
+  return data.public_key;
 }
 
 export async function subscribeToPush(): Promise<PushSubscription | null> {
@@ -59,11 +46,11 @@ export async function subscribeToPush(): Promise<PushSubscription | null> {
 
     const serializedSub = JSON.parse(JSON.stringify(subscription));
 
-    await apiFetch("/push/subscribe", {
+    await apiFetch("/push/subscribe/", {
       method: "POST",
       body: JSON.stringify({
-        endpoint: serializedSub.endpoint,
-        keys: serializedSub.keys,
+        platform: "web",
+        pushSubscription: serializedSub,
       }),
     });
 
@@ -98,58 +85,6 @@ export async function isSubscribed(): Promise<boolean> {
     const subscription = await registration.pushManager.getSubscription();
     return subscription !== null;
   } catch {
-    return false;
-  }
-}
-
-// Called automatically on app start — only subscribes if permission is already granted.
-// Does NOT request permission (requires a user gesture on iOS).
-export async function initializePushNotifications(): Promise<boolean> {
-  try {
-    const supported = await isPushSupported();
-    if (!supported) {
-      console.log("[PUSH] Push notifications not supported");
-      return false;
-    }
-
-    if (!("Notification" in window) || Notification.permission !== "granted") {
-      console.log("[PUSH] Permission not granted, skipping auto-subscribe");
-      return false;
-    }
-
-    const subscription = await subscribeToPush();
-    if (subscription) {
-      console.log("[PUSH] Successfully subscribed to push notifications");
-      return true;
-    }
-
-    return false;
-  } catch (error) {
-    console.error("[PUSH] Failed to initialize push notifications:", error);
-    return false;
-  }
-}
-
-// Called from a user-initiated action (button tap).
-// Requests permission first, then subscribes if granted.
-export async function requestPermissionAndSubscribe(): Promise<boolean> {
-  try {
-    const supported = await isPushSupported();
-    if (!supported) {
-      console.log("[PUSH] Push notifications not supported");
-      return false;
-    }
-
-    const permission = await requestNotificationPermission();
-    if (permission !== "granted") {
-      console.log("[PUSH] Permission not granted");
-      return false;
-    }
-
-    const subscription = await subscribeToPush();
-    return subscription !== null;
-  } catch (error) {
-    console.error("[PUSH] Failed to request permission and subscribe:", error);
     return false;
   }
 }

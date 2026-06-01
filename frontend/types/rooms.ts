@@ -7,8 +7,6 @@ export type RoomStatus =
 
 export type MembershipStatus = "approved" | "pending" | "rejected";
 
-export type RoomCategory = "sports" | "study" | "entertainment" | "social";
-
 export interface BaseRoom {
   id: string;
   name: string;
@@ -18,7 +16,6 @@ export interface BaseRoom {
   max_capacity: number;
   join_approval_required: boolean;
   created_at: string;
-  category: RoomCategory | null;
 }
 
 export interface MyRoom extends BaseRoom {

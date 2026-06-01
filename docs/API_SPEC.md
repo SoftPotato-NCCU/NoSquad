@@ -8,7 +8,6 @@
 |---------|----------|
 | Auth | `/api/v1/auth` |
 | Room | `/api/v1/rooms` |
-| Push | `/api/v1/push` |
 
 ---
 
@@ -784,13 +783,9 @@ Returns all available rooms with optional filters.
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | limit | integer | 20 | Number of rooms per page (max 50) |
-| cursor | string | null | Pagination cursor. For `sort_by=created_at` this is a timestamp; for other sort fields it is an opaque numeric string. Always use the value returned by `next_cursor`. |
+| cursor | string | null | Timestamp cursor for pagination |
 | include_joined | boolean | false | Include rooms user has already joined |
 | include_full | boolean | false | Include rooms that are at capacity |
-| category | string | null | Filter by category: `sports`, `study`, `entertainment`, `social`. Returns 400 if an unrecognised value is supplied. |
-| q | string | null | Keyword search — matches against room name and description |
-| sort_by | string | `created_at` | Sort field: `created_at`, `event_time`, `member_count`. Returns 400 if an unrecognised value is supplied. |
-| order | string | `desc` | Sort direction: `asc`, `desc` |
 
 #### Response (200 OK)
 
@@ -802,13 +797,9 @@ Returns all available rooms with optional filters.
         "id": "550e8400-e29b-41d4-a716-446655440001",
         "name": "Math Tutoring",
         "description": "Help with calculus",
-        "room_status": "open",
-        "category": "study",
         "member_count": 3,
         "max_capacity": 10,
         "join_approval_required": false,
-        "event_time": "2026-04-20T14:00:00Z",
-        "event_end_time": "2026-04-20T16:00:00Z",
         "created_at": "2026-04-14T08:00:00Z",
         "is_joined": false,
         "is_full": false
@@ -823,37 +814,10 @@ Returns all available rooms with optional filters.
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| category | string \| null | One of: `sports`, `study`, `entertainment`, `social`, or `null` |
-| event_time | string \| null | Event start time (ISO 8601) |
-| event_end_time | string \| null | Event end time (ISO 8601) |
-
-> **Note:** `next_cursor` format depends on `sort_by`. For `created_at` it is an ISO timestamp; for `event_time` and `member_count` it is an opaque numeric string. Always treat it as opaque and pass it back as-is.
-```
-
 #### Errors
 
 <details>
 <summary>Show Errors</summary>
-
-**400 VALIDATION_ERROR** (invalid `category` or `sort_by`)
-
-```json
-{
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Invalid category",
-    "details": [
-      {
-        "field": "category",
-        "issue": "invalid_value",
-        "message": "category must be one of: sports, study, entertainment, social"
-      }
-    ]
-  }
-}
-```
 
 **401 UNAUTHORIZED**
 
@@ -885,7 +849,6 @@ Header: `Authorization: Bearer <access_token>`
 {
   "name": "Study Group",
   "description": "For SE class",
-  "category": "study",
   "max_capacity": 10,
   "join_approval_required": false,
   "event_time": "2026-04-20T14:00:00Z",
@@ -898,7 +861,6 @@ Header: `Authorization: Bearer <access_token>`
 |-------|------|----------|-------------|
 | name | string | Yes | Room name (max 200 chars) |
 | description | string | No | Room description |
-| category | string | No | One of: `sports`, `study`, `entertainment`, `social`. Invalid values are stored as `null`. |
 | max_capacity | integer | No | Max members (default 10, max 50) |
 | join_approval_required | boolean | No | If true, join requests need owner approval (default false) |
 | event_time | string | Yes | Event start time (ISO 8601) |
@@ -915,7 +877,6 @@ Header: `Authorization: Bearer <access_token>`
       "name": "Study Group",
       "description": "For SE class",
       "room_status": "open",
-      "category": "study",
       "member_count": 1,
       "max_capacity": 10,
       "join_approval_required": false,
@@ -2211,279 +2172,6 @@ Removes a member from the room. Cannot remove the room owner.
 
 ---
 
-## Push Notifications Service
-
----
-
-### Get VAPID Public Key
-
-<details>
-<summary><strong>GET</strong> `/api/v1/push/vapid-public-key` | Auth: No</summary>
-
-Returns the VAPID public key needed for Web Push subscription on the client side.
-
-#### Response (200 OK)
-
-```json
-{
-  "vapidPublicKey": "BElVVFlCRUJLQXRtVkV..."
-}
-```
-
-#### Errors
-
-<details>
-<summary>Show Errors</summary>
-
-**500 INTERNAL_ERROR**
-
-```json
-{
-  "error": {
-    "code": "INTERNAL_ERROR",
-    "message": "VAPID public key not configured",
-    "details": []
-  }
-}
-```
-
-</details>
-</details>
-
----
-
-### Subscribe to Push Notifications
-
-<details>
-<summary><strong>POST</strong> `/api/v1/push/subscribe` | Auth: Yes</summary>
-
-Header: `Authorization: Bearer <access_token>`
-
-Saves or updates a Web Push subscription for the authenticated user. If the endpoint already exists for any user, it is updated with the new user's ID and keys.
-
-#### Request
-
-```json
-{
-  "endpoint": "https://fcm.googleapis.com/fcm/send/...",
-  "keys": {
-    "p256dh": "base64url_encoded_key",
-    "auth": "base64url_encoded_key"
-  }
-}
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| endpoint | string | Push service endpoint URL (required) |
-| keys.p256dh | string | ECDH public key for payload encryption (required) |
-| keys.auth | string | Authentication secret for payload verification (required) |
-
-#### Response (201 Created)
-
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "message": "Push subscription saved successfully"
-}
-```
-
-#### Errors
-
-<details>
-<summary>Show Errors</summary>
-
-**400 VALIDATION_ERROR**
-
-```json
-{
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Invalid subscription data",
-    "details": [
-      {
-        "field": "endpoint",
-        "issue": "required",
-        "message": "Endpoint is required"
-      },
-      {
-        "field": "keys",
-        "issue": "required",
-        "message": "Keys with p256dh and auth are required"
-      }
-    ]
-  }
-}
-```
-
-**500 INTERNAL_ERROR**
-
-```json
-{
-  "error": {
-    "code": "INTERNAL_ERROR",
-    "message": "Failed to save subscription",
-    "details": []
-  }
-}
-```
-
-**401 UNAUTHORIZED**
-
-```json
-{
-  "error": {
-    "code": "UNAUTHORIZED",
-    "message": "Authentication required: token is missing or invalid",
-    "details": []
-  }
-}
-```
-
-</details>
-</details>
-
----
-
-### List Push Subscriptions
-
-<details>
-<summary><strong>GET</strong> `/api/v1/push/subscriptions` | Auth: Yes</summary>
-
-Header: `Authorization: Bearer <access_token>`
-
-Returns all active Web Push subscriptions for the authenticated user.
-
-#### Response (200 OK)
-
-```json
-{
-  "subscriptions": [
-    {
-      "id": "550e8400-e29b-41d4-a716-446655440000",
-      "endpoint": "https://fcm.googleapis.com/fcm/send/...",
-      "platform": "web",
-      "created_at": "2026-04-14T10:00:00Z"
-    }
-  ]
-}
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| id | string | Subscription ID (UUID) |
-| endpoint | string | Push service endpoint URL |
-| platform | string | Platform type: `web`, `fcm`, or `apns` (currently only `web` is active) |
-| created_at | string | Subscription creation time (ISO 8601) |
-
-#### Errors
-
-<details>
-<summary>Show Errors</summary>
-
-**500 INTERNAL_ERROR**
-
-```json
-{
-  "error": {
-    "code": "INTERNAL_ERROR",
-    "message": "Failed to fetch subscriptions",
-    "details": []
-  }
-}
-```
-
-**401 UNAUTHORIZED**
-
-```json
-{
-  "error": {
-    "code": "UNAUTHORIZED",
-    "message": "Authentication required: token is missing or invalid",
-    "details": []
-  }
-}
-```
-
-</details>
-</details>
-
----
-
-### Send Test Notification
-
-<details>
-<summary><strong>POST</strong> `/api/v1/push/test` | Auth: Yes</summary>
-
-Header: `Authorization: Bearer <access_token>`
-
-Sends a test push notification to all active subscriptions of the authenticated user. Useful for verifying the push notification system is working correctly.
-
-#### Response (200 OK)
-
-```json
-{
-  "message": "Test notification sent",
-  "sent": 1,
-  "failed": 0
-}
-```
-
-| Field | Type | Description |
-|-------|------|-------------|
-| message | string | Status message |
-| sent | integer | Number of subscriptions successfully notified |
-| failed | integer | Number of subscriptions that failed |
-
-The test notification uses:
-- **Title:** "Test Push Notification"
-- **Body:** "This is a push notification test"
-- **Data:** `{"hello": "world"}`
-
-#### Errors
-
-<details>
-<summary>Show Errors</summary>
-
-**500 INTERNAL_ERROR**
-
-```json
-{
-  "error": {
-    "code": "INTERNAL_ERROR",
-    "message": "Failed to send test notification",
-    "details": []
-  }
-}
-```
-
-**401 UNAUTHORIZED**
-
-```json
-{
-  "error": {
-    "code": "UNAUTHORIZED",
-    "message": "Authentication required: token is missing or invalid",
-    "details": []
-  }
-}
-```
-
-</details>
-</details>
-
----
-
-### Push Notifications Design Rules
-
-- Subscriptions are tied to user IDs and Web Push endpoints
-- Duplicate endpoints are deduplicated — if a user subscribes with the same endpoint, only the most recent subscription is retained
-- Invalid or expired subscriptions (410 Gone, 404 Not Found) are automatically cleaned up
-- Currently supports Web Push (browser notifications). Platform field is reserved for future FCM/APNs support
-- Notifications are sent asynchronously to minimize response times
-
----
-
 ## Pagination
 
 ### Cursor-based Pagination
@@ -2492,8 +2180,8 @@ This API uses cursor-based pagination for list endpoints.
 
 ### Behavior
 
-- **Cursor:** An opaque string returned in `next_cursor`. Pass it back unchanged as `?cursor=<value>`. The internal format varies by `sort_by` — treat it as a black box.
-- **Order:** Results are returned newest-first by default (DESC). Override with `order=asc`.
+- **Cursor:** Uses `created_at` timestamp
+- **Order:** Results are returned newest-first (DESC by created_at)
 - **First request:** Omit `cursor` to start from the most recent items
 - **Next page:** Use `next_cursor` from previous response
 - **End of list:** When `has_next` is `false`, stop fetching

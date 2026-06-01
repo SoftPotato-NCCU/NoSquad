@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import type { Context } from "hono";
 import type { RowDataPacket } from "mysql2/promise";
 import { pool } from "../../db/connection";
 import { apiError } from "../../lib/errors";
@@ -66,8 +65,6 @@ function formatHallRoom(r: RowDataPacket) {
     member_count: memberCount,
     max_capacity: r.max_members,
     join_approval_required: Boolean(r.join_approval_required),
-    event_time: toISO(r.event_time),
-    event_end_time: toISO(r.event_end_time),
     created_at: toISO(r.created_at as Date),
     is_joined: !!Number(r.is_joined),
     is_full: memberCount >= (r.max_members as number),
@@ -164,54 +161,20 @@ rooms.get("/", async (c) => {
 // GET /api/v1/rooms/hall - List all open rooms with optional filters
 rooms.get("/hall", async (c) => {
   const userId = c.get("userId");
-  const limitRaw = c.req.query("limit");
-  const limitNum = limitRaw !== undefined ? Number(limitRaw) : 20;
-  if (!Number.isInteger(limitNum) || limitNum < 1)
-    return apiError(c, 400, "VALIDATION_ERROR", "Invalid limit", [
-      { field: "limit", issue: "invalid_value", message: "limit must be a positive integer" },
-    ]);
-  const limit = Math.min(limitNum, 50);
+  const limit = Math.min(Number(c.req.query("limit") ?? 20), 50);
   const cursor = c.req.query("cursor");
   const includeJoined = c.req.query("include_joined") === "true";
   const includeFull = c.req.query("include_full") === "true";
   const validCategories = ["sports", "study", "entertainment", "social"];
   const categoryFilter = c.req.query("category");
-  if (categoryFilter && !validCategories.includes(categoryFilter))
-    return apiError(c, 400, "VALIDATION_ERROR", "Invalid category", [
-      { field: "category", issue: "invalid_value", message: `category must be one of: ${validCategories.join(", ")}` },
-    ]);
-  const category = categoryFilter ?? null;
-
-  const searchQuery = c.req.query("q")?.trim() || null;
-
-  const validSortFields = ["created_at", "event_time", "member_count"];
-  const sortByParam = c.req.query("sort_by") ?? "created_at";
-  if (!validSortFields.includes(sortByParam))
-    return apiError(c, 400, "VALIDATION_ERROR", "Invalid sort_by", [
-      { field: "sort_by", issue: "invalid_value", message: `sort_by must be one of: ${validSortFields.join(", ")}` },
-    ]);
-  const sortBy = sortByParam;
-  const orderParam = c.req.query("order") ?? "desc";
-  if (orderParam !== "asc" && orderParam !== "desc")
-    return apiError(c, 400, "VALIDATION_ERROR", "Invalid order", [
-      { field: "order", issue: "invalid_value", message: "order must be one of: asc, desc" },
-    ]);
-  const order = orderParam === "asc" ? "ASC" : "DESC";
-
-  // For non-created_at sorts, cursor holds the numeric offset as a string.
-  let offset = 0;
-  if (sortBy !== "created_at" && cursor) {
-    const offsetNum = Number(cursor);
-    if (!Number.isInteger(offsetNum) || offsetNum < 0)
-      return apiError(c, 400, "VALIDATION_ERROR", "Invalid cursor", [
-        { field: "cursor", issue: "invalid_value", message: "cursor must be a non-negative integer for this sort order" },
-      ]);
-    offset = offsetNum;
-  }
+  const category =
+    categoryFilter && validCategories.includes(categoryFilter)
+      ? categoryFilter
+      : null;
 
   const params: (string | number)[] = [userId];
   let cursorClause = "";
-  if (cursor && sortBy === "created_at") {
+  if (cursor) {
     cursorClause = "AND r.created_at < ?";
     params.push(cursor);
   }
@@ -219,11 +182,6 @@ rooms.get("/hall", async (c) => {
   if (category) {
     categoryClause = "AND r.category = ?";
     params.push(category);
-  }
-  let searchClause = "";
-  if (searchQuery) {
-    searchClause = "AND (r.title LIKE ? OR r.description LIKE ?)";
-    params.push(`%${searchQuery}%`, `%${searchQuery}%`);
   }
 
   const outerConds: string[] = [];
@@ -233,15 +191,7 @@ rooms.get("/hall", async (c) => {
     ? `WHERE ${outerConds.join(" AND ")}`
     : "";
 
-  const orderClause =
-    sortBy === "member_count"
-      ? `ORDER BY sub.member_count ${order}, sub.created_at DESC`
-      : sortBy === "event_time"
-      ? `ORDER BY sub.event_time IS NULL, sub.event_time ${order}, sub.created_at DESC`
-      : `ORDER BY sub.created_at ${order}`;
-
   params.push(limit + 1);
-  if (sortBy !== "created_at") params.push(offset);
 
   const [rows] = await pool.execute<RowDataPacket[]>(
     `SELECT sub.* FROM (
@@ -254,12 +204,11 @@ rooms.get("/hall", async (c) => {
          AND (r.event_time IS NULL OR r.event_time > NOW())
          ${cursorClause}
          ${categoryClause}
-         ${searchClause}
        GROUP BY r.uuid
      ) AS sub
      ${outerWhere}
-     ${orderClause}
-     LIMIT ?${sortBy !== "created_at" ? " OFFSET ?" : ""}`,
+     ORDER BY sub.created_at DESC
+     LIMIT ?`,
     params,
   );
 
@@ -272,9 +221,7 @@ rooms.get("/hall", async (c) => {
       pagination: {
         has_next: hasNext,
         next_cursor: hasNext
-          ? sortBy === "created_at"
-            ? toISO((items.at(-1)?.created_at as Date) ?? null)
-            : String(offset + limit)
+          ? toISO((items.at(-1)?.created_at as Date) ?? null)
           : null,
         limit,
       },
@@ -369,11 +316,10 @@ rooms.post("/", async (c) => {
   const location =
     typeof body.location === "string" ? body.location : null;
   const validCategories = ["sports", "study", "entertainment", "social"];
-  if (body.category !== undefined && (typeof body.category !== "string" || !validCategories.includes(body.category)))
-    return apiError(c, 400, "VALIDATION_ERROR", "Invalid request data", [
-      { field: "category", issue: "invalid_value", message: `category must be one of: ${validCategories.join(", ")}` },
-    ]);
-  const category = typeof body.category === "string" ? body.category : null;
+  const category =
+    typeof body.category === "string" && validCategories.includes(body.category)
+      ? body.category
+      : null;
   const eventTime = new Date(body.event_time as string);
   const eventEndTime =
     typeof body.event_end_time === "string"
@@ -409,7 +355,6 @@ rooms.post("/", async (c) => {
           description,
           room_status: "open" as const,
           member_count: 1,
-          category,
           max_capacity: maxCapacity,
           join_approval_required: joinApprovalRequired,
           event_time: eventTime.toISOString(),
@@ -528,15 +473,6 @@ rooms.patch("/:room_id", async (c) => {
   if (typeof body.location === "string" || body.location === null) {
     updates.push("location = ?");
     params.push(body.location);
-  }
-  if (body.category !== undefined) {
-    const validCategories = ["sports", "study", "entertainment", "social"];
-    if (body.category !== null && (typeof body.category !== "string" || !validCategories.includes(body.category as string)))
-      return apiError(c, 400, "VALIDATION_ERROR", "Invalid request data", [
-        { field: "category", issue: "invalid_value", message: `category must be one of: ${validCategories.join(", ")}` },
-      ]);
-    updates.push("category = ?");
-    params.push(body.category as string | null);
   }
 
   if (updates.length === 0)
@@ -1128,105 +1064,6 @@ rooms.delete("/:room_id", async (c) => {
   ]);
 
   return c.json({ data: { success: true, room_id: roomId } });
-});
-
-// ── MESSAGES ────────────────────────────────────────────────────────────────────
-
-// Asserts the caller is the owner or an approved member of the room.
-// Returns the room row on success, or an apiError Response on failure.
-async function assertRoomMember(c: Context, roomId: string, userId: string) {
-  const [roomRows] = await pool.execute<RowDataPacket[]>(
-    "SELECT creator_id FROM rooms WHERE uuid = ?",
-    [roomId],
-  );
-  if (!roomRows[0])
-    return apiError(c, 404, "ROOM_NOT_FOUND", "The specified room does not exist");
-
-  if (roomRows[0].creator_id !== userId) {
-    const [member] = await pool.execute<RowDataPacket[]>(
-      "SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ? AND approval_status = 'approved'",
-      [roomId, userId],
-    );
-    if (!member[0])
-      return apiError(c, 403, "NOT_MEMBER", "You must be a member of this room");
-  }
-
-  return roomRows[0];
-}
-
-// GET /api/v1/rooms/:room_id/messages?after=<id>&limit=50 - List messages (members only)
-rooms.get("/:room_id/messages", async (c) => {
-  const userId = c.get("userId");
-  const roomId = c.req.param("room_id");
-  const after = Number(c.req.query("after") ?? 0);
-  const limit = Math.min(Number(c.req.query("limit") ?? 50), 100);
-
-  const room = await assertRoomMember(c, roomId, userId);
-  if (room instanceof Response) return room;
-
-  const [rows] = await pool.execute<RowDataPacket[]>(
-    `SELECT msg.id, msg.user_id, msg.body, msg.created_at, u.name AS sender_name
-       FROM room_messages msg
-       JOIN users u ON u.uuid = msg.user_id
-      WHERE msg.room_id = ? AND msg.id > ?
-      ORDER BY msg.id ASC
-      LIMIT ?`,
-    [roomId, after, limit],
-  );
-
-  return c.json({
-    data: {
-      messages: rows.map((r) => ({
-        id: Number(r.id),
-        user_id: r.user_id,
-        sender_name: r.sender_name,
-        body: r.body,
-        created_at: toISO(r.created_at as Date),
-      })),
-    },
-  });
-});
-
-// POST /api/v1/rooms/:room_id/messages - Send a message (members only)
-rooms.post("/:room_id/messages", async (c) => {
-  const userId = c.get("userId");
-  const roomId = c.req.param("room_id");
-  const payload = await c.req.json().catch(() => ({}));
-  const body = typeof payload.body === "string" ? payload.body.trim() : "";
-
-  if (!body)
-    return apiError(c, 400, "VALIDATION_ERROR", "Message body is required", [
-      { field: "body", issue: "required", message: "Message body is required" },
-    ]);
-  if (body.length > 2000)
-    return apiError(c, 400, "VALIDATION_ERROR", "Message too long (max 2000)", [
-      { field: "body", issue: "too_long", message: "Message too long (max 2000 characters)" },
-    ]);
-
-  const room = await assertRoomMember(c, roomId, userId);
-  if (room instanceof Response) return room;
-
-  const [result] = await pool.execute(
-    "INSERT INTO room_messages (room_id, user_id, body) VALUES (?, ?, ?)",
-    [roomId, userId, body],
-  );
-  const insertId = (result as { insertId: number }).insertId;
-
-  const [senderRows] = await pool.execute<RowDataPacket[]>(
-    "SELECT name FROM users WHERE uuid = ?",
-    [userId],
-  );
-  const senderName = (senderRows[0]?.name as string | undefined) ?? "";
-
-  return c.json({
-    data: {
-      id: insertId,
-      user_id: userId,
-      sender_name: senderName,
-      body,
-      created_at: new Date().toISOString(),
-    },
-  });
 });
 
 export default rooms;

@@ -17,7 +17,7 @@ describe("room formatters", () => {
         created_at: new Date("2024-01-01T00:00:00Z"),
       };
 
-      const result = formatMyRoom(row as any, "user-creator");
+      const result = formatMyRoom(row, "user-creator");
 
       expect(result.is_owner).toBe(true);
     });
@@ -104,7 +104,7 @@ describe("room formatters", () => {
         created_at: new Date(),
       };
 
-      const result = formatHallRoom(row as any);
+      const result = formatHallRoom(row);
 
       expect(result.is_full).toBe(true);
     });
@@ -121,7 +121,7 @@ describe("room formatters", () => {
         created_at: new Date(),
       };
 
-      const result = formatHallRoom(row as any);
+      const result = formatHallRoom(row);
 
       expect(result.is_full).toBe(false);
     });
@@ -138,7 +138,7 @@ describe("room formatters", () => {
         created_at: new Date(),
       };
 
-      const result = formatHallRoom(row as any);
+      const result = formatHallRoom(row);
 
       expect(result.is_joined).toBe(true);
     });
@@ -155,7 +155,7 @@ describe("room formatters", () => {
         created_at: new Date(),
       };
 
-      const result = formatHallRoom(row as any);
+      const result = formatHallRoom(row);
 
       expect(result.is_joined).toBe(false);
     });
@@ -170,11 +170,10 @@ describe("room formatters", () => {
         max_members: 20,
         is_joined: 1,
         event_time: new Date("2030-03-20T10:00:00Z"),
-        event_end_time: new Date("2030-03-20T12:00:00Z"),
         created_at: new Date("2024-03-20T08:00:00Z"),
       };
 
-      const result = formatHallRoom(row as any);
+      const result = formatHallRoom(row);
 
       expect(result).toEqual({
         id: "hall-room-1",
@@ -185,8 +184,6 @@ describe("room formatters", () => {
         member_count: 7,
         max_capacity: 20,
         join_approval_required: false,
-        event_time: "2030-03-20T10:00:00.000Z",
-        event_end_time: "2030-03-20T12:00:00.000Z",
         created_at: "2024-03-20T08:00:00.000Z",
         is_joined: true,
         is_full: false,

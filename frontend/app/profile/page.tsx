@@ -8,7 +8,6 @@ import { useDictionary, t } from "@/lib/i18n/useDictionary";
 import { logout, clearToken } from "@/lib/api";
 import StatCard from "@/components/StatCard";
 import ProfileInfoRow from "@/components/ProfileInfoRow";
-import NotificationSettings from "@/components/NotificationSettings";
 
 function ProfileContent() {
   const router = useRouter();
@@ -198,7 +197,16 @@ function ProfileContent() {
               value="跟隨系統"
             />
 
-            <NotificationSettings />
+            <ProfileInfoRow
+              icon={
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.4-1.4A2 2 0 0118 14.2V11a6 6 0 10-12 0v3.2a2 2 0 01-.6 1.4L4 17h5" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a3 3 0 006 0" />
+                </svg>
+              }
+              label={t(dict, "profile.settings.notifications", "通知設定")}
+              value="已開啟"
+            />
 
             <ProfileInfoRow
               icon={
