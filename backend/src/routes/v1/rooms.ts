@@ -5,6 +5,7 @@ import { pool } from "../../db/connection";
 import { apiError } from "../../lib/errors";
 import { authMiddleware, type AuthVariables } from "./middleware/auth";
 import { resetCreditScoreIfDue } from "./auth";
+import { notifyUser } from "../../lib/push-notifications";
 
 // ── ROUTES: /api/v1/rooms ───────────────────────────────────────────────────────
 
@@ -1668,7 +1669,7 @@ rooms.delete("/:room_id", async (c) => {
 // Returns the room row on success, or an apiError Response on failure.
 async function assertRoomMember(c: Context, roomId: string, userId: string) {
   const [roomRows] = await pool.execute<RowDataPacket[]>(
-    "SELECT creator_id FROM rooms WHERE uuid = ?",
+    "SELECT creator_id, title FROM rooms WHERE uuid = ?",
     [roomId],
   );
   if (!roomRows[0])
@@ -1749,6 +1750,24 @@ rooms.post("/:room_id/messages", async (c) => {
     [userId],
   );
   const senderName = (senderRows[0]?.name as string | undefined) ?? "";
+
+  // Notify all other approved members (fire-and-forget)
+  pool.execute<RowDataPacket[]>(
+    `SELECT rm.user_id FROM room_members rm
+     WHERE rm.room_id = ? AND rm.approval_status = 'approved' AND rm.user_id != ?`,
+    [roomId, userId],
+  ).then(([memberRows]) => {
+    const roomName = (room.title as string | undefined) ?? "NoSquad";
+    const preview = body.length > 60 ? `${body.slice(0, 60)}…` : body;
+    for (const row of memberRows) {
+      notifyUser(row.user_id as string, {
+        title: roomName,
+        body: `${senderName}: ${preview}`,
+        tag: `chat-${roomId}`,
+        data: { path: `/rooms/chat?room_id=${roomId}` },
+      }).catch(() => {});
+    }
+  }).catch(() => {});
 
   return c.json({
     data: {
