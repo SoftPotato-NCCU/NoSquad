@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import {
   getRoomDetails,
@@ -299,7 +300,7 @@ function RoomDetailContent() {
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={() => router.push("/")}
           className="w-fit rounded-full border border-zinc-200 bg-white/85 px-5 py-2 text-sm font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-200 dark:hover:bg-zinc-800"
         >
           ← 返回
@@ -359,7 +360,7 @@ function RoomDetailContent() {
       <div className="flex items-center justify-between gap-4">
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={() => router.push("/")}
           className="rounded-full border border-zinc-200 bg-white/85 px-5 py-2 text-sm font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-200 dark:hover:bg-zinc-800"
         >
           ← 返回
@@ -517,6 +518,7 @@ function RoomDetailContent() {
                   {isActionLoading ? "離開中..." : "離開房間"}
                 </button>
               )}
+
             </div>
           </div>
         </div>
@@ -525,6 +527,7 @@ function RoomDetailContent() {
       {canViewMembers && (
         <section className="rounded-3xl border border-zinc-200/70 bg-white/85 p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
           <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
             <div className="flex gap-2 rounded-full bg-zinc-100 p-1 dark:bg-zinc-800">
               <button
                 type="button"
@@ -551,6 +554,17 @@ function RoomDetailContent() {
                   申請 ({requests.length})
                 </button>
               )}
+            </div>
+
+            <Link
+              href={`/rooms/chat?room_id=${roomId}`}
+              className="flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-4 py-2 text-sm font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              群聊
+            </Link>
             </div>
 
             {activeTab === "requests" && room.is_owner && requests.length > 0 && (
