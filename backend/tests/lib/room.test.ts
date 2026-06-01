@@ -187,7 +187,7 @@ describe("room formatters", () => {
         max_capacity: 20,
         join_approval_required: false,
         event_time: "2030-03-20T10:00:00.000Z",
-        event_end_time: null,
+        event_end_time: "2030-03-20T12:00:00.000Z",
         location: null,
         created_at: "2024-03-20T08:00:00.000Z",
         is_joined: true,
