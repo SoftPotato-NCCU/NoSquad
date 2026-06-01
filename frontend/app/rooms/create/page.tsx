@@ -208,7 +208,7 @@ function CreateRoomContent() {
             />
           </div>
 
-          <div>
+          <div className="min-w-0">
             <label
               htmlFor="eventTime"
               className="mb-2 block font-semibold text-zinc-800 dark:text-zinc-200"
