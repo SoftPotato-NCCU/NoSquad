@@ -1,6 +1,7 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useRooms } from "@/lib/rooms-context";
 import { useDictionary, t, tpl } from "@/lib/i18n/useDictionary";
@@ -35,6 +36,8 @@ function roomToCard(room: MyRoom) {
     room.room_status === "ended" ||
     room.room_status === "cancelled";
 
+  const canChat = room.is_owner || room.membership_status === "approved";
+
   return {
     title: room.name,
     date: formatRoomDate(room.event_time),
@@ -62,6 +65,8 @@ function roomToCard(room: MyRoom) {
           ? ("orange" as const)
           : ("blue" as const),
     icon: "⚡",
+    category: room.category,
+    chatHref: canChat ? `/rooms/chat?room_id=${room.id}` : undefined,
   };
 }
 
@@ -87,8 +92,26 @@ function AuthenticatedHome({
     fetchRooms(true);
   }, [fetchRooms]);
 
-  const createdRooms = myRooms.filter((room) => room.is_owner);
-  const joinedRooms = myRooms.filter((room) => !room.is_owner);
+  const unreadCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const room of myRooms) {
+      try {
+        const msgs = JSON.parse(localStorage.getItem(`nosquad_chat_messages_${room.id}`) ?? "[]");
+        const lastRead = parseInt(localStorage.getItem(`nosquad_chat_read_${room.id}`) ?? "0", 10);
+        counts[room.id] = Math.max(0, (msgs.length ?? 0) - lastRead);
+      } catch {
+        counts[room.id] = 0;
+      }
+    }
+    return counts;
+  }, [myRooms]);
+
+  const isEnded = (room: MyRoom) =>
+    room.room_status === "ended" || room.room_status === "cancelled";
+
+  const createdRooms = myRooms.filter((room) => room.is_owner && !isEnded(room));
+  const joinedRooms  = myRooms.filter((room) => !room.is_owner && !isEnded(room));
+  const endedRooms   = myRooms.filter(isEnded);
 
   return (
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
@@ -218,6 +241,7 @@ function AuthenticatedHome({
                         key={room.id}
                         {...roomToCard(room)}
                         detailHref={`/rooms/room?room_id=${room.id}`}
+                        unreadCount={unreadCounts[room.id] ?? 0}
                       />
                     ))
                   )}
@@ -244,11 +268,31 @@ function AuthenticatedHome({
                         key={room.id}
                         {...roomToCard(room)}
                         detailHref={`/rooms/room?room_id=${room.id}`}
+                        unreadCount={unreadCounts[room.id] ?? 0}
                       />
                     ))
                   )}
                 </div>
               </div>
+
+              {endedRooms.length > 0 && (
+                <div>
+                  <h3 className="mb-4 text-lg font-bold text-zinc-500 dark:text-zinc-400">
+                    {t(dict, "home.home.endedRooms", "已結束的活動")}
+                  </h3>
+
+                  <div className="space-y-4 opacity-60">
+                    {endedRooms.map((room) => (
+                      <RoomCard
+                        key={room.id}
+                        {...roomToCard(room)}
+                        detailHref={`/rooms/room?room_id=${room.id}`}
+                        unreadCount={unreadCounts[room.id] ?? 0}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -258,6 +302,20 @@ function AuthenticatedHome({
 }
 
 function UnauthenticatedHome({ dict }: { dict: Record<string, unknown> }) {
+  const router = useRouter();
+
+  const handleLoginClick = () => {
+    if (typeof window !== "undefined" && "Notification" in window && Notification.permission === "default") {
+      // Call requestPermission synchronously from the click handler so iOS
+      // treats it as user-initiated. Navigate after the dialog resolves.
+      Notification.requestPermission().finally(() => {
+        router.push("/auth/login");
+      });
+    } else {
+      router.push("/auth/login");
+    }
+  };
+
   return (
     <div className="flex flex-col flex-1 items-center justify-center p-4">
       <main className="flex flex-col items-center gap-6 sm:gap-8 max-w-[clamp(20rem,28vw,32rem)] w-full">
@@ -282,12 +340,13 @@ function UnauthenticatedHome({ dict }: { dict: Record<string, unknown> }) {
         </div>
 
         <div className="flex flex-col gap-3 w-full">
-          <Link
-            href="/auth/login"
+          <button
+            type="button"
+            onClick={handleLoginClick}
             className="flex items-center justify-center h-[clamp(3rem,3.2vw,3.75rem)] w-full bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium rounded-full hover:opacity-90 transition-opacity text-[clamp(1rem,1.1vw,1.25rem)]"
           >
             {t(dict, "home.home.login", "Log In")}
-          </Link>
+          </button>
 
           <Link
             href="/auth/signup"

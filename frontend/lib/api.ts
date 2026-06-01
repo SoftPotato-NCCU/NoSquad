@@ -76,7 +76,7 @@ async function fetchApi<T>(
     headers,
   });
 
-  if (response.status === 401) {
+  if (response.status === 401 && requireAuth) {
     clearToken();
     localStorage.removeItem("user");
     window.location.href = "/auth/login";
@@ -85,11 +85,11 @@ async function fetchApi<T>(
     };
   }
 
-if (!response.ok) {
+  if (!response.ok) {
     const error = await response
       .json()
       .catch(() => ({ error: { message: "Request failed" } }));
-    if (isAuthError(error)) {
+    if (requireAuth && isAuthError(error)) {
       clearToken();
       localStorage.removeItem("user");
       window.location.href = "/auth/login";
@@ -362,4 +362,33 @@ export async function openRecruiting(
     `/rooms/${roomId}/recruiting/open`,
     { method: "POST" },
   );
+}
+
+// ── Group chat ──────────────────────────────────────────────────────────────
+
+export interface ChatMessageDto {
+  id: number;
+  user_id: string;
+  sender_name: string;
+  body: string;
+  created_at: string;
+}
+
+export async function listRoomMessages(
+  roomId: string,
+  after = 0,
+): Promise<{ data: { messages: ChatMessageDto[] } }> {
+  return apiFetch<{ data: { messages: ChatMessageDto[] } }>(
+    `/rooms/${roomId}/messages?after=${after}`,
+  );
+}
+
+export async function sendRoomMessage(
+  roomId: string,
+  body: string,
+): Promise<{ data: ChatMessageDto }> {
+  return apiFetch<{ data: ChatMessageDto }>(`/rooms/${roomId}/messages`, {
+    method: "POST",
+    body: JSON.stringify({ body }),
+  });
 }

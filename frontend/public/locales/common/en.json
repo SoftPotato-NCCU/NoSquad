@@ -39,5 +39,11 @@
   "status": "Status",
   "dismissRoom": "Dismiss Room",
   "dismissing": "Dismissing...",
-  "clearCache": "Clear Translation Cache"
+  "clearCache": "Clear Translation Cache",
+  "groupChat": "Group Chat",
+  "noMessages": "No messages yet",
+  "startConversation": "Start the conversation!",
+  "typeMessage": "Type a message…",
+  "send": "Send",
+  "roomInfo": "Room Info"
 }
