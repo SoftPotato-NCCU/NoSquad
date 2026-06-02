@@ -3,6 +3,10 @@ import { apiFetch, getToken } from "./api";
 const API_BASE = process.env.NEXT_PUBLIC_API_BACKEND_URL || "";
 
 export function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
+  if (!base64String) {
+    throw new Error("VAPID public key is missing");
+  }
+
   const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
 
@@ -18,6 +22,19 @@ export function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
 export async function getVapidPublicKey(): Promise<string> {
   const response = await fetch(`${API_BASE}/api/v1/push/vapid-public-key`);
   const data = await response.json();
+
+  if (!response.ok) {
+    const message =
+      typeof data?.error?.message === "string"
+        ? data.error.message
+        : "Failed to fetch VAPID public key";
+    throw new Error(message);
+  }
+
+  if (typeof data.vapidPublicKey !== "string" || data.vapidPublicKey.length === 0) {
+    throw new Error("VAPID public key is missing");
+  }
+
   return data.vapidPublicKey;
 }
 

@@ -2,9 +2,11 @@
 
 import { useState, useRef, useEffect } from "react";
 import { apiFetch } from "@/lib/api";
+import { useDictionary, t } from "@/lib/i18n/useDictionary";
 import { requestNotificationPermission } from "@/lib/push-notifications";
 
 export default function NotificationSettings() {
+  const { dict } = useDictionary("common");
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [permissionStatus, setPermissionStatus] = useState<NotificationPermission>("default");
@@ -115,13 +117,13 @@ export default function NotificationSettings() {
         </div>
 
         <div className="min-w-0 flex-1">
-          <p className="font-semibold">通知設定</p>
+          <p className="font-semibold">{t(dict, "notifications.settings", "Notifications")}</p>
           <p className="mt-0.5 truncate text-sm text-zinc-500 dark:text-zinc-400">
             {lastStatus === "success"
-              ? "✓ 已發送"
+              ? `✓ ${t(dict, "notifications.sent", "Sent")}`
               : lastStatus === "error"
-                ? "✗ 發送失敗"
-                : "已開啟"}
+                ? `✗ ${t(dict, "notifications.failed", "Failed to send")}`
+                : t(dict, "notifications.enabled", "Enabled")}
           </p>
         </div>
 
@@ -144,15 +146,15 @@ export default function NotificationSettings() {
               className="w-full px-4 py-3 text-left text-sm font-medium text-blue-600 hover:bg-blue-50 first:rounded-t-2xl disabled:opacity-50 disabled:cursor-not-allowed transition dark:text-blue-400 dark:hover:bg-blue-500/10"
               title={
                 permissionStatus === "denied"
-                  ? "Permission denied by browser. Check browser settings to enable notifications."
+                  ? t(dict, "notifications.deniedTitle", "Permission denied by browser. Check browser settings to enable notifications.")
                   : ""
               }
             >
               {isLoading
-                ? "請求中..."
+                ? t(dict, "notifications.requesting", "Requesting...")
                 : permissionStatus === "denied"
-                  ? "✗ 權限已拒絕"
-                  : "🔔 要求通知權限"}
+                  ? `✗ ${t(dict, "notifications.permissionDenied", "Permission denied")}`
+                  : `🔔 ${t(dict, "notifications.requestPermission", "Request notification permission")}`}
             </button>
           )}
 
@@ -163,13 +165,13 @@ export default function NotificationSettings() {
               disabled={isLoading}
               className="w-full px-4 py-3 text-left text-sm font-medium text-zinc-700 hover:bg-zinc-50 first:rounded-t-2xl last:rounded-b-2xl disabled:opacity-50 disabled:cursor-not-allowed transition dark:text-zinc-200 dark:hover:bg-zinc-800"
             >
-              {isLoading ? "發送中..." : "📬 要求測試推播通知"}
+              {isLoading ? t(dict, "notifications.sending", "Sending...") : `📬 ${t(dict, "notifications.requestTest", "Request test push notification")}`}
             </button>
           )}
 
           {permissionStatus === "denied" && (
             <div className="px-4 py-3 text-xs text-red-600 dark:text-red-400 rounded-b-2xl last:rounded-b-2xl">
-              在瀏覽器設定中啟用通知權限
+              {t(dict, "notifications.enableInBrowser", "Enable notification permission in browser settings")}
             </div>
           )}
         </div>

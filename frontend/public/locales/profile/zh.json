@@ -33,6 +33,8 @@
     "email": "電子郵件",
     "phone": "電話號碼",
     "preferences": "偏好類別",
+    "notProvided": "尚未提供",
+    "notSet": "尚未設定",
     "logout": "登出帳號"
   }
 }

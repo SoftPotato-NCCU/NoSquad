@@ -25,6 +25,15 @@
   "full": "Full",
   "view": "View",
   "viewRoom": "View Room",
+  "category": {
+    "sports": "Sports",
+    "study": "Study",
+    "entertainment": "Entertainment",
+    "social": "Social"
+  },
+  "nav": {
+    "createRoom": "Create Room"
+  },
   "members": "members",
   "requests": "Requests",
   "approve": "Approve",
@@ -76,5 +85,18 @@
   "startConversation": "Start the conversation!",
   "typeMessage": "Type a message…",
   "send": "Send",
-  "roomInfo": "Room Info"
+  "roomInfo": "Room Info",
+  "notifications": {
+    "settings": "Notifications",
+    "sent": "Sent",
+    "failed": "Failed to send",
+    "enabled": "Enabled",
+    "requesting": "Requesting...",
+    "permissionDenied": "Permission denied",
+    "requestPermission": "Request notification permission",
+    "sending": "Sending...",
+    "requestTest": "Request test push notification",
+    "enableInBrowser": "Enable notification permission in browser settings",
+    "deniedTitle": "Permission denied by browser. Check browser settings to enable notifications."
+  }
 }

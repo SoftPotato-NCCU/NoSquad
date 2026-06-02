@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { RoomCategory } from "@/types/rooms";
+import { useDictionary, t } from "@/lib/i18n/useDictionary";
 
 type RoomCardProps = {
   title: string;
@@ -30,30 +31,30 @@ const statusClassMap = {
 
 const CATEGORY_CONFIG: Record<
   RoomCategory,
-  { label: string; icon: string; bg: string; badge: string }
+  { labelKey: string; icon: string; bg: string; badge: string }
 > = {
   sports: {
-    label: "運動",
+    labelKey: "category.sports",
     icon: "🏃",
     bg: "from-green-50 to-emerald-50 dark:from-green-500/10 dark:to-emerald-500/10",
     badge:
       "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300",
   },
   study: {
-    label: "學習",
+    labelKey: "category.study",
     icon: "📚",
     bg: "from-blue-50 to-sky-50 dark:from-blue-500/10 dark:to-sky-500/10",
     badge: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300",
   },
   entertainment: {
-    label: "娛樂",
+    labelKey: "category.entertainment",
     icon: "🎮",
     bg: "from-purple-50 to-pink-50 dark:from-purple-500/10 dark:to-pink-500/10",
     badge:
       "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300",
   },
   social: {
-    label: "社交",
+    labelKey: "category.social",
     icon: "🤝",
     bg: "from-orange-50 to-amber-50 dark:from-orange-500/10 dark:to-amber-500/10",
     badge:
@@ -76,6 +77,7 @@ export default function RoomCard({
 }: RoomCardProps) {
   const router = useRouter();
   const cat = category ? CATEGORY_CONFIG[category] : null;
+  const { dict } = useDictionary("common");
 
   return (
     <article
@@ -98,7 +100,7 @@ export default function RoomCard({
             <span
               className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${cat.badge}`}
             >
-              {cat.icon} {cat.label}
+              {cat.icon} {t(dict, cat.labelKey, category ?? "")}
             </span>
           )}
           <span className="flex items-center gap-1.5">

@@ -35,20 +35,20 @@ function roomStatusLabel(
   isFull: boolean,
   joinApprovalRequired: boolean,
 ) {
-  if (isPending) return t(dict, "explore.status.pending", "待審核");
-  if (isApproved) return t(dict, "explore.status.approved", "已加入");
-  if (isFull) return t(dict, "explore.status.full", "已滿");
+  if (isPending) return t(dict, "explore.status.pending", "Pending");
+  if (isApproved) return t(dict, "explore.status.approved", "Joined");
+  if (isFull) return t(dict, "explore.status.full", "Full");
   if (roomStatus === "recruiting_closed")
-    return t(dict, "explore.status.recruitingClosed", "已停止招募");
+    return t(dict, "explore.status.recruitingClosed", "Recruiting Closed");
   if (roomStatus === "in_progress")
-    return t(dict, "explore.status.inProgress", "進行中");
+    return t(dict, "explore.status.inProgress", "In Progress");
   if (roomStatus === "ended")
-    return t(dict, "explore.status.ended", "已結束");
+    return t(dict, "explore.status.ended", "Ended");
   if (roomStatus === "cancelled")
-    return t(dict, "explore.status.cancelled", "已取消");
+    return t(dict, "explore.status.cancelled", "Cancelled");
   if (joinApprovalRequired)
-    return t(dict, "explore.status.needsApproval", "需審核");
-  return t(dict, "explore.status.joinable", "可加入");
+    return t(dict, "explore.status.needsApproval", "Approval Required");
+  return t(dict, "explore.status.joinable", "Joinable");
 }
 
 function roomToActivity(
@@ -71,7 +71,7 @@ function roomToActivity(
   return {
     title: room.name,
     time: formatRoomDate(room.created_at),
-    location: room.location || t(dict, "explore.noLocation", "尚未設定地點"),
+    location: room.location || t(dict, "explore.noLocation", "Location not set"),
     members: `${room.member_count}/${room.max_capacity}`,
     status: statusLabel,
     statusTone: isPending
@@ -179,7 +179,7 @@ function ExploreContent() {
         if (handleAuthError(error)) return;
 
         if (mounted) {
-          setRoomError(t(dict, "explore.loadError", "房間大廳載入失敗"));
+          setRoomError(t(dict, "explore.loadError", "Failed to load room hall"));
         }
       } finally {
         if (mounted) {
@@ -300,9 +300,9 @@ function ExploreContent() {
           ? (error as { error: { code?: unknown } }).error.code
           : undefined;
       if (code === "INSUFFICIENT_CREDIT_SCORE") {
-        setRoomError(t(dict, "explore.joinErrorInsufficientCredit", "信用分數不足"));
+        setRoomError(t(dict, "explore.joinErrorInsufficientCredit", "Insufficient credit score"));
       } else {
-        setRoomError(t(dict, "explore.joinError", "加入房間失敗，請稍後再試"));
+        setRoomError(t(dict, "explore.joinError", "Failed to join room, please try again"));
       }
     } finally {
       setJoiningRoomId(null);
@@ -325,10 +325,10 @@ function ExploreContent() {
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50 md:text-4xl">
-          {t(dict, "explore.explore.title", "探索")}
+          {t(dict, "explore.explore.title", "Explore")}
         </h1>
         <p className="mt-2 text-zinc-500 dark:text-zinc-400">
-          {t(dict, "explore.explore.subtitle", "尋找適合你的活動")}
+          {t(dict, "explore.explore.subtitle", "Find activities that suit you")}
         </p>
       </div>
 
@@ -355,7 +355,7 @@ function ExploreContent() {
               placeholder={t(
                 dict,
                 "explore.search.placeholder",
-                "搜尋活動、地點或關鍵字",
+                "Search activities, locations, or keywords",
               )}
               className="w-full bg-transparent text-zinc-900 outline-none placeholder:text-zinc-400 dark:text-zinc-100"
             />
@@ -384,7 +384,7 @@ function ExploreContent() {
                 d="M3 4h18M6 12h12M10 20h4"
               />
             </svg>
-            {t(dict, "explore.search.filter", "篩選")}
+            {t(dict, "explore.search.filter", "Filter")}
           </button>
         </div>
 
@@ -392,7 +392,7 @@ function ExploreContent() {
           <div className="flex flex-col gap-4 rounded-2xl border border-zinc-200/70 bg-white/85 p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70 sm:flex-row sm:items-center sm:justify-between">
             <label className="flex items-center gap-3">
               <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">
-                {t(dict, "explore.sort.label", "排序")}
+                {t(dict, "explore.sort.label", "Sort")}
               </span>
               <select
                 value={sortKey}
@@ -414,7 +414,7 @@ function ExploreContent() {
                 onChange={(e) => setIncludeFull(e.target.checked)}
                 className="h-4 w-4 rounded border-zinc-300"
               />
-              {t(dict, "explore.filter.includeFull", "顯示已滿房間")}
+              {t(dict, "explore.filter.includeFull", "Show full rooms")}
             </label>
           </div>
         )}
@@ -450,13 +450,13 @@ function ExploreContent() {
       <section className="grid gap-4 lg:grid-cols-2">
         {isLoadingRooms && (
           <div className="rounded-3xl border border-zinc-200/70 bg-white/85 p-6 text-zinc-500 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-400 lg:col-span-2">
-            {t(dict, "explore.loading", "房間大廳載入中...")}
+            {t(dict, "explore.loading", "Loading room hall...")}
           </div>
         )}
 
         {!isLoadingRooms && !roomError && filteredRooms.length === 0 && (
           <div className="rounded-3xl border border-zinc-200/70 bg-white/85 p-6 text-zinc-500 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-400 lg:col-span-2">
-            {t(dict, "explore.noRoomsDisplay", "目前沒有可以顯示的房間。")}
+            {t(dict, "explore.noRoomsDisplay", "No rooms to display.")}
           </div>
         )}
 
@@ -478,16 +478,16 @@ function ExploreContent() {
 
             let actionLabel: string;
             if (joiningRoomId === room.id)
-              actionLabel = t(dict, "explore.status.joining", "加入中...");
+              actionLabel = t(dict, "explore.status.joining", "Joining...");
             else if (isWaitlisted)
-              actionLabel = t(dict, "explore.status.waitlisted", "候補中");
+              actionLabel = t(dict, "explore.status.waitlisted", "Waitlisted");
             else if (
               room.room_status === "open" &&
               room.is_full &&
               !isApproved &&
               !isPending
             )
-              actionLabel = t(dict, "explore.status.joinWaitlist", "加入候補");
+              actionLabel = t(dict, "explore.status.joinWaitlist", "Join waitlist");
             else
               actionLabel = roomStatusLabel(
                 dict,

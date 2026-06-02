@@ -11,7 +11,19 @@
       "emptyCreated": "You haven't created any rooms yet.",
       "emptyJoined": "You haven't joined any rooms yet.",
       "myCreatedRooms": "My Created Rooms",
-      "myJoinedRooms": "My Joined Rooms"
+      "myJoinedRooms": "My Joined Rooms",
+      "endedRooms": "Ended Activities",
+      "timeNotSet": "Time not set",
+      "locationNotSet": "Location not set"
+    },
+    "status": {
+      "recruitingClosed": "Recruiting Closed",
+      "inProgress": "In Progress",
+      "ended": "Ended",
+      "cancelled": "Cancelled",
+      "owner": "Owner",
+      "pending": "Pending",
+      "joined": "Joined"
     },
     "dashboard": {
       "welcomeTitle": "Welcome back, {username}!",

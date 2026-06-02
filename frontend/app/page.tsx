@@ -11,13 +11,13 @@ import Image from "next/image";
 import RoomCard from "@/components/RoomCard";
 import StatCard from "@/components/StatCard";
 
-function formatRoomDate(value: string | null) {
-  if (!value) return "時間尚未設定";
+function formatRoomDate(value: string | null, fallback: string) {
+  if (!value) return fallback;
 
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return "時間尚未設定";
+    return fallback;
   }
 
   return date.toLocaleString("zh-TW", {
@@ -29,7 +29,7 @@ function formatRoomDate(value: string | null) {
   });
 }
 
-function roomToCard(room: MyRoom) {
+function roomToCard(room: MyRoom, dict: Record<string, unknown>) {
   const isInactiveStatus =
     room.room_status === "recruiting_closed" ||
     room.room_status === "in_progress" ||
@@ -40,23 +40,23 @@ function roomToCard(room: MyRoom) {
 
   return {
     title: room.name,
-    date: formatRoomDate(room.event_time),
-    location: room.location || "尚未設定地點",
+    date: formatRoomDate(room.event_time, t(dict, "home.home.timeNotSet", "Time not set")),
+    location: room.location || t(dict, "home.home.locationNotSet", "Location not set"),
     members: `${room.member_count}/${room.max_capacity}`,
     status:
       room.room_status === "recruiting_closed"
-        ? "已停止招募"
+        ? t(dict, "home.status.recruitingClosed", "Recruiting Closed")
         : room.room_status === "in_progress"
-          ? "進行中"
+          ? t(dict, "home.status.inProgress", "In Progress")
           : room.room_status === "ended"
-            ? "已結束"
+            ? t(dict, "home.status.ended", "Ended")
             : room.room_status === "cancelled"
-              ? "已取消"
+              ? t(dict, "home.status.cancelled", "Cancelled")
               : room.is_owner
-                ? "房主"
+                ? t(dict, "home.status.owner", "Owner")
                 : room.membership_status === "pending"
-                  ? "待審核"
-                  : "已加入",
+                  ? t(dict, "home.status.pending", "Pending")
+                  : t(dict, "home.status.joined", "Joined"),
     statusTone: isInactiveStatus
       ? ("orange" as const)
       : room.is_owner
@@ -117,10 +117,10 @@ function AuthenticatedHome({
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50 md:text-4xl">
-          {t(dict, "home.home.title", "首頁")}
+          {t(dict, "home.home.title", "Home")}
         </h1>
         <p className="mt-2 text-zinc-500 dark:text-zinc-400">
-          {t(dict, "home.home.myRooms", "我的房間")}
+          {t(dict, "home.home.myRooms", "My Rooms")}
         </p>
       </div>
 
@@ -132,7 +132,7 @@ function AuthenticatedHome({
                 dict,
                 "home.dashboard.welcomeTitle",
                 { username: user.username },
-                `歡迎回來，${user.username}！`,
+                `Welcome back, ${user.username}!`,
               )}
             </h2>
 
@@ -140,14 +140,14 @@ function AuthenticatedHome({
               {t(
                 dict,
                 "home.dashboard.welcomeDescription",
-                "今天也一起找到志同道合的夥伴，創造屬於你們的精彩時刻吧！",
+                "Find like-minded partners and create wonderful moments together!",
               )}
             </p>
           </div>
 
           <div className="grid w-full gap-4 sm:grid-cols-2 md:w-[34rem]">
             <StatCard
-              label={t(dict, "home.dashboard.activeRooms", "進行中房間")}
+              label={t(dict, "home.dashboard.activeRooms", "Active Rooms")}
               value={createdRooms.length}
               tone="purple"
               icon={
@@ -168,7 +168,7 @@ function AuthenticatedHome({
             />
 
             <StatCard
-              label={t(dict, "home.dashboard.joinedActivities", "參與活動")}
+              label={t(dict, "home.dashboard.joinedActivities", "Activities Joined")}
               value={joinedRooms.length}
               tone="blue"
               icon={
@@ -188,18 +188,18 @@ function AuthenticatedHome({
       <section>
         {/* <div className="mb-4 flex items-center justify-between">
           <h2 className="text-2xl font-bold text-zinc-950 dark:text-zinc-50">
-            {t(dict, "home.home.myRooms", "我的房間")}
+            {t(dict, "home.home.myRooms", "My Rooms")}
           </h2>
 
           <button className="font-semibold text-purple-600 dark:text-purple-400">
-            {t(dict, "home.dashboard.viewAll", "查看全部 ›")}
+            {t(dict, "home.dashboard.viewAll", "View all ›")}
           </button>
         </div> */}
 
         <div className="space-y-8">
           {isLoadingRooms && (
             <div className="rounded-3xl border border-zinc-200/70 bg-white/85 p-6 text-zinc-500 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-400">
-              {t(dict, "home.home.loadingRooms", "房間資料載入中...")}
+              {t(dict, "home.home.loadingRooms", "Loading rooms...")}
             </div>
           )}
 
@@ -214,7 +214,7 @@ function AuthenticatedHome({
               {t(
                 dict,
                 "home.home.emptyAll",
-                "你目前還沒有創建或加入任何房間。",
+                "You haven't created or joined any rooms yet.",
               )}
             </div>
           )}
@@ -223,7 +223,7 @@ function AuthenticatedHome({
             <>
               <div>
                 <h3 className="mb-4 text-lg font-bold text-zinc-950 dark:text-zinc-50">
-                  {t(dict, "home.home.myCreatedRooms", "我創建的房間")}
+                  {t(dict, "home.home.myCreatedRooms", "My Created Rooms")}
                 </h3>
 
                 <div className="space-y-4">
@@ -232,14 +232,14 @@ function AuthenticatedHome({
                       {t(
                         dict,
                         "home.home.emptyCreated",
-                        "你目前還沒有創建房間。",
+                        "You haven't created any rooms yet.",
                       )}
                     </div>
                   ) : (
                     createdRooms.map((room) => (
                       <RoomCard
                         key={room.id}
-                        {...roomToCard(room)}
+                        {...roomToCard(room, dict)}
                         detailHref={`/rooms/room?room_id=${room.id}`}
                         unreadCount={unreadCounts[room.id] ?? 0}
                       />
@@ -250,7 +250,7 @@ function AuthenticatedHome({
 
               <div>
                 <h3 className="mb-4 text-lg font-bold text-zinc-950 dark:text-zinc-50">
-                  {t(dict, "home.home.myJoinedRooms", "我加入的房間")}
+                  {t(dict, "home.home.myJoinedRooms", "My Joined Rooms")}
                 </h3>
 
                 <div className="space-y-4">
@@ -259,14 +259,14 @@ function AuthenticatedHome({
                       {t(
                         dict,
                         "home.home.emptyJoined",
-                        "你目前還沒有加入其他房間。",
+                        "You haven't joined any rooms yet.",
                       )}
                     </div>
                   ) : (
                     joinedRooms.map((room) => (
                       <RoomCard
                         key={room.id}
-                        {...roomToCard(room)}
+                        {...roomToCard(room, dict)}
                         detailHref={`/rooms/room?room_id=${room.id}`}
                         unreadCount={unreadCounts[room.id] ?? 0}
                       />
@@ -278,14 +278,14 @@ function AuthenticatedHome({
               {endedRooms.length > 0 && (
                 <div>
                   <h3 className="mb-4 text-lg font-bold text-zinc-500 dark:text-zinc-400">
-                    {t(dict, "home.home.endedRooms", "已結束的活動")}
+                    {t(dict, "home.home.endedRooms", "Ended Activities")}
                   </h3>
 
                   <div className="space-y-4 opacity-60">
                     {endedRooms.map((room) => (
                       <RoomCard
                         key={room.id}
-                        {...roomToCard(room)}
+                        {...roomToCard(room, dict)}
                         detailHref={`/rooms/room?room_id=${room.id}`}
                         unreadCount={unreadCounts[room.id] ?? 0}
                       />
