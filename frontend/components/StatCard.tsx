@@ -1,4 +1,4 @@
-// 首頁統計數據卡
+// Home statistics card.
 
 type StatCardProps = {
   label: string;

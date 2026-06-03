@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useDictionary, t, tpl } from "@/lib/i18n/useDictionary";
 import {
   getRoomDetails,
   listRoomMessages,
@@ -33,6 +34,7 @@ function ChatContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
+  const { dict } = useDictionary("rooms");
   const roomId = searchParams.get("room_id");
 
   const [room, setRoom] = useState<RoomDetails | null>(null);
@@ -82,7 +84,7 @@ function ChatContent() {
         localStorage.setItem(`nosquad_last_read_${roomId}`, String(lastIdRef.current));
       })
       .catch((e) => {
-        setError(e instanceof Error ? e.message : "無法載入房間資訊");
+        setError(e instanceof Error ? e.message : t(dict, "rooms.chat.loadError", "Unable to load room information"));
       })
       .finally(() => setIsLoading(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -189,12 +191,12 @@ function ChatContent() {
             </svg>
           </button>
           <span className="font-semibold text-zinc-950 dark:text-zinc-50">
-            群聊
+            {t(dict, "rooms.chat.title", "Group Chat")}
           </span>
         </div>
         <div className="flex-1 flex items-center justify-center p-6">
           <p className="text-red-500 dark:text-red-400 text-center">
-            {error ?? "找不到房間"}
+            {error ?? t(dict, "rooms.chat.notFound", "Room not found")}
           </p>
         </div>
       </div>
@@ -247,7 +249,7 @@ function ChatContent() {
               {room.name}
             </p>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              {room.member_count} 位成員
+              {tpl(dict, "rooms.chat.memberCount", { count: String(room.member_count) }, `${room.member_count} members`)}
             </p>
           </div>
         </div>
@@ -256,7 +258,7 @@ function ChatContent() {
           type="button"
           onClick={() => router.push(`/rooms/room?room_id=${roomId}`)}
           className="flex items-center justify-center w-9 h-9 rounded-full hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-zinc-500 dark:text-zinc-400"
-          title="房間資訊"
+          title={t(dict, "rooms.chat.roomInfo", "Room Info")}
         >
           <svg
             className="w-5 h-5"
@@ -293,8 +295,8 @@ function ChatContent() {
                 />
               </svg>
             </div>
-            <p className="text-sm font-medium">目前還沒有訊息</p>
-            <p className="text-xs">來開始對話吧！</p>
+            <p className="text-sm font-medium">{t(dict, "rooms.chat.emptyTitle", "No messages yet")}</p>
+            <p className="text-xs">{t(dict, "rooms.chat.emptySubtitle", "Start the conversation!")}</p>
           </div>
         )}
 
@@ -346,7 +348,7 @@ function ChatContent() {
               value={input}
               onChange={handleInput}
               onKeyDown={handleKeyDown}
-              placeholder="傳送訊息…"
+              placeholder={t(dict, "rooms.chat.placeholder", "Send a message...")}
               rows={1}
               className="w-full resize-none bg-transparent text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 outline-none leading-relaxed"
               style={{ maxHeight: "120px" }}

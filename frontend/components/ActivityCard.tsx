@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { RoomCategory } from "@/types/rooms";
+import { useDictionary, t } from "@/lib/i18n/useDictionary";
 
-// explore page 的卡片格式
+// Card layout used by the explore page.
 
 type ActivityCardProps = {
   title: string;
@@ -30,28 +31,28 @@ const statusClassMap = {
 
 const CATEGORY_CONFIG: Record<
   RoomCategory,
-  { label: string; icon: string; bg: string; badge: string }
+  { labelKey: string; icon: string; bg: string; badge: string }
 > = {
   sports: {
-    label: "運動",
+    labelKey: "category.sports",
     icon: "🏃",
     bg: "from-green-50 to-emerald-50 dark:from-green-500/10 dark:to-emerald-500/10",
     badge: "bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300",
   },
   study: {
-    label: "學習",
+    labelKey: "category.study",
     icon: "📚",
     bg: "from-blue-50 to-sky-50 dark:from-blue-500/10 dark:to-sky-500/10",
     badge: "bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300",
   },
   entertainment: {
-    label: "娛樂",
+    labelKey: "category.entertainment",
     icon: "🎮",
     bg: "from-purple-50 to-pink-50 dark:from-purple-500/10 dark:to-pink-500/10",
     badge: "bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300",
   },
   social: {
-    label: "社交",
+    labelKey: "category.social",
     icon: "🤝",
     bg: "from-orange-50 to-amber-50 dark:from-orange-500/10 dark:to-amber-500/10",
     badge: "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300",
@@ -68,11 +69,13 @@ export default function ActivityCard({
   icon = "⚡",
   category,
   detailHref,
-  actionLabel = "加入",
+  actionLabel,
   actionDisabled = false,
   onActionClick,
 }: ActivityCardProps) {
   const cat = category ? CATEGORY_CONFIG[category] : null;
+  const { dict } = useDictionary("common");
+  const resolvedActionLabel = actionLabel ?? t(dict, "join", "Join");
 
   return (
     <article className="flex gap-4 rounded-3xl border border-zinc-200/70 bg-white/85 p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900/70">
@@ -90,7 +93,7 @@ export default function ActivityCard({
             </h3>
             {cat && (
               <span className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${cat.badge}`}>
-                {cat.icon} {cat.label}
+                {cat.icon} {t(dict, cat.labelKey, category ?? "")}
               </span>
             )}
           </div>
@@ -168,7 +171,7 @@ export default function ActivityCard({
                 href={detailHref}
                 className="rounded-full border border-zinc-200 px-5 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
               >
-                查看
+                {t(dict, "view", "View")}
               </Link>
             )}
 
@@ -178,7 +181,7 @@ export default function ActivityCard({
               onClick={onActionClick}
               className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-md shadow-purple-500/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {actionLabel}
+              {resolvedActionLabel}
             </button>
           </div>
         </div>

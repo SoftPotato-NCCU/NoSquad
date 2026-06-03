@@ -25,6 +25,15 @@
   "full": "已滿",
   "view": "查看",
   "viewRoom": "查看房間",
+  "category": {
+    "sports": "運動",
+    "study": "學習",
+    "entertainment": "娛樂",
+    "social": "社交"
+  },
+  "nav": {
+    "createRoom": "建立房間"
+  },
   "members": "成員",
   "requests": "申請",
   "approve": "批准",
@@ -76,5 +85,18 @@
   "startConversation": "來開始對話吧！",
   "typeMessage": "傳送訊息…",
   "send": "送出",
-  "roomInfo": "房間資訊"
+  "roomInfo": "房間資訊",
+  "notifications": {
+    "settings": "通知設定",
+    "sent": "已發送",
+    "failed": "發送失敗",
+    "enabled": "已開啟",
+    "requesting": "請求中...",
+    "permissionDenied": "權限已拒絕",
+    "requestPermission": "要求通知權限",
+    "sending": "發送中...",
+    "requestTest": "要求測試推播通知",
+    "enableInBrowser": "在瀏覽器設定中啟用通知權限",
+    "deniedTitle": "瀏覽器已拒絕通知權限，請到瀏覽器設定中啟用通知。"
+  }
 }

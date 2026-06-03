@@ -4,6 +4,8 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
+import { useDictionary, t, tpl } from "@/lib/i18n/useDictionary";
+import type { Dictionary } from "@/lib/i18n/getDictionary";
 import {
   getRoomDetails,
   joinRoom,
@@ -32,13 +34,13 @@ import type {
   ViolationReason,
 } from "@/types/rooms";
 
-function formatDate(value: string | null) {
-  if (!value) return "尚未設定";
+function formatDate(value: string | null, fallback: string) {
+  if (!value) return fallback;
 
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return "尚未設定";
+    return fallback;
   }
 
   return date.toLocaleString("zh-TW", {
@@ -50,46 +52,49 @@ function formatDate(value: string | null) {
   });
 }
 
-function getRoomStatusLabel(status: RoomDetails["room_status"]) {
+function getRoomStatusLabel(dict: Dictionary, status: RoomDetails["room_status"]) {
   switch (status) {
     case "open":
-      return "招募中";
+      return t(dict, "rooms.status.open", "Recruiting");
     case "recruiting_closed":
-      return "已停止招募";
+      return t(dict, "rooms.status.recruitingClosed", "Recruiting Closed");
     case "in_progress":
-      return "進行中";
+      return t(dict, "rooms.status.inProgress", "In Progress");
     case "ended":
-      return "已結束";
+      return t(dict, "rooms.status.ended", "Ended");
     case "cancelled":
-      return "已取消";
+      return t(dict, "rooms.status.cancelled", "Cancelled");
     default:
-      return "未知狀態";
+      return t(dict, "rooms.status.unknown", "Unknown Status");
   }
 }
 
 function getJoinButtonText(
+  dict: Dictionary,
   room: RoomDetails,
   isFull: boolean,
   isActionLoading: boolean,
 ) {
-  if (isActionLoading) return "加入中...";
+  if (isActionLoading) return t(dict, "rooms.join.joining", "Joining...");
   // A full but still-open room can be joined as a waitlist entry.
-  if (isFull && room.room_status === "open") return "加入候補";
-  if (isFull) return "房間已滿";
+  if (isFull && room.room_status === "open") return t(dict, "rooms.join.joinWaitlist", "Join Waitlist");
+  if (isFull) return t(dict, "rooms.join.full", "Room Full");
 
   switch (room.room_status) {
     case "open":
-      return room.join_approval_required ? "申請加入" : "加入房間";
+      return room.join_approval_required
+        ? t(dict, "rooms.join.request", "Request to Join")
+        : t(dict, "rooms.join.joinRoom", "Join Room");
     case "recruiting_closed":
-      return "已停止招募";
+      return t(dict, "rooms.status.recruitingClosed", "Recruiting Closed");
     case "in_progress":
-      return "活動進行中";
+      return t(dict, "rooms.join.activityInProgress", "Activity in Progress");
     case "ended":
-      return "活動已結束";
+      return t(dict, "rooms.join.activityEnded", "Activity Ended");
     case "cancelled":
-      return "房間已取消";
+      return t(dict, "rooms.join.roomCancelled", "Room Cancelled");
     default:
-      return "無法加入";
+      return t(dict, "rooms.join.unavailable", "Unavailable");
   }
 }
 
@@ -97,6 +102,7 @@ function RoomDetailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, isLoading: authLoading } = useAuth();
+  const { dict } = useDictionary("rooms");
   const roomId = searchParams.get("room_id");
 
   const [room, setRoom] = useState<RoomDetails | null>(null);
@@ -124,7 +130,7 @@ function RoomDetailContent() {
 
   const fetchRoomData = async () => {
     if (!roomId) {
-      setError("找不到房間 ID");
+      setError(t(dict, "rooms.detail.missingRoomId", "Room ID not found"));
       setIsLoading(false);
       return;
     }
@@ -243,7 +249,7 @@ function RoomDetailContent() {
 
   const handleDismiss = async () => {
     if (!roomId) return;
-    if (!confirm("確定要解散這個房間嗎？")) return;
+    if (!confirm(t(dict, "rooms.detail.confirmDismiss", "Are you sure you want to dismiss this room?"))) return;
 
     setIsActionLoading(true);
     try {
@@ -266,7 +272,7 @@ function RoomDetailContent() {
       await fetchRoomData();
     } catch (e) {
       console.error("Failed to close recruiting:", e);
-      setError(e instanceof Error ? e.message : "停止招募失敗");
+      setError(e instanceof Error ? e.message : t(dict, "rooms.detail.closeRecruitingFailed", "Failed to close recruiting"));
     } finally {
       setIsActionLoading(false);
     }
@@ -281,7 +287,7 @@ function RoomDetailContent() {
       await fetchRoomData();
     } catch (e) {
       console.error("Failed to open recruiting:", e);
-      setError(e instanceof Error ? e.message : "恢復招募失敗");
+      setError(e instanceof Error ? e.message : t(dict, "rooms.detail.openRecruitingFailed", "Failed to resume recruiting"));
     } finally {
       setIsActionLoading(false);
     }
@@ -361,7 +367,7 @@ function RoomDetailContent() {
         "error" in e &&
         typeof (e as { error: { message?: string } }).error?.message === "string"
           ? (e as { error: { message: string } }).error.message
-          : "評分提交失敗";
+          : t(dict, "rooms.detail.evaluateFailed", "Failed to submit review");
       setEvaluateError(msg);
     } finally {
       setEvaluateLoading(false);
@@ -388,7 +394,7 @@ function RoomDetailContent() {
         e && typeof e === "object" && "error" in e &&
         typeof (e as { error: { message?: string } }).error?.message === "string"
           ? (e as { error: { message: string } }).error.message
-          : "評分提交失敗";
+          : t(dict, "rooms.detail.evaluateFailed", "Failed to submit review");
       setOwnerEvalError(msg);
     } finally {
       setOwnerEvalLoading(false);
@@ -397,7 +403,7 @@ function RoomDetailContent() {
 
   const handleRemoveMember = async (userId: string) => {
     if (!roomId) return;
-    if (!confirm("確定要移除此成員嗎？")) return;
+    if (!confirm(t(dict, "rooms.detail.confirmRemove", "Are you sure you want to remove this member?"))) return;
 
     setIsActionLoading(true);
     try {
@@ -420,7 +426,7 @@ function RoomDetailContent() {
       await fetchRoomData();
     } catch (e) {
       console.error("Failed to promote from waitlist:", e);
-      setError(e instanceof Error ? e.message : "遞補失敗：房間可能已滿");
+      setError(e instanceof Error ? e.message : t(dict, "rooms.detail.promoteFailed", "Failed to promote: the room may be full"));
     } finally {
       setIsActionLoading(false);
     }
@@ -448,7 +454,7 @@ function RoomDetailContent() {
           onClick={() => router.push("/")}
           className="w-fit rounded-full border border-zinc-200 bg-white/85 px-5 py-2 text-sm font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-200 dark:hover:bg-zinc-800"
         >
-          ← 返回
+          ← {t(dict, "rooms.common.back", "Back")}
         </button>
 
         <div className="rounded-3xl border border-red-200/70 bg-white/85 p-6 text-red-600 shadow-sm dark:border-red-900/60 dark:bg-zinc-900/70 dark:text-red-400">
@@ -550,7 +556,7 @@ function RoomDetailContent() {
           onClick={() => router.push("/")}
           className="rounded-full border border-zinc-200 bg-white/85 px-5 py-2 text-sm font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-200 dark:hover:bg-zinc-800"
         >
-          ← 返回
+          ← {t(dict, "rooms.common.back", "Back")}
         </button>
 
         {room.is_owner && (
@@ -562,7 +568,9 @@ function RoomDetailContent() {
                 disabled={isActionLoading}
                 className="rounded-full border border-zinc-200 bg-white/85 px-5 py-2 text-sm font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-200 dark:hover:bg-zinc-800"
               >
-                {isActionLoading ? "處理中..." : "停止招募"}
+                {isActionLoading
+                  ? t(dict, "rooms.common.processing", "Processing...")
+                  : t(dict, "rooms.detail.closeRecruiting", "Close Recruiting")}
               </button>
             )}
 
@@ -573,7 +581,9 @@ function RoomDetailContent() {
                 disabled={isActionLoading}
                 className="rounded-full border border-zinc-200 bg-white/85 px-5 py-2 text-sm font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-900/70 dark:text-zinc-200 dark:hover:bg-zinc-800"
               >
-                {isActionLoading ? "處理中..." : "恢復招募"}
+                {isActionLoading
+                  ? t(dict, "rooms.common.processing", "Processing...")
+                  : t(dict, "rooms.detail.openRecruiting", "Resume Recruiting")}
               </button>
             )}
 
@@ -583,7 +593,9 @@ function RoomDetailContent() {
               disabled={isActionLoading}
               className="rounded-full border border-red-200 bg-white/85 px-5 py-2 text-sm font-semibold text-red-600 shadow-sm transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-900/60 dark:bg-zinc-900/70 dark:text-red-400 dark:hover:bg-red-500/10"
             >
-              {isActionLoading ? "處理中..." : "解散房間"}
+              {isActionLoading
+                ? t(dict, "rooms.common.processing", "Processing...")
+                : t(dict, "rooms.detail.dismissRoom", "Dismiss Room")}
             </button>
           </div>
         )}
@@ -611,18 +623,18 @@ function RoomDetailContent() {
               <div className="flex flex-wrap gap-2">
                 {room.is_owner && (
                   <span className="rounded-full bg-purple-100 px-4 py-1.5 text-sm font-semibold text-purple-600 dark:bg-purple-500/15 dark:text-purple-300">
-                    擁有者
+                    {t(dict, "rooms.join.owner", "Owner")}
                   </span>
                 )}
 
                 {isPending && (
                   <span className="rounded-full bg-orange-100 px-4 py-1.5 text-sm font-semibold text-orange-600 dark:bg-orange-500/15 dark:text-orange-300">
-                    待審核
+                    {t(dict, "rooms.join.pending", "Pending")}
                   </span>
                 )}
 
                 <span className="rounded-full bg-blue-100 px-4 py-1.5 text-sm font-semibold text-blue-600 dark:bg-blue-500/15 dark:text-blue-300">
-                  {getRoomStatusLabel(room.room_status)}
+                  {getRoomStatusLabel(dict, room.room_status)}
                 </span>
               </div>
             </div>
@@ -630,7 +642,7 @@ function RoomDetailContent() {
             <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-800/50">
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                  成員人數
+                  {t(dict, "rooms.detail.labels.memberCount", "Members")}
                 </p>
                 <p className="mt-1 text-xl font-bold text-zinc-950 dark:text-zinc-50">
                   {room.member_count}/{room.max_capacity}
@@ -639,52 +651,52 @@ function RoomDetailContent() {
 
               <div className="rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-800/50">
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                  房主
+                  {t(dict, "rooms.detail.labels.host", "Host")}
                 </p>
                 <p className="mt-1 truncate text-xl font-bold text-zinc-950 dark:text-zinc-50">
-                  {displayOwner?.name ?? room.owner_name ?? "尚未取得"}
+                  {displayOwner?.name ?? room.owner_name ?? t(dict, "rooms.detail.messages.hostUnknown", "Unavailable")}
                 </p>
               </div>
 
               {!room.is_owner && (
                 <div className="rounded-2xl border border-amber-200/70 bg-amber-50/70 p-4 dark:border-amber-900/40 dark:bg-amber-500/10">
                   <p className="text-sm text-amber-700 dark:text-amber-400">
-                    房主信用分數
+                    {t(dict, "rooms.detail.labels.hostCredit", "Host Credit Score")}
                   </p>
                   <p className={`mt-1 text-xl font-bold ${room.owner_credit_score < 8 ? "text-red-600 dark:text-red-400" : "text-amber-700 dark:text-amber-300"}`}>
-                    {room.owner_credit_score} 分
+                    {room.owner_credit_score} {t(dict, "rooms.common.points", "pts")}
                   </p>
                 </div>
               )}
 
               <div className="rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-800/50">
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                  活動時間
+                  {t(dict, "rooms.detail.labels.eventTime", "Activity Time")}
                 </p>
                 <p className="mt-1 text-base font-semibold text-zinc-950 dark:text-zinc-50">
-                  {formatDate(room.event_time)}
+                  {formatDate(room.event_time, t(dict, "rooms.common.timeNotSet", "Time not set"))}
                 </p>
               </div>
 
               <div className="rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-800/50">
                 <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                  活動地點
+                  {t(dict, "rooms.detail.labels.location", "Activity Location")}
                 </p>
                 <p className="mt-1 truncate text-base font-semibold text-zinc-950 dark:text-zinc-50">
-                  {room.location || "尚未設定"}
+                  {room.location || t(dict, "rooms.common.notSet", "Not set")}
                 </p>
               </div>
             </div>
 
             {room.join_approval_required && !room.is_owner && (
               <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
-                此房間需要房主審核後才能加入。
+                {t(dict, "rooms.detail.messages.approvalRequired", "This room requires host approval before you can join.")}
               </p>
             )}
 
             {room.room_status === "recruiting_closed" && !room.is_owner && (
               <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
-                此房間目前已停止招募新成員。
+                {t(dict, "rooms.detail.messages.recruitingClosed", "This room is no longer recruiting new members.")}
               </p>
             )}
 
@@ -696,7 +708,7 @@ function RoomDetailContent() {
 
             {isWaitlisted && (
               <p className="mt-4 text-sm text-amber-600 dark:text-amber-400">
-                房間目前已滿，你已加入候補名單。有名額時房主會手動遞補。
+                {t(dict, "rooms.detail.messages.waitlisted", "The room is full. You are on the waitlist and the host can promote you when a spot opens.")}
               </p>
             )}
 
@@ -708,7 +720,7 @@ function RoomDetailContent() {
                   disabled={!canJoin || isActionLoading}
                   className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {getJoinButtonText(room, isFull, isActionLoading)}
+                  {getJoinButtonText(dict, room, isFull, isActionLoading)}
                 </button>
               )}
 
@@ -719,7 +731,9 @@ function RoomDetailContent() {
                   disabled={isActionLoading}
                   className="rounded-full border border-amber-300 bg-amber-50 px-6 py-3 text-sm font-semibold text-amber-700 shadow-sm transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-300"
                 >
-                  {isActionLoading ? "處理中..." : "取消候補"}
+                  {isActionLoading
+                    ? t(dict, "rooms.common.processing", "Processing...")
+                    : t(dict, "rooms.detail.cancelWaitlist", "Cancel Waitlist")}
                 </button>
               )}
 
@@ -730,7 +744,9 @@ function RoomDetailContent() {
                   disabled={isActionLoading}
                   className="rounded-full border border-zinc-200 bg-white px-6 py-3 text-sm font-semibold text-zinc-700 shadow-sm transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
                 >
-                  {isActionLoading ? "離開中..." : "離開房間"}
+                  {isActionLoading
+                    ? t(dict, "rooms.detail.leaving", "Leaving...")
+                    : t(dict, "rooms.detail.leaveRoom", "Leave Room")}
                 </button>
               )}
 
@@ -753,7 +769,7 @@ function RoomDetailContent() {
                     : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
                 }`}
               >
-                成員 ({approvedMembers.length})
+                {tpl(dict, "rooms.detail.tabs.members", { count: String(approvedMembers.length) }, `Members (${approvedMembers.length})`)}
               </button>
 
               {room.is_owner && (
@@ -766,7 +782,7 @@ function RoomDetailContent() {
                       : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
                   }`}
                 >
-                  等待加入 ({waitingEntries.length})
+                  {tpl(dict, "rooms.detail.tabs.waiting", { count: String(waitingEntries.length) }, `Waiting (${waitingEntries.length})`)}
                 </button>
               )}
 
@@ -780,7 +796,7 @@ function RoomDetailContent() {
                       : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
                   }`}
                 >
-                  活動評分
+                  {t(dict, "rooms.detail.tabs.evaluate", "Activity Review")}
                 </button>
               )}
             </div>
@@ -792,7 +808,7 @@ function RoomDetailContent() {
               <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
-              群聊
+              {t(dict, "rooms.detail.chat", "Group Chat")}
             </Link>
             </div>
 
@@ -801,10 +817,12 @@ function RoomDetailContent() {
                 type="button"
                 onClick={handleApproveAll}
                 disabled={isActionLoading || isFull}
-                title={isFull ? "房間已滿，需先有名額" : undefined}
+                title={isFull ? t(dict, "rooms.detail.messages.fullNeedsSpace", "The room is full. A spot must open before another person can join.") : undefined}
                 className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 px-5 py-2 text-sm font-semibold text-white shadow-md shadow-purple-500/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isActionLoading ? "處理中..." : "批准所有申請"}
+                {isActionLoading
+                  ? t(dict, "rooms.common.processing", "Processing...")
+                  : t(dict, "rooms.detail.approveAll", "Approve All Requests")}
               </button>
             )}
           </div>
@@ -813,7 +831,7 @@ function RoomDetailContent() {
             <div className="space-y-3">
               {approvedMembers.length === 0 && (
                 <div className="rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-5 text-zinc-500 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-400">
-                  目前沒有已批准的成員。
+                  {t(dict, "rooms.detail.messages.noApprovedMembers", "There are no approved members yet.")}
                 </div>
               )}
 
@@ -840,7 +858,7 @@ function RoomDetailContent() {
                   <div className="flex items-center gap-2">
                     {member.is_owner && (
                       <span className="rounded-full bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-600 dark:bg-purple-500/15 dark:text-purple-300">
-                        擁有者
+                        {t(dict, "rooms.join.owner", "Owner")}
                       </span>
                     )}
 
@@ -852,7 +870,7 @@ function RoomDetailContent() {
                             ? "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300"
                             : "bg-red-100 text-red-600 dark:bg-red-500/15 dark:text-red-300"
                       }`}>
-                        ★ {member.credit_score} 分
+                        ★ {member.credit_score} {t(dict, "rooms.common.points", "pts")}
                       </span>
                     )}
 
@@ -863,7 +881,7 @@ function RoomDetailContent() {
                         disabled={isActionLoading}
                         className="rounded-full px-3 py-1 text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:text-red-400 dark:hover:bg-red-500/10"
                       >
-                        移除
+                        {t(dict, "rooms.detail.remove", "Remove")}
                       </button>
                     )}
                   </div>
@@ -876,13 +894,13 @@ function RoomDetailContent() {
             <div className="space-y-3">
               {waitingEntries.length === 0 && (
                 <div className="rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-5 text-zinc-500 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-400">
-                  目前沒有等待加入的人。需審核的申請與滿房後的候補都會出現在這裡。
+                  {t(dict, "rooms.detail.messages.noWaiting", "No one is waiting to join. Pending requests and waitlist entries will appear here.")}
                 </div>
               )}
 
               {isFull && waitingEntries.length > 0 && (
                 <p className="px-1 text-sm text-amber-600 dark:text-amber-400">
-                  房間目前已滿，需先有名額（移除成員或有人離開）才能讓人加入。
+                  {t(dict, "rooms.detail.messages.fullNeedsSpace", "The room is full. A spot must open before another person can join.")}
                 </p>
               )}
 
@@ -914,7 +932,9 @@ function RoomDetailContent() {
                                 : "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300"
                             }`}
                           >
-                            {isWaitlistKind ? "候補" : "待審核"}
+                            {isWaitlistKind
+                              ? t(dict, "rooms.detail.waitlisted", "Waitlisted")
+                              : t(dict, "rooms.join.pending", "Pending")}
                           </span>
                         </p>
                         <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
@@ -928,10 +948,10 @@ function RoomDetailContent() {
                         type="button"
                         onClick={() => handleAdmit(entry)}
                         disabled={isActionLoading || isFull}
-                        title={isFull ? "房間已滿，需先有名額" : undefined}
+                        title={isFull ? t(dict, "rooms.detail.messages.fullNeedsSpace", "The room is full. A spot must open before another person can join.") : undefined}
                         className="rounded-full bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-purple-500/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                       >
-                        批准加入
+                        {t(dict, "rooms.detail.admit", "Approve")}
                       </button>
 
                       <button
@@ -940,7 +960,9 @@ function RoomDetailContent() {
                         disabled={isActionLoading}
                         className="rounded-full border border-zinc-200 px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
                       >
-                        {isWaitlistKind ? "移除" : "拒絕"}
+                        {isWaitlistKind
+                          ? t(dict, "rooms.detail.remove", "Remove")
+                          : t(dict, "rooms.detail.reject", "Reject")}
                       </button>
                     </div>
                   </div>
@@ -953,12 +975,12 @@ function RoomDetailContent() {
           {activeTab === "evaluate" && room.is_owner && room.room_status === "ended" && (
             <div className="space-y-4">
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                請為每位成員評分。勾選不合格行為（可複選），未勾選者將獲得 +1 信用積分獎勵。
+                {t(dict, "rooms.evaluation.ownerInstructions", "Review each member. Select any rule violations (multiple allowed). Members with no violations receive a +1 credit bonus.")}
               </p>
 
               {evaluateSuccess ? (
                 <div className="rounded-2xl border border-green-200/70 bg-green-50/70 p-5 text-green-700 dark:border-green-900/40 dark:bg-green-500/10 dark:text-green-400">
-                  ✓ 已提交評分
+                  ✓ {t(dict, "rooms.evaluation.submitted", "Submitted")}
                 </div>
               ) : (
                 <>
@@ -970,7 +992,7 @@ function RoomDetailContent() {
 
                   {creditScoreMembers.length === 0 ? (
                     <div className="rounded-2xl border border-zinc-200/70 bg-zinc-50/70 p-5 text-zinc-500 dark:border-zinc-800 dark:bg-zinc-800/50 dark:text-zinc-400">
-                      沒有可評分的成員。
+                      {t(dict, "rooms.evaluation.noMembers", "No members to review.")}
                     </div>
                   ) : (
                     <>
@@ -1001,7 +1023,7 @@ function RoomDetailContent() {
                                     {member.name}
                                   </p>
                                   <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
-                                    @{member.username} · 目前信用：{member.credit_score} 分
+                                    @{member.username} · {tpl(dict, "rooms.common.currentCredit", { score: String(member.credit_score) }, `Current credit: ${member.credit_score} pts`)}
                                   </p>
                                 </div>
                               </div>
@@ -1011,7 +1033,9 @@ function RoomDetailContent() {
                                   ? "bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-300"
                                   : "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300"
                               }`}>
-                                {hasViolations ? `−${memberViolations.size} 分` : "+1 分"}
+                                {hasViolations
+                                  ? tpl(dict, "rooms.common.scoreChangeNegative", { count: String(memberViolations.size) }, `-${memberViolations.size} pts`)
+                                  : t(dict, "rooms.common.scoreChangePositive", "+1 pt")}
                               </div>
                             </div>
 
@@ -1019,39 +1043,39 @@ function RoomDetailContent() {
                               {(
                                 [
                                   {
-                                    group: "出席問題",
+                                    group: t(dict, "rooms.evaluation.groups.attendance", "Attendance Issues"),
                                     items: [
-                                      { reason: "late" as ViolationReason, label: "遲到" },
-                                      { reason: "last_minute_cancel" as ViolationReason, label: "臨時取消" },
-                                      { reason: "ghost" as ViolationReason, label: "爽約無通知" },
-                                      { reason: "no_show" as ViolationReason, label: "無故缺席" },
-                                      { reason: "early_leave" as ViolationReason, label: "提早離場" },
-                                      { reason: "midway_leave" as ViolationReason, label: "中途落跑" },
+                                      { reason: "late" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.late", "Late") },
+                                      { reason: "last_minute_cancel" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.last_minute_cancel", "Last-minute cancellation") },
+                                      { reason: "ghost" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.ghost", "No notice") },
+                                      { reason: "no_show" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.no_show", "No-show") },
+                                      { reason: "early_leave" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.early_leave", "Left early") },
+                                      { reason: "midway_leave" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.midway_leave", "Left midway") },
                                     ],
                                   },
                                   {
-                                    group: "人員問題",
+                                    group: t(dict, "rooms.evaluation.groups.personnel", "Personnel Issues"),
                                     items: [
-                                      { reason: "proxy_register" as ViolationReason, label: "替人報名但本人沒來" },
-                                      { reason: "bring_extra" as ViolationReason, label: "臨時帶人來" },
+                                      { reason: "proxy_register" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.proxy_register", "Registered for someone else") },
+                                      { reason: "bring_extra" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.bring_extra", "Brought extra guests") },
                                     ],
                                   },
                                   {
-                                    group: "行為問題",
+                                    group: t(dict, "rooms.evaluation.groups.behavior", "Behavior Issues"),
                                     items: [
-                                      { reason: "attack" as ViolationReason, label: "攻擊行為" },
-                                      { reason: "harassment" as ViolationReason, label: "騷擾" },
-                                      { reason: "verbal_abuse" as ViolationReason, label: "言語不當" },
-                                      { reason: "property_damage" as ViolationReason, label: "損壞財物" },
-                                      { reason: "discrimination" as ViolationReason, label: "歧視行為" },
-                                      { reason: "rule_violation" as ViolationReason, label: "違反規定" },
+                                      { reason: "attack" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.attack", "Attack") },
+                                      { reason: "harassment" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.harassment", "Harassment") },
+                                      { reason: "verbal_abuse" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.verbal_abuse", "Verbal abuse") },
+                                      { reason: "property_damage" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.property_damage", "Property damage") },
+                                      { reason: "discrimination" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.discrimination", "Discrimination") },
+                                      { reason: "rule_violation" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.rule_violation", "Rule violation") },
                                     ],
                                   },
                                   {
-                                    group: "費用問題",
+                                    group: t(dict, "rooms.evaluation.groups.payment", "Payment Issues"),
                                     items: [
-                                      { reason: "payment_default" as ViolationReason, label: "不付費／拖欠費用" },
-                                      { reason: "payment_dispute" as ViolationReason, label: "AA制臨時反悔" },
+                                      { reason: "payment_default" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.payment_default", "Payment default") },
+                                      { reason: "payment_dispute" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.payment_dispute", "Payment dispute") },
                                     ],
                                   },
                                 ] as const
@@ -1101,7 +1125,9 @@ function RoomDetailContent() {
                           disabled={evaluateLoading}
                           className="rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-500/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                         >
-                          {evaluateLoading ? "提交中..." : "提交評分"}
+                          {evaluateLoading
+                            ? t(dict, "rooms.evaluation.submitting", "Submitting...")
+                            : t(dict, "rooms.evaluation.submit", "Submit Review")}
                         </button>
                       </div>
                     </>
@@ -1114,12 +1140,12 @@ function RoomDetailContent() {
           {activeTab === "evaluate" && !room.is_owner && room.is_member && room.room_status === "ended" && (
             <div className="space-y-4">
               <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                請為房主評分。勾選不合格行為（可複選），未勾選將給予 +1 信用積分獎勵。
+                {t(dict, "rooms.evaluation.memberInstructions", "Review the host. Select any rule violations (multiple allowed). No selected violations gives a +1 credit bonus.")}
               </p>
 
               {ownerEvalSuccess ? (
                 <div className="rounded-2xl border border-green-200/70 bg-green-50/70 p-5 text-green-700 dark:border-green-900/40 dark:bg-green-500/10 dark:text-green-400">
-                  ✓ 已提交評分
+                  ✓ {t(dict, "rooms.evaluation.submitted", "Submitted")}
                 </div>
               ) : (
                 <>
@@ -1150,7 +1176,7 @@ function RoomDetailContent() {
                                 {displayOwner.name}
                               </p>
                               <p className="truncate text-sm text-zinc-500 dark:text-zinc-400">
-                                @{displayOwner.username} · 目前信用：{room.owner_credit_score} 分
+                                @{displayOwner.username} · {tpl(dict, "rooms.common.currentCredit", { score: String(room.owner_credit_score) }, `Current credit: ${room.owner_credit_score} pts`)}
                               </p>
                             </div>
                           </div>
@@ -1159,32 +1185,34 @@ function RoomDetailContent() {
                               ? "bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-300"
                               : "bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300"
                           }`}>
-                            {ownerViolations.size > 0 ? `−${ownerViolations.size} 分` : "+1 分"}
+                            {ownerViolations.size > 0
+                              ? tpl(dict, "rooms.common.scoreChangeNegative", { count: String(ownerViolations.size) }, `-${ownerViolations.size} pts`)
+                              : t(dict, "rooms.common.scoreChangePositive", "+1 pt")}
                           </div>
                         </div>
 
                         <div className="mt-3 space-y-2">
                           {(
                             [
-                              { group: "出席問題", items: [
-                                { reason: "late" as ViolationReason, label: "遲到" },
-                                { reason: "last_minute_cancel" as ViolationReason, label: "臨時取消" },
-                                { reason: "ghost" as ViolationReason, label: "爽約無通知" },
-                                { reason: "no_show" as ViolationReason, label: "無故缺席" },
-                                { reason: "early_leave" as ViolationReason, label: "提早離場" },
-                                { reason: "midway_leave" as ViolationReason, label: "中途落跑" },
+                              { group: t(dict, "rooms.evaluation.groups.attendance", "Attendance Issues"), items: [
+                                { reason: "late" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.late", "Late") },
+                                { reason: "last_minute_cancel" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.last_minute_cancel", "Last-minute cancellation") },
+                                { reason: "ghost" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.ghost", "No notice") },
+                                { reason: "no_show" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.no_show", "No-show") },
+                                { reason: "early_leave" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.early_leave", "Left early") },
+                                { reason: "midway_leave" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.midway_leave", "Left midway") },
                               ]},
-                              { group: "行為問題", items: [
-                                { reason: "attack" as ViolationReason, label: "攻擊行為" },
-                                { reason: "harassment" as ViolationReason, label: "騷擾" },
-                                { reason: "verbal_abuse" as ViolationReason, label: "言語不當" },
-                                { reason: "property_damage" as ViolationReason, label: "損壞財物" },
-                                { reason: "discrimination" as ViolationReason, label: "歧視行為" },
-                                { reason: "rule_violation" as ViolationReason, label: "違反規定" },
+                              { group: t(dict, "rooms.evaluation.groups.behavior", "Behavior Issues"), items: [
+                                { reason: "attack" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.attack", "Attack") },
+                                { reason: "harassment" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.harassment", "Harassment") },
+                                { reason: "verbal_abuse" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.verbal_abuse", "Verbal abuse") },
+                                { reason: "property_damage" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.property_damage", "Property damage") },
+                                { reason: "discrimination" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.discrimination", "Discrimination") },
+                                { reason: "rule_violation" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.rule_violation", "Rule violation") },
                               ]},
-                              { group: "費用問題", items: [
-                                { reason: "payment_default" as ViolationReason, label: "不付費／拖欠費用" },
-                                { reason: "payment_dispute" as ViolationReason, label: "AA制臨時反悔" },
+                              { group: t(dict, "rooms.evaluation.groups.payment", "Payment Issues"), items: [
+                                { reason: "payment_default" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.payment_default", "Payment default") },
+                                { reason: "payment_dispute" as ViolationReason, label: t(dict, "rooms.evaluation.reasons.payment_dispute", "Payment dispute") },
                               ]},
                             ] as const
                           ).map(({ group, items }) => (
@@ -1218,7 +1246,9 @@ function RoomDetailContent() {
                       <div className="flex justify-end pt-2">
                         <button type="button" onClick={handleEvaluateOwner} disabled={ownerEvalLoading}
                           className="rounded-full bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-500/20 transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
-                          {ownerEvalLoading ? "提交中..." : "提交評分"}
+                          {ownerEvalLoading
+                            ? t(dict, "rooms.evaluation.submitting", "Submitting...")
+                            : t(dict, "rooms.evaluation.submit", "Submit Review")}
                         </button>
                       </div>
                     </>

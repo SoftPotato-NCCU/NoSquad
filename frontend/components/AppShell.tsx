@@ -4,13 +4,14 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useDictionary, t } from "@/lib/i18n/useDictionary";
 import BottomNav from "@/components/BottomNav";
 import SettingsMenu from "@/components/SettingsMenu";
 
 const navItems = [
   {
     href: "/",
-    label: "首頁",
+    labelKey: "home",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l9-9 9 9M5 10v10a1 1 0 001 1h4v-6h4v6h4a1 1 0 001-1V10" />
@@ -19,7 +20,7 @@ const navItems = [
   },
   {
     href: "/explore",
-    label: "探索",
+    labelKey: "explore",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 21a9 9 0 100-18 9 9 0 000 18z" />
@@ -29,7 +30,7 @@ const navItems = [
   },
   {
     href: "/profile",
-    label: "個人檔案",
+    labelKey: "profile",
     icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0z" />
@@ -41,6 +42,7 @@ const navItems = [
 
 function Sidebar() {
   const pathname = usePathname();
+  const { dict } = useDictionary("common");
 
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
@@ -73,7 +75,7 @@ function Sidebar() {
               }`}
             >
               {item.icon}
-              <span>{item.label}</span>
+              <span>{t(dict, item.labelKey, item.labelKey)}</span>
             </Link>
           );
         })}
@@ -84,6 +86,7 @@ function Sidebar() {
 
 function TopBar() {
   const { user } = useAuth();
+  const { dict } = useDictionary("common");
 
   return (
     <header className="hidden md:flex h-20 shrink-0 items-center justify-end border-b border-zinc-200/70 dark:border-zinc-800/80 bg-white/55 dark:bg-zinc-950/55 backdrop-blur-xl px-8">
@@ -107,10 +110,12 @@ function TopBar() {
 }
 
 function MobileCreateRoomButton() {
+  const { dict } = useDictionary("common");
+
   return (
     <Link
       href="/rooms/create"
-      aria-label="建立房間"
+      aria-label={t(dict, "nav.createRoom", "Create Room")}
       className="fixed bottom-24 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-purple-600 to-blue-600 text-3xl font-semibold leading-none text-white shadow-xl shadow-purple-500/30 transition active:scale-95 md:hidden"
     >
       +

@@ -1,0 +1,157 @@
+{
+  "rooms": {
+    "common": {
+      "notSet": "Not set",
+      "timeNotSet": "Time not set",
+      "locationNotSet": "Location not set",
+      "back": "Back",
+      "processing": "Processing...",
+      "points": "pts",
+      "currentCredit": "Current credit: {score} pts",
+      "scoreChangeNegative": "-{count} pts",
+      "scoreChangePositive": "+1 pt"
+    },
+    "status": {
+      "open": "Recruiting",
+      "recruitingClosed": "Recruiting Closed",
+      "inProgress": "In Progress",
+      "ended": "Ended",
+      "cancelled": "Cancelled",
+      "unknown": "Unknown Status"
+    },
+    "join": {
+      "joining": "Joining...",
+      "joinWaitlist": "Join Waitlist",
+      "full": "Room Full",
+      "request": "Request to Join",
+      "joinRoom": "Join Room",
+      "activityInProgress": "Activity in Progress",
+      "activityEnded": "Activity Ended",
+      "roomCancelled": "Room Cancelled",
+      "unavailable": "Unavailable",
+      "pending": "Pending",
+      "owner": "Owner"
+    },
+    "create": {
+      "title": "Create Room",
+      "subtitle": "Set activity details and find people to join you.",
+      "creditWarning": "Insufficient credit score ({score}/10). You need at least 8 points to host a room.",
+      "creditWarningAlert": "Insufficient credit score ({score}/10). You need at least 8 points to host a room.",
+      "fields": {
+        "name": "Room Name",
+        "category": "Activity Category",
+        "maxCapacity": "Capacity",
+        "eventTime": "Activity Time",
+        "location": "Activity Location",
+        "description": "Room Description",
+        "approvalMode": "Join Approval"
+      },
+      "placeholders": {
+        "name": "Example: Weekend badminton group",
+        "location": "Example: Community sports center",
+        "description": "Briefly describe the activity, meeting point, and notes."
+      },
+      "approval": {
+        "manual": "Manual Approval",
+        "manualDescription": "Members must be approved by the host before joining.",
+        "auto": "Auto Join",
+        "autoDescription": "Users can join directly while the room has space."
+      },
+      "errors": {
+        "nameRequired": "Please enter a room name",
+        "descriptionRequired": "Please enter a room description",
+        "eventTimeRequired": "Please choose an activity time",
+        "eventTimeInvalid": "Activity time format is invalid",
+        "capacityMin": "Capacity must be at least 1",
+        "createFailed": "Failed to create room, please try again"
+      },
+      "cancel": "Cancel",
+      "submit": "Create Room",
+      "submitting": "Creating..."
+    },
+    "detail": {
+      "missingRoomId": "Room ID not found",
+      "confirmDismiss": "Are you sure you want to dismiss this room?",
+      "confirmRemove": "Are you sure you want to remove this member?",
+      "closeRecruitingFailed": "Failed to close recruiting",
+      "openRecruitingFailed": "Failed to resume recruiting",
+      "evaluateFailed": "Failed to submit review",
+      "promoteFailed": "Failed to promote: the room may be full",
+      "closeRecruiting": "Close Recruiting",
+      "openRecruiting": "Resume Recruiting",
+      "dismissRoom": "Dismiss Room",
+      "cancelWaitlist": "Cancel Waitlist",
+      "leaveRoom": "Leave Room",
+      "leaving": "Leaving...",
+      "labels": {
+        "memberCount": "Members",
+        "host": "Host",
+        "hostCredit": "Host Credit Score",
+        "eventTime": "Activity Time",
+        "location": "Activity Location"
+      },
+      "messages": {
+        "approvalRequired": "This room requires host approval before you can join.",
+        "recruitingClosed": "This room is no longer recruiting new members.",
+        "waitlisted": "The room is full. You are on the waitlist and the host can promote you when a spot opens.",
+        "hostUnknown": "Unavailable",
+        "fullNeedsSpace": "The room is full. A spot must open before another person can join.",
+        "noApprovedMembers": "There are no approved members yet.",
+        "noWaiting": "No one is waiting to join. Pending requests and waitlist entries will appear here."
+      },
+      "tabs": {
+        "members": "Members ({count})",
+        "waiting": "Waiting ({count})",
+        "evaluate": "Activity Review"
+      },
+      "chat": "Group Chat",
+      "approveAll": "Approve All Requests",
+      "admit": "Approve",
+      "reject": "Reject",
+      "remove": "Remove",
+      "waitlisted": "Waitlisted"
+    },
+    "chat": {
+      "title": "Group Chat",
+      "loadError": "Unable to load room information",
+      "notFound": "Room not found",
+      "memberCount": "{count} members",
+      "roomInfo": "Room Info",
+      "emptyTitle": "No messages yet",
+      "emptySubtitle": "Start the conversation!",
+      "placeholder": "Send a message..."
+    },
+    "evaluation": {
+      "ownerInstructions": "Review each member. Select any rule violations (multiple allowed). Members with no violations receive a +1 credit bonus.",
+      "memberInstructions": "Review the host. Select any rule violations (multiple allowed). No selected violations gives a +1 credit bonus.",
+      "submitted": "Submitted",
+      "noMembers": "No members to review.",
+      "submit": "Submit Review",
+      "submitting": "Submitting...",
+      "groups": {
+        "attendance": "Attendance Issues",
+        "personnel": "Personnel Issues",
+        "behavior": "Behavior Issues",
+        "payment": "Payment Issues"
+      },
+      "reasons": {
+        "late": "Late",
+        "last_minute_cancel": "Last-minute cancellation",
+        "ghost": "No notice",
+        "no_show": "No-show",
+        "early_leave": "Left early",
+        "midway_leave": "Left midway",
+        "proxy_register": "Registered for someone else",
+        "bring_extra": "Brought extra guests",
+        "attack": "Attack",
+        "harassment": "Harassment",
+        "verbal_abuse": "Verbal abuse",
+        "property_damage": "Property damage",
+        "discrimination": "Discrimination",
+        "rule_violation": "Rule violation",
+        "payment_default": "Payment default",
+        "payment_dispute": "Payment dispute"
+      }
+    }
+  }
+}

@@ -33,6 +33,8 @@
     "email": "Email",
     "phone": "Phone",
     "preferences": "Preferences",
+    "notProvided": "Not provided",
+    "notSet": "Not set",
     "logout": "Log Out"
   }
 }
