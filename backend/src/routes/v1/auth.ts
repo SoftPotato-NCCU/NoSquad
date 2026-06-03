@@ -4,6 +4,7 @@ import type { RowDataPacket } from "mysql2/promise";
 import { pool } from "../../db/connection";
 import { apiError, type ErrorDetail } from "../../lib/errors";
 import { generateToken } from "../../lib/token";
+import { redis, tokenKey, TOKEN_TTL } from "../../lib/redis";
 import { authMiddleware, type AuthVariables } from "./middleware/auth";
 import type { UserRow } from "../../db/types";
 
@@ -23,6 +24,7 @@ async function issueToken(
      VALUES (?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 1 YEAR))`,
     [tokenId, userId, token, userAgent, ipAddress],
   );
+  await redis.set(tokenKey(token), JSON.stringify({ uuid: tokenId, user_id: userId }), "EX", TOKEN_TTL);
   return token;
 }
 
@@ -275,10 +277,11 @@ auth.get("/me", authMiddleware, async (c) => {
 // ── POST /logout ──────────────────────────────────────────────────────────────
 
 auth.post("/logout", authMiddleware, async (c) => {
-  await pool.execute(
-    "UPDATE user_tokens SET revoked_at = NOW() WHERE uuid = ?",
-    [c.get("tokenId")],
-  );
+  const token = c.req.header("Authorization")!.slice(7);
+  await Promise.all([
+    pool.execute("UPDATE user_tokens SET revoked_at = NOW() WHERE uuid = ?", [c.get("tokenId")]),
+    redis.del(tokenKey(token)),
+  ]);
   return c.json({
     data: { success: true, message: "Successfully logged out" },
   });

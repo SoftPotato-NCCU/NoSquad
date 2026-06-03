@@ -13,8 +13,10 @@ services:
       JWT_SECRET: ${JWT_SECRET:-dev-secret-change-in-production}
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
     depends_on:
       - db
+      - redis
   frontend:
     build:
       context: ./frontend
@@ -34,6 +36,14 @@ services:
     volumes:
       - mariadb_data:/var/lib/mysql
       - ./database/init:/docker-entrypoint-initdb.d/
+  redis:
+    image: redis:alpine
+    command: redis-server --maxmemory 512mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
   cloudbeaver:
     image: dbeaver/cloudbeaver:latest
     profiles: [dev]
@@ -45,4 +55,5 @@ services:
 
 volumes:
   mariadb_data:
+  redis_data:
   cloudbeaver:
