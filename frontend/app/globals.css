@@ -109,6 +109,10 @@ body {
   z-index: 0;
 }
 
+.dark .app-bg {
+  background-image: none;
+}
+
 .app-bg > * {
   position: relative;
   z-index: 1;
