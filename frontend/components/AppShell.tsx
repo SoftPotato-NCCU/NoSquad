@@ -91,13 +91,6 @@ function TopBar() {
   return (
     <header className="hidden md:flex h-20 shrink-0 items-center justify-end border-b border-zinc-200/70 dark:border-zinc-800/80 bg-white/55 dark:bg-zinc-950/55 backdrop-blur-xl px-8">
       <div className="flex items-center gap-4">
-        <Link
-          href="/rooms/create"
-          className="h-11 rounded-full bg-gradient-to-r from-purple-600 to-blue-600 px-5 text-sm font-semibold text-white shadow-lg shadow-purple-500/20 transition hover:opacity-90 flex items-center"
-        >
-          + {t(dict, "nav.createRoom", "Create Room")}
-        </Link>
-
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900 dark:to-blue-900 flex items-center justify-center text-lg">
             {user?.name?.[0]?.toUpperCase() || "N"}
@@ -166,14 +159,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         <Sidebar />
 
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden pb-16 md:pb-0">
-          <TopBar />
-
           <main className={isChatPage ? "flex-1 overflow-hidden" : "flex-1 overflow-y-auto p-4 md:p-8"}>
             {children}
           </main>
         </div>
-
-        {!isChatPage && <MobileCreateRoomButton />}
 
         <div className="md:hidden">
           <BottomNav />

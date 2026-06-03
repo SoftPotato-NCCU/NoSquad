@@ -69,6 +69,9 @@ export async function subscribeToPush(): Promise<PushSubscription | null> {
     });
 
     const publicKey = await getVapidPublicKey();
+    if (!publicKey) {
+      throw new Error("VAPID public key unavailable");
+    }
     const subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: urlBase64ToUint8Array(publicKey),
