@@ -15,6 +15,7 @@ interface User {
   username: string;
   email: string;
   phone: string;
+  credit_score?: number;
 }
 
 interface AuthContextType {

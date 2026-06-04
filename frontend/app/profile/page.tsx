@@ -4,10 +4,10 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useRooms } from "@/lib/rooms-context";
-import { useDictionary, t } from "@/lib/i18n/useDictionary";
+import { useDictionary, t, tpl } from "@/lib/i18n/useDictionary";
 import { type Lang, supported } from "@/lib/i18n/useLang";
 import { langConfigs } from "@/lib/i18n/langConfig";
-import { logout, clearToken } from "@/lib/api";
+import { logout, clearToken, getMe } from "@/lib/api";
 import StatCard from "@/components/StatCard";
 import ProfileInfoRow from "@/components/ProfileInfoRow";
 import NotificationSettings from "@/components/NotificationSettings";
@@ -100,6 +100,18 @@ function ProfileContent() {
 
   const [lang, setLang] = useState<Lang>("en");
   const [theme, setTheme] = useState<"light" | "dark" | "system">("system");
+  const [creditScore, setCreditScore] = useState<number>(
+    user?.credit_score ?? 10,
+  );
+
+  useEffect(() => {
+    getMe()
+      .then((res) => {
+        const score = res.data.user.credit_score;
+        if (typeof score === "number") setCreditScore(score);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const storedLang = localStorage.getItem("lang") as Lang | null;
@@ -157,10 +169,18 @@ function ProfileContent() {
   const displayName = currentUser.name || "User";
   const username = currentUser.username || "username";
   const email = currentUser.email || "user@example.com";
-  const phone = currentUser.phone || "尚未提供";
+  const phone = currentUser.phone || t(dict, "profile.notProvided", "Not provided");
 
   const createdRoomCount = myRooms.filter((room) => room.is_owner).length;
   const joinedRoomCount = myRooms.filter((room) => !room.is_owner).length;
+
+  const creditTone =
+    creditScore >= 8 ? "green" : creditScore >= 5 ? "amber" : "red";
+  const creditAlerts: { text: string; level: "red" | "amber" }[] = [];
+  if (creditScore < 3)
+    creditAlerts.push({ text: tpl(dict, "profile.credit.lowJoin", { score: String(creditScore) }, `Credit score too low (${creditScore}/10). Cannot join any activities.`), level: "red" });
+  if (creditScore < 8)
+    creditAlerts.push({ text: tpl(dict, "profile.credit.lowCreate", { score: String(creditScore) }, `Credit score too low (${creditScore}/10). Cannot create rooms as host. (Minimum 8 pts required)`), level: "amber" });
 
   const langOptions: SelectOption[] = supported.map((code) => ({
     value: code,
@@ -177,10 +197,10 @@ function ProfileContent() {
     <div className="mx-auto flex w-full max-w-7xl flex-col gap-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-zinc-950 dark:text-zinc-50 md:text-4xl">
-          {t(dict, "profile.profile.title", "個人檔案")}
+          {t(dict, "profile.profile.title", "Profile")}
         </h1>
         <p className="mt-2 text-zinc-500 dark:text-zinc-400">
-          {t(dict, "profile.profile.subtitle", "帳號與偏好設定")}
+          {t(dict, "profile.profile.subtitle", "Account and preferences")}
         </p>
       </div>
 
@@ -200,23 +220,50 @@ function ProfileContent() {
               @{username}
             </p>
 
-            <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
               <StatCard
-                label={t(dict, "profile.stats.joinedRooms", "加入房間")}
+                label={t(dict, "profile.stats.joinedRooms", "Rooms Joined")}
                 value={isLoadingRooms ? 0 : joinedRoomCount}
                 tone="purple"
               />
               <StatCard
-                label={t(dict, "profile.stats.createdRooms", "建立房間")}
+                label={t(dict, "profile.stats.createdRooms", "Rooms Created")}
                 value={isLoadingRooms ? 0 : createdRoomCount}
                 tone="blue"
               />
               <StatCard
-                label={t(dict, "profile.stats.friends", "好友")}
+                label={t(dict, "profile.stats.friends", "Friends")}
                 value={0}
                 tone="green"
               />
+              <StatCard
+                label={t(dict, "profile.stats.creditScore", "Credit Score")}
+                value={`${creditScore} ${t(dict, "profile.stats.pts", "pts")}`}
+                tone={creditTone as "green" | "amber" | "red"}
+                icon={
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                }
+              />
             </div>
+
+            {creditAlerts.length > 0 && (
+              <div className="mt-4 space-y-2">
+                {creditAlerts.map((alert) => (
+                  <div
+                    key={alert.text}
+                    className={`rounded-2xl px-4 py-3 text-sm font-medium ${
+                      alert.level === "red"
+                        ? "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"
+                        : "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-400"
+                    }`}
+                  >
+                    ⚠ {alert.text}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -225,13 +272,13 @@ function ProfileContent() {
         <section className="rounded-3xl border border-zinc-200/70 bg-white/85 p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
           <div className="mb-3 px-2">
             <h2 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">
-              {t(dict, "profile.sections.account", "帳號資訊")}
+              {t(dict, "profile.sections.account", "Account Info")}
             </h2>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
               {t(
                 dict,
                 "profile.sections.accountDescription",
-                "管理你的基本帳號資料",
+                "Manage your basic account details",
               )}
             </p>
           </div>
@@ -244,7 +291,7 @@ function ProfileContent() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7l8 6 8-6" />
                 </svg>
               }
-              label={t(dict, "profile.email", "電子郵件")}
+              label={t(dict, "profile.email", "Email")}
               value={email}
             />
 
@@ -254,7 +301,7 @@ function ProfileContent() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h2l2 5-2 1a11 11 0 005 5l1-2 5 2v2a2 2 0 01-2 2h-1C8.373 18 3 12.627 3 6V5z" />
                 </svg>
               }
-              label={t(dict, "profile.phone", "電話號碼")}
+              label={t(dict, "profile.phone", "Phone")}
               value={phone}
             />
 
@@ -264,8 +311,8 @@ function ProfileContent() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M3 11l8.5 8.5a2 2 0 002.8 0l5.2-5.2a2 2 0 000-2.8L11 3H3v8z" />
                 </svg>
               }
-              label={t(dict, "profile.preferences", "偏好類別")}
-              value="尚未設定"
+              label={t(dict, "profile.preferences", "Preferences")}
+              value={t(dict, "profile.notSet", "Not set")}
             />
           </div>
         </section>
@@ -273,13 +320,13 @@ function ProfileContent() {
         <section className="rounded-3xl border border-zinc-200/70 bg-white/85 p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
           <div className="mb-3 px-2">
             <h2 className="text-xl font-bold text-zinc-950 dark:text-zinc-50">
-              {t(dict, "profile.sections.settings", "快速設定")}
+              {t(dict, "profile.sections.settings", "Quick Settings")}
             </h2>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
               {t(
                 dict,
                 "profile.sections.settingsDescription",
-                "調整你的使用偏好",
+                "Adjust your preferences",
               )}
             </p>
           </div>
@@ -293,7 +340,7 @@ function ProfileContent() {
                 </svg>
               </div>
               <p className="min-w-0 flex-1 font-semibold">
-                {t(dict, "profile.settings.language", "語言設定")}
+                {t(dict, "profile.settings.language", "Language")}
               </p>
               <SettingSelect value={lang} options={langOptions} onChange={(v) => switchLang(v as Lang)} />
             </div>
@@ -305,7 +352,7 @@ function ProfileContent() {
                 </svg>
               </div>
               <p className="min-w-0 flex-1 font-semibold">
-                {t(dict, "profile.settings.theme", "主題設定")}
+                {t(dict, "profile.settings.theme", "Theme")}
               </p>
               <SettingSelect value={theme} options={themeOptions} onChange={(v) => switchTheme(v as "light" | "dark" | "system")} />
             </div>
@@ -319,7 +366,7 @@ function ProfileContent() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01" />
                 </svg>
               }
-              label={t(dict, "profile.settings.help", "幫助中心")}
+              label={t(dict, "profile.settings.help", "Help Center")}
             />
           </div>
         </section>
@@ -335,7 +382,7 @@ function ProfileContent() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 4H6a2 2 0 00-2 2v12a2 2 0 002 2h7" />
             </svg>
           }
-          label={t(dict, "profile.logout", "登出帳號")}
+          label={t(dict, "profile.logout", "Log Out")}
         />
       </section>
     </div>

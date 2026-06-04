@@ -92,6 +92,8 @@ describe("formatRoomDetails", () => {
       created_at: new Date("2024-06-15T10:30:00Z"),
       is_member: 1,
       membership_status: "approved",
+      owner_credit_score: 10,
+      owner_name: "Alice",
     };
 
     const result = formatRoomDetails(row, "user-1");
@@ -112,6 +114,8 @@ describe("formatRoomDetails", () => {
       is_owner: true,
       is_member: true,
       membership_status: "approved",
+      owner_credit_score: 10,
+      owner_name: "Alice",
     });
   });
 
@@ -131,6 +135,7 @@ describe("formatRoomDetails", () => {
       created_at: new Date(),
       is_member: 1,
       membership_status: "approved",
+      owner_credit_score: 10,
     };
 
     const result = formatRoomDetails(row, "other-user");
@@ -156,6 +161,7 @@ describe("formatRoomDetails", () => {
       created_at: new Date("2024-01-01T00:00:00Z"),
       is_member: 0,
       membership_status: null,
+      owner_credit_score: 10,
     };
 
     const result = formatRoomDetails(row, "user-1");

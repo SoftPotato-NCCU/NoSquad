@@ -42,6 +42,36 @@ export interface RoomDetails extends BaseRoom {
   is_owner: boolean;
   is_member: boolean;
   membership_status: MembershipStatus | null;
+  owner_credit_score: number;
+  owner_name: string | null;
+}
+
+export type ViolationReason =
+  | "late" | "last_minute_cancel" | "ghost" | "no_show" | "early_leave" | "midway_leave"
+  | "proxy_register" | "bring_extra"
+  | "attack" | "harassment" | "verbal_abuse" | "property_damage" | "discrimination" | "rule_violation"
+  | "payment_default" | "payment_dispute";
+
+export interface CreditScoreMember {
+  user_id: string;
+  name: string;
+  username: string;
+  credit_score: number;
+  joined_at: string;
+}
+
+export interface MemberEvaluation {
+  user_id: string;
+  violations: ViolationReason[];
+}
+
+export interface EvaluateResponse {
+  success: boolean;
+  results: Array<{
+    user_id: string;
+    points_change: number;
+    new_credit_score: number;
+  }>;
 }
 
 export interface RoomMember {
@@ -51,6 +81,7 @@ export interface RoomMember {
   approval_status: MembershipStatus;
   joined_at: string;
   is_owner: boolean;
+  credit_score?: number;
 }
 
 export interface JoinRequest {

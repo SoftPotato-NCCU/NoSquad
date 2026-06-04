@@ -7,7 +7,9 @@
     "stats": {
       "joinedRooms": "加入房間",
       "createdRooms": "建立房間",
-      "friends": "好友"
+      "friends": "好友",
+      "creditScore": "信用分數",
+      "pts": "分"
     },
     "sections": {
       "account": "帳號資訊",
@@ -24,9 +26,15 @@
       "notifications": "通知設定",
       "help": "幫助中心"
     },
+    "credit": {
+      "lowJoin": "信用分數不足（{score}/10），無法加入任何活動。",
+      "lowCreate": "信用分數不足（{score}/10），無法擔任房主建立房間。（需達 8 分）"
+    },
     "email": "電子郵件",
     "phone": "電話號碼",
     "preferences": "偏好類別",
+    "notProvided": "尚未提供",
+    "notSet": "尚未設定",
     "logout": "登出帳號"
   }
 }

@@ -51,6 +51,7 @@
     "emailRequired": "Please enter a valid email",
     "phoneRequired": "Phone must use E.164 format (e.g. +1234567890)",
     "passwordRequired": "Password must be at least 8 characters",
+    "passwordComplexity": "Password must contain uppercase, lowercase, number, and special character",
     "passwordsNotMatch": "Passwords do not match",
     "termsRequired": "Please agree to the terms",
     "signupFailed": "Registration failed, please try again",

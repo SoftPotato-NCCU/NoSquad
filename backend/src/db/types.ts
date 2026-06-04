@@ -9,6 +9,23 @@ export interface UserRow {
   created_at: Date;
   rating_avg: number;
   rating_count: number;
+  credit_score: number;
+  credit_score_reset_at: Date;
+}
+
+export interface CreditScoreLogRow {
+  uuid: string;
+  room_id: string;
+  target_user_id: string;
+  reporter_id: string;
+  reason:
+    | "late" | "last_minute_cancel" | "ghost" | "no_show" | "early_leave" | "midway_leave"
+    | "proxy_register" | "bring_extra"
+    | "attack" | "harassment" | "verbal_abuse" | "property_damage" | "discrimination" | "rule_violation"
+    | "payment_default" | "payment_dispute"
+    | "bonus";
+  points_change: number;
+  created_at: Date;
 }
 
 export interface RoomRow {

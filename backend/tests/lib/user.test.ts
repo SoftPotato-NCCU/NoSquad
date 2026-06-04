@@ -16,6 +16,8 @@ describe('publicUser', () => {
       created_at: new Date(),
       rating_avg: 0,
       rating_count: 0,
+      credit_score: 10,
+      credit_score_reset_at: new Date(),
     };
 
     const result = publicUser(userRow);
@@ -26,6 +28,7 @@ describe('publicUser', () => {
       username: 'johndoe',
       email: 'john@example.com',
       phone: '+1234567890',
+      credit_score: 10,
     });
   });
 
@@ -41,6 +44,8 @@ describe('publicUser', () => {
       created_at: new Date(),
       rating_avg: 4.5,
       rating_count: 10,
+      credit_score: 10,
+      credit_score_reset_at: new Date(),
     };
 
     const result = publicUser(userRow);

@@ -3,6 +3,7 @@ import { getConnInfo } from 'hono/bun';
 import type { RowDataPacket } from 'mysql2/promise';
 import { pool } from '../../../db/connection';
 import { apiError } from '../../../lib/errors';
+import { redis, tokenKey, TOKEN_TTL } from '../../../lib/redis';
 
 export type AuthVariables = {
   userId: string;
@@ -20,29 +21,47 @@ export const authMiddleware = createMiddleware<{ Variables: AuthVariables }>(
 
     const token = header.slice(7);
 
-    const [rows] = await pool.execute<RowDataPacket[]>(
-      'SELECT uuid, user_id, revoked_at FROM user_tokens WHERE token = ?',
-      [token],
-    );
-
-    if (!rows[0] || (rows[0].revoked_at as Date | null) !== null) {
-      return apiError(c, 401, 'UNAUTHORIZED', UNAUTH);
-    }
-
-    // Update last_used and IP address on each request (Bun direct connection)
-    // TODO: In production behind nginx - use: proxy_set_header X-Real-IP $remote_addr;
-    // TODO: In production behind nginx - use: proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    const userAgent = c.req.header('User-Agent');
+    const userAgent = c.req.header('User-Agent') ?? null;
     const connInfo = getConnInfo(c);
     const ipAddress = connInfo.remote.address ?? null;
 
+    // Check Redis cache first; fall back to DB on miss
+    let tokenUuid: string;
+    let userId: string;
+
+    const cached = await redis.get(tokenKey(token)).catch(() => null);
+    if (cached) {
+      const parsed = JSON.parse(cached) as { uuid: string; user_id: string };
+      tokenUuid = parsed.uuid;
+      userId = parsed.user_id;
+    } else {
+      const [rows] = await pool.execute<RowDataPacket[]>(
+        'SELECT uuid, user_id, revoked_at, expires_at FROM user_tokens WHERE token = ?',
+        [token],
+      );
+      if (!rows[0] || (rows[0].revoked_at as Date | null) !== null) {
+        return apiError(c, 401, 'UNAUTHORIZED', UNAUTH);
+      }
+      tokenUuid = rows[0].uuid as string;
+      userId = rows[0].user_id as string;
+
+      // Re-populate cache; use remaining TTL or fall back to full TOKEN_TTL
+      const expiresAt = rows[0].expires_at ? new Date(rows[0].expires_at as Date) : null;
+      const ttl = expiresAt ? Math.floor((expiresAt.getTime() - Date.now()) / 1000) : TOKEN_TTL;
+      if (ttl > 0) {
+        redis.set(tokenKey(token), JSON.stringify({ uuid: tokenUuid, user_id: userId }), 'EX', ttl).catch(() => null);
+      }
+    }
+
+    // TODO: In production behind nginx - use: proxy_set_header X-Real-IP $remote_addr;
+    // TODO: In production behind nginx - use: proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     await pool.execute(
       'UPDATE user_tokens SET last_used_at = NOW(), user_agent = ?, ip_address = ? WHERE uuid = ?',
-      [userAgent, ipAddress, rows[0].uuid],
+      [userAgent, ipAddress, tokenUuid],
     );
 
-    c.set('userId', rows[0].user_id);
-    c.set('tokenId', rows[0].uuid);
+    c.set('userId', userId);
+    c.set('tokenId', tokenUuid);
     await next();
   },
 );

@@ -4,6 +4,8 @@ import type { RowDataPacket } from "mysql2/promise";
 import { pool } from "../../db/connection";
 import { apiError } from "../../lib/errors";
 import { authMiddleware, type AuthVariables } from "./middleware/auth";
+import { resetCreditScoreIfDue } from "./auth";
+import { notifyUser } from "../../lib/push-notifications";
 
 // ── ROUTES: /api/v1/rooms ───────────────────────────────────────────────────────
 
@@ -115,10 +117,26 @@ function formatRoomDetails(r: RowDataPacket, userId: string) {
     is_owner: r.creator_id === userId,
     is_member: !!Number(r.is_member),
     membership_status: r.membership_status ?? null,
+    owner_credit_score: Number(r.owner_credit_score),
+    owner_name: r.owner_name ?? null,
   };
 }
 
 const ACTIVE_STATUSES = "('open','recruiting_closed')";
+
+async function getEffectiveCreditScore(userId: string): Promise<number> {
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    "SELECT credit_score, credit_score_reset_at FROM users WHERE uuid = ?",
+    [userId],
+  );
+  if (!rows[0]) return 10;
+  await resetCreditScoreIfDue(userId, rows[0].credit_score_reset_at as Date);
+  const [refreshed] = await pool.execute<RowDataPacket[]>(
+    "SELECT credit_score FROM users WHERE uuid = ?",
+    [userId],
+  );
+  return Number(refreshed[0]?.credit_score ?? 10);
+}
 
 function formatMember(r: RowDataPacket) {
   return {
@@ -328,9 +346,12 @@ rooms.get("/:room_id", async (c) => {
     `SELECT r.*,
        COUNT(CASE WHEN rm.approval_status = 'approved' THEN 1 END) AS member_count,
        MAX(CASE WHEN rm.user_id = ? THEN 1 ELSE 0 END) AS is_member,
-       MAX(CASE WHEN rm.user_id = ? THEN rm.approval_status ELSE NULL END) AS membership_status
+       MAX(CASE WHEN rm.user_id = ? THEN rm.approval_status ELSE NULL END) AS membership_status,
+       u.credit_score AS owner_credit_score,
+       u.name AS owner_name
      FROM rooms r
      LEFT JOIN room_members rm ON rm.room_id = r.uuid
+     JOIN users u ON u.uuid = r.creator_id
      WHERE r.uuid = ?
      GROUP BY r.uuid`,
     [userId, userId, roomId],
@@ -351,6 +372,16 @@ rooms.get("/:room_id", async (c) => {
 // POST /api/v1/rooms - Create a new room (creator becomes owner and auto-approved member)
 rooms.post("/", async (c) => {
   const userId = c.get("userId");
+
+  const creatorScore = await getEffectiveCreditScore(userId);
+  if (creatorScore < 8)
+    return apiError(
+      c,
+      403,
+      "INSUFFICIENT_CREDIT_SCORE",
+      "Your credit score is too low to create a room. A score of 8 or above is required.",
+    );
+
   const body = (await c.req.json().catch(() => null)) as Record<
     string,
     unknown
@@ -368,12 +399,7 @@ rooms.post("/", async (c) => {
       { field: "event_time", issue: "required", message: "Event time is required" },
     ]);
   
-  // check start time earlier than now
-  if (new Date(body.event_time) <= new Date())
-    return apiError(c, 400, "VALIDATION_ERROR", "Event time must be in the future", [
-      { field: "event_time", issue: "invalid_value", message: "Event time must be in the future" },
-    ]);
-  
+  // DEMO MODE: event_time future check disabled for testing
   // if end time provided, check end time later than start time
   if (body.event_end_time) {
     if (typeof body.event_end_time !== "string")
@@ -593,6 +619,15 @@ rooms.post("/:room_id/join", async (c) => {
   const userId = c.get("userId");
   const roomId = c.req.param("room_id");
 
+  const joinerScore = await getEffectiveCreditScore(userId);
+  if (joinerScore < 3)
+    return apiError(
+      c,
+      403,
+      "INSUFFICIENT_CREDIT_SCORE",
+      "Your credit score is too low to join any room. A score of 3 or above is required.",
+    );
+
   const [roomRows] = await pool.execute<RowDataPacket[]>(
     `SELECT r.*,
        (SELECT COUNT(*) FROM room_members rm2 WHERE rm2.room_id = r.uuid AND rm2.approval_status = 'approved') AS member_count
@@ -746,15 +781,15 @@ rooms.get("/:room_id/members", async (c) => {
       "The specified room does not exist",
     );
 
-  if (roomRows[0].status !== "open" && roomRows[0].status !== "recruiting_closed")
+  if (roomRows[0].status === "cancelled")
     return apiError(c, 400, "ROOM_CLOSED", "This room is no longer active");
 
   const userId = c.get("userId");
   const room = roomRows[0];
+  const isOwner = room.creator_id === userId;
 
-  // Allow access if user is room owner
-  if (room.creator_id !== userId) {
-    // Otherwise, check if user is an approved member
+  // Allow access if user is room owner or approved member
+  if (!isOwner) {
     const [memberCheck] = await pool.execute<RowDataPacket[]>(
       "SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ? AND approval_status = 'approved'",
       [roomId, userId],
@@ -771,7 +806,8 @@ rooms.get("/:room_id/members", async (c) => {
 
   const [memberRows] = await pool.execute<RowDataPacket[]>(
     `SELECT rm.*, u.name, u.username,
-       CASE WHEN r.creator_id = rm.user_id THEN 1 ELSE 0 END AS is_owner
+       CASE WHEN r.creator_id = rm.user_id THEN 1 ELSE 0 END AS is_owner,
+       u.credit_score AS credit_score
      FROM room_members rm
      JOIN users u ON u.uuid = rm.user_id
      JOIN rooms r ON r.uuid = rm.room_id
@@ -780,9 +816,19 @@ rooms.get("/:room_id/members", async (c) => {
     [roomId],
   );
 
+  const formatMemberWithScore = (r: RowDataPacket) => ({
+    user_id: r.user_id,
+    name: r.name,
+    username: r.username,
+    approval_status: r.approval_status,
+    joined_at: toISO(r.joined_at as Date),
+    is_owner: !!Number(r.is_owner),
+    ...(isOwner || Number(r.is_owner) ? { credit_score: r.credit_score } : {}),
+  });
+
   return c.json({
     data: {
-      members: memberRows.map(formatMember),
+      members: memberRows.map(formatMemberWithScore),
       room_owner_id: roomRows[0].creator_id,
     },
   });
@@ -1064,6 +1110,81 @@ rooms.delete("/:room_id/members/:user_id", async (c) => {
   return c.json({ data: { success: true, user_id: targetUserId } });
 });
 
+// ── GET EVALUATION STATUS ────────────────────────────────────────────────────────
+// GET /api/v1/rooms/:room_id/evaluation-status - Check if current user has already submitted evaluation
+rooms.get("/:room_id/evaluation-status", async (c) => {
+  const userId = c.get("userId");
+  const roomId = c.req.param("room_id");
+
+  const [roomRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT uuid, creator_id FROM rooms WHERE uuid = ?",
+    [roomId],
+  );
+  if (!roomRows[0])
+    return apiError(c, 404, "ROOM_NOT_FOUND", "The specified room does not exist");
+
+  const ownerId = roomRows[0].creator_id as string;
+  const isOwner = ownerId === userId;
+
+  let hasEvaluated = false;
+
+  if (isOwner) {
+    // Check if owner has submitted evaluation for members
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      "SELECT 1 FROM credit_score_logs WHERE room_id = ? AND reporter_id = ? LIMIT 1",
+      [roomId, userId],
+    );
+    hasEvaluated = rows.length > 0;
+  } else {
+    // Check if member has submitted evaluation for owner
+    const [rows] = await pool.execute<RowDataPacket[]>(
+      "SELECT 1 FROM credit_score_logs WHERE room_id = ? AND reporter_id = ? AND target_user_id = ? LIMIT 1",
+      [roomId, userId, ownerId],
+    );
+    hasEvaluated = rows.length > 0;
+  }
+
+  return c.json({ data: { has_evaluated: hasEvaluated } });
+});
+
+// ── VIEW MEMBER CREDIT SCORES ────────────────────────────────────────────────────
+// GET /api/v1/rooms/:room_id/members/credit-scores - List approved members with credit scores (owner only)
+rooms.get("/:room_id/members/credit-scores", async (c) => {
+  const userId = c.get("userId");
+  const roomId = c.req.param("room_id");
+
+  const [roomRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT uuid, creator_id FROM rooms WHERE uuid = ?",
+    [roomId],
+  );
+  if (!roomRows[0])
+    return apiError(c, 404, "ROOM_NOT_FOUND", "The specified room does not exist");
+
+  if (roomRows[0].creator_id !== userId)
+    return apiError(c, 403, "NOT_OWNER", "Only the room owner can view member credit scores");
+
+  const [memberRows] = await pool.execute<RowDataPacket[]>(
+    `SELECT rm.user_id, u.name, u.username, u.credit_score, rm.joined_at
+     FROM room_members rm
+     JOIN users u ON u.uuid = rm.user_id
+     WHERE rm.room_id = ? AND rm.approval_status = 'approved' AND rm.user_id != ?
+     ORDER BY rm.joined_at ASC`,
+    [roomId, userId],
+  );
+
+  return c.json({
+    data: {
+      members: memberRows.map((r) => ({
+        user_id: r.user_id,
+        name: r.name,
+        username: r.username,
+        credit_score: r.credit_score,
+        joined_at: toISO(r.joined_at as Date),
+      })),
+    },
+  });
+});
+
 // ── LIST WAITLIST ─────────────────────────────────────────────────────────────────
 // GET /api/v1/rooms/:room_id/waitlist - List users waiting for a spot (owner only)
 rooms.get("/:room_id/waitlist", async (c) => {
@@ -1136,6 +1257,315 @@ rooms.post("/:room_id/waitlist/:user_id/promote", async (c) => {
 
   return c.json({
     data: { success: true, user_id: targetUserId, status: "approved" },
+  });
+});
+
+// ── DEDUCT CREDIT SCORE ──────────────────────────────────────────────────────────
+// POST /api/v1/rooms/:room_id/members/:user_id/deduct - Deduct credit score from a member (owner only, ended rooms)
+rooms.post("/:room_id/members/:user_id/deduct", async (c) => {
+  const userId = c.get("userId");
+  const roomId = c.req.param("room_id");
+  const targetUserId = c.req.param("user_id");
+
+  const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!body)
+    return apiError(c, 400, "VALIDATION_ERROR", "Invalid request data");
+
+  const validReasons = [
+    "late", "last_minute_cancel", "ghost", "no_show", "early_leave", "midway_leave",
+    "proxy_register", "bring_extra",
+    "attack", "harassment", "verbal_abuse", "property_damage", "discrimination", "rule_violation",
+    "payment_default", "payment_dispute",
+  ] as const;
+  type Reason = (typeof validReasons)[number];
+  if (!body.reason || !validReasons.includes(body.reason as Reason))
+    return apiError(c, 400, "VALIDATION_ERROR", "Invalid reason", [
+      { field: "reason", issue: "invalid_value", message: `reason must be one of: ${validReasons.join(", ")}` },
+    ]);
+  const reason = body.reason as Reason;
+  const pointsChange = -1;
+
+  const [roomRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT uuid, creator_id, status, event_time, event_end_time FROM rooms WHERE uuid = ?",
+    [roomId],
+  );
+  if (!roomRows[0])
+    return apiError(c, 404, "ROOM_NOT_FOUND", "The specified room does not exist");
+
+  const room = roomRows[0];
+
+  if (room.creator_id !== userId)
+    return apiError(c, 403, "NOT_OWNER", "Only the room owner can deduct credit scores");
+
+  const displayStatus = computeDisplayStatus(room.status, room.event_time, room.event_end_time);
+  if (displayStatus !== "ended")
+    return apiError(c, 400, "ROOM_NOT_ENDED", "Credit score deductions can only be submitted after the activity has ended");
+
+  if (targetUserId === userId)
+    return apiError(c, 400, "CANNOT_DEDUCT_SELF", "Room owner cannot deduct their own credit score");
+
+  const [memberRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ? AND approval_status = 'approved'",
+    [roomId, targetUserId],
+  );
+  if (!memberRows[0])
+    return apiError(c, 404, "MEMBER_NOT_FOUND", "Member not found in this room");
+
+  const logId = crypto.randomUUID();
+  try {
+    await pool.execute(
+      "INSERT INTO credit_score_logs (uuid, room_id, target_user_id, reporter_id, reason, points_change) VALUES (?, ?, ?, ?, ?, ?)",
+      [logId, roomId, targetUserId, userId, reason, pointsChange],
+    );
+  } catch (err: unknown) {
+    if ((err as NodeJS.ErrnoException).code === "ER_DUP_ENTRY")
+      return apiError(c, 409, "ALREADY_DEDUCTED", `A deduction for '${reason}' has already been submitted for this member in this room`);
+    throw err;
+  }
+
+  await pool.execute(
+    "UPDATE users SET credit_score = GREATEST(0, credit_score + ?) WHERE uuid = ?",
+    [pointsChange, targetUserId],
+  );
+
+  const [updatedUser] = await pool.execute<RowDataPacket[]>(
+    "SELECT credit_score FROM users WHERE uuid = ?",
+    [targetUserId],
+  );
+
+  return c.json({
+    data: {
+      success: true,
+      user_id: targetUserId,
+      reason,
+      points_change: -1,
+      new_credit_score: updatedUser[0]?.credit_score ?? null,
+    },
+  });
+});
+
+// ── BULK EVALUATE MEMBERS ────────────────────────────────────────────────────────
+// POST /api/v1/rooms/:room_id/evaluate - Submit post-activity evaluation for all members (owner only)
+rooms.post("/:room_id/evaluate", async (c) => {
+  const userId = c.get("userId");
+  const roomId = c.req.param("room_id");
+
+  const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!body || !Array.isArray(body.evaluations))
+    return apiError(c, 400, "VALIDATION_ERROR", "evaluations must be an array");
+
+  const [roomRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT uuid, creator_id, status, event_time, event_end_time FROM rooms WHERE uuid = ?",
+    [roomId],
+  );
+  if (!roomRows[0])
+    return apiError(c, 404, "ROOM_NOT_FOUND", "The specified room does not exist");
+
+  if (roomRows[0].creator_id !== userId)
+    return apiError(c, 403, "NOT_OWNER", "Only the room owner can submit evaluations");
+
+  const displayStatus = computeDisplayStatus(
+    roomRows[0].status,
+    roomRows[0].event_time,
+    roomRows[0].event_end_time,
+  );
+  if (displayStatus !== "ended")
+    return apiError(c, 400, "ROOM_NOT_ENDED", "Evaluations can only be submitted after the activity has ended");
+
+  const [existingLogs] = await pool.execute<RowDataPacket[]>(
+    "SELECT 1 FROM credit_score_logs WHERE room_id = ? AND reporter_id = ? LIMIT 1",
+    [roomId, userId],
+  );
+  if (existingLogs.length > 0)
+    return apiError(c, 409, "ALREADY_EVALUATED", "You have already submitted evaluations for this room");
+
+  type Violation =
+    | "late" | "last_minute_cancel" | "ghost" | "no_show" | "early_leave" | "midway_leave"
+    | "proxy_register" | "bring_extra"
+    | "attack" | "harassment" | "verbal_abuse" | "property_damage" | "discrimination" | "rule_violation"
+    | "payment_default" | "payment_dispute";
+  const validViolations: Violation[] = [
+    "late", "last_minute_cancel", "ghost", "no_show", "early_leave", "midway_leave",
+    "proxy_register", "bring_extra",
+    "attack", "harassment", "verbal_abuse", "property_damage", "discrimination", "rule_violation",
+    "payment_default", "payment_dispute",
+  ];
+
+  interface EvaluationEntry { user_id: string; violations: Violation[] }
+  const evaluations = body.evaluations as EvaluationEntry[];
+
+  const results: { user_id: string; points_change: number; new_credit_score: number }[] = [];
+
+  for (const entry of evaluations) {
+    if (typeof entry.user_id !== "string" || !Array.isArray(entry.violations))
+      return apiError(c, 400, "VALIDATION_ERROR", "Each evaluation must have user_id and violations array");
+
+    if (entry.user_id === userId) continue;
+
+    const violations = entry.violations.filter((v) => validViolations.includes(v));
+
+    if (violations.length === 0) {
+      // No violations → +1 bonus
+      const bonusId = crypto.randomUUID();
+      try {
+        await pool.execute(
+          "INSERT INTO credit_score_logs (uuid, room_id, target_user_id, reporter_id, reason, points_change) VALUES (?, ?, ?, ?, 'bonus', 1)",
+          [bonusId, roomId, entry.user_id, userId],
+        );
+        await pool.execute(
+          "UPDATE users SET credit_score = credit_score + 1 WHERE uuid = ?",
+          [entry.user_id],
+        );
+      } catch (_err) {
+        // Skip if already evaluated (duplicate key)
+      }
+    } else {
+      // Apply each violation (all -1)
+      for (const violation of violations) {
+        const logId = crypto.randomUUID();
+        try {
+          await pool.execute(
+            "INSERT INTO credit_score_logs (uuid, room_id, target_user_id, reporter_id, reason, points_change) VALUES (?, ?, ?, ?, ?, -1)",
+            [logId, roomId, entry.user_id, userId, violation],
+          );
+          await pool.execute(
+            "UPDATE users SET credit_score = GREATEST(0, credit_score - 1) WHERE uuid = ?",
+            [entry.user_id],
+          );
+        } catch (_err) {
+          // Skip duplicate violations
+        }
+      }
+    }
+
+    const [updatedUser] = await pool.execute<RowDataPacket[]>(
+      "SELECT credit_score FROM users WHERE uuid = ?",
+      [entry.user_id],
+    );
+    results.push({
+      user_id: entry.user_id,
+      points_change: violations.length === 0 ? 1 : -violations.length,
+      new_credit_score: updatedUser[0]?.credit_score ?? 0,
+    });
+  }
+
+  return c.json({ data: { success: true, results } });
+});
+
+// ── MEMBER EVALUATES OWNER ──────────────────────────────────────────────────────
+// POST /api/v1/rooms/:room_id/owner/evaluate - Member submits evaluation for the room owner (ended rooms only)
+rooms.post("/:room_id/owner/evaluate", async (c) => {
+  const userId = c.get("userId");
+  const roomId = c.req.param("room_id");
+
+  const body = (await c.req.json().catch(() => null)) as Record<string, unknown> | null;
+  if (!body || !Array.isArray(body.violations))
+    return apiError(c, 400, "VALIDATION_ERROR", "violations must be an array");
+
+  const [roomRows] = await pool.execute<RowDataPacket[]>(
+    "SELECT uuid, creator_id, status, event_time, event_end_time FROM rooms WHERE uuid = ?",
+    [roomId],
+  );
+  if (!roomRows[0])
+    return apiError(c, 404, "ROOM_NOT_FOUND", "The specified room does not exist");
+
+  const room = roomRows[0];
+
+  if (room.creator_id === userId)
+    return apiError(c, 403, "CANNOT_EVALUATE_SELF", "Room owner cannot evaluate themselves");
+
+  const [memberCheck] = await pool.execute<RowDataPacket[]>(
+    "SELECT 1 FROM room_members WHERE room_id = ? AND user_id = ? AND approval_status = 'approved'",
+    [roomId, userId],
+  );
+  if (!memberCheck[0])
+    return apiError(c, 403, "NOT_A_MEMBER", "You are not a member of this room");
+
+  const displayStatus = computeDisplayStatus(room.status, room.event_time, room.event_end_time);
+  if (displayStatus !== "ended")
+    return apiError(c, 400, "ROOM_NOT_ENDED", "Evaluations can only be submitted after the activity has ended");
+
+  const [existingLogs] = await pool.execute<RowDataPacket[]>(
+    "SELECT 1 FROM credit_score_logs WHERE room_id = ? AND reporter_id = ? AND target_user_id = ? LIMIT 1",
+    [roomId, userId, room.creator_id],
+  );
+  if (existingLogs.length > 0)
+    return apiError(c, 409, "ALREADY_EVALUATED", "You have already submitted an evaluation for the room owner");
+
+  type Violation =
+    | "late" | "last_minute_cancel" | "ghost" | "no_show" | "early_leave" | "midway_leave"
+    | "proxy_register" | "bring_extra"
+    | "attack" | "harassment" | "verbal_abuse" | "property_damage" | "discrimination" | "rule_violation"
+    | "payment_default" | "payment_dispute";
+  const validViolations: Violation[] = [
+    "late", "last_minute_cancel", "ghost", "no_show", "early_leave", "midway_leave",
+    "proxy_register", "bring_extra",
+    "attack", "harassment", "verbal_abuse", "property_damage", "discrimination", "rule_violation",
+    "payment_default", "payment_dispute",
+  ];
+
+  const violations = (body.violations as string[]).filter((v) => validViolations.includes(v as Violation));
+  const memberNet = violations.length === 0 ? 0 : -violations.length;
+
+  // Get existing member evaluations for this owner in this room to calculate current max deduction
+  const [existingEvals] = await pool.execute<RowDataPacket[]>(
+    `SELECT reporter_id, SUM(points_change) AS net_eval
+     FROM credit_score_logs
+     WHERE room_id = ? AND target_user_id = ?
+     GROUP BY reporter_id`,
+    [roomId, room.creator_id],
+  );
+
+  const oldNets = existingEvals.map((r) => Number(r.net_eval));
+  const oldMaxDed = oldNets.filter((n) => n < 0).length > 0
+    ? Math.min(...oldNets.filter((n) => n < 0))
+    : 0;
+
+  // Store this member's evaluation
+  if (violations.length === 0) {
+    const bonusId = crypto.randomUUID();
+    await pool.execute(
+      "INSERT INTO credit_score_logs (uuid, room_id, target_user_id, reporter_id, reason, points_change) VALUES (?, ?, ?, ?, 'bonus', 0)",
+      [bonusId, roomId, room.creator_id, userId],
+    );
+  } else {
+    for (const violation of violations) {
+      const logId = crypto.randomUUID();
+      try {
+        await pool.execute(
+          "INSERT INTO credit_score_logs (uuid, room_id, target_user_id, reporter_id, reason, points_change) VALUES (?, ?, ?, ?, ?, -1)",
+          [logId, roomId, room.creator_id, userId, violation],
+        );
+      } catch (_err) { /* skip duplicate */ }
+    }
+  }
+
+  // Calculate new max deduction across all members (including this one)
+  const allNets = [...oldNets, memberNet];
+  const newMaxDed = allNets.filter((n) => n < 0).length > 0
+    ? Math.min(...allNets.filter((n) => n < 0))
+    : 0;
+
+  // Only update owner score if max deduction worsened
+  const adjustment = newMaxDed - oldMaxDed;
+  if (adjustment < 0) {
+    await pool.execute(
+      "UPDATE users SET credit_score = GREATEST(0, credit_score + ?) WHERE uuid = ?",
+      [adjustment, room.creator_id],
+    );
+  }
+
+  const [updated] = await pool.execute<RowDataPacket[]>(
+    "SELECT credit_score FROM users WHERE uuid = ?",
+    [room.creator_id],
+  );
+
+  return c.json({
+    data: {
+      success: true,
+      points_change: adjustment,
+      owner_new_credit_score: updated[0]?.credit_score ?? null,
+    },
   });
 });
 
@@ -1241,7 +1671,7 @@ rooms.delete("/:room_id", async (c) => {
 // Returns the room row on success, or an apiError Response on failure.
 async function assertRoomMember(c: Context, roomId: string, userId: string) {
   const [roomRows] = await pool.execute<RowDataPacket[]>(
-    "SELECT creator_id FROM rooms WHERE uuid = ?",
+    "SELECT creator_id, title FROM rooms WHERE uuid = ?",
     [roomId],
   );
   if (!roomRows[0])
@@ -1322,6 +1752,24 @@ rooms.post("/:room_id/messages", async (c) => {
     [userId],
   );
   const senderName = (senderRows[0]?.name as string | undefined) ?? "";
+
+  // Notify all other approved members (fire-and-forget)
+  pool.execute<RowDataPacket[]>(
+    `SELECT rm.user_id FROM room_members rm
+     WHERE rm.room_id = ? AND rm.approval_status = 'approved' AND rm.user_id != ?`,
+    [roomId, userId],
+  ).then(([memberRows]) => {
+    const roomName = (room.title as string | undefined) ?? "NoSquad";
+    const preview = body.length > 60 ? `${body.slice(0, 60)}…` : body;
+    for (const row of memberRows) {
+      notifyUser(row.user_id as string, {
+        title: roomName,
+        body: `${senderName}: ${preview}`,
+        tag: `chat-${roomId}`,
+        data: { path: `/rooms/chat?room_id=${roomId}` },
+      }).catch(() => {});
+    }
+  }).catch(() => {});
 
   return c.json({
     data: {

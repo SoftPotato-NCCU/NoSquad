@@ -41,8 +41,10 @@
     },
     "loading": "房間大廳載入中...",
     "noRoomsDisplay": "目前沒有可以顯示的房間。",
+    "noLocation": "尚未設定地點",
     "loadError": "房間大廳載入失敗",
-    "joinError": "加入房間失敗，請稍後再試"
+    "joinError": "加入房間失敗，請稍後再試",
+    "joinErrorInsufficientCredit": "信用分數不足"
   },
   "roomHall": "大廳",
   "createRoom": "建立房間",

@@ -11,7 +11,19 @@
       "emptyCreated": "你目前還沒有創建房間。",
       "emptyJoined": "你目前還沒有加入其他房間。",
       "myCreatedRooms": "我創建的房間",
-      "myJoinedRooms": "我加入的房間"
+      "myJoinedRooms": "我加入的房間",
+      "endedRooms": "已結束的活動",
+      "timeNotSet": "時間尚未設定",
+      "locationNotSet": "尚未設定地點"
+    },
+    "status": {
+      "recruitingClosed": "已停止招募",
+      "inProgress": "進行中",
+      "ended": "已結束",
+      "cancelled": "已取消",
+      "owner": "房主",
+      "pending": "待審核",
+      "joined": "已加入"
     },
     "dashboard": {
       "welcomeTitle": "歡迎回來，{username}！",
