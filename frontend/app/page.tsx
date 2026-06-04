@@ -1,11 +1,10 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 import { useRooms } from "@/lib/rooms-context";
 import { useDictionary, t, tpl } from "@/lib/i18n/useDictionary";
-import { listRoomMessages } from "@/lib/api";
 import type { MyRoom } from "@/types/rooms";
 import Link from "next/link";
 import Image from "next/image";
@@ -93,28 +92,18 @@ function AuthenticatedHome({
     fetchRooms(true);
   }, [fetchRooms]);
 
-  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
-
-  useEffect(() => {
-    const chatRooms = myRooms.filter(
-      (r) => r.is_owner || r.membership_status === "approved",
-    );
-    if (chatRooms.length === 0) return;
-
-    Promise.all(
-      chatRooms.map(async (room) => {
-        try {
-          const lastRead = parseInt(
-            localStorage.getItem(`nosquad_last_read_${room.id}`) ?? "0",
-            10,
-          );
-          const res = await listRoomMessages(room.id, lastRead);
-          return [room.id, res.data.messages.length] as [string, number];
-        } catch {
-          return [room.id, 0] as [string, number];
-        }
-      }),
-    ).then((entries) => setUnreadCounts(Object.fromEntries(entries)));
+  const unreadCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const room of myRooms) {
+      try {
+        const msgs = JSON.parse(localStorage.getItem(`nosquad_chat_messages_${room.id}`) ?? "[]");
+        const lastRead = parseInt(localStorage.getItem(`nosquad_chat_read_${room.id}`) ?? "0", 10);
+        counts[room.id] = Math.max(0, (msgs.length ?? 0) - lastRead);
+      } catch {
+        counts[room.id] = 0;
+      }
+    }
+    return counts;
   }, [myRooms]);
 
   const isEnded = (room: MyRoom) =>

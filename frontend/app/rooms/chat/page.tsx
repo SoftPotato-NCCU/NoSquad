@@ -46,7 +46,6 @@ function ChatContent() {
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const lastIdRef = useRef(0);
-  const isInitialLoadRef = useRef(true);
 
   const toChatMessage = (m: ChatMessageDto): ChatMessage => {
     // The send endpoint doesn't echo back sender_name, so fall back to the
@@ -81,7 +80,6 @@ function ChatContent() {
         const loaded = initial.data.messages;
         setMessages(loaded.map(toChatMessage));
         lastIdRef.current = loaded.at(-1)?.id ?? 0;
-        localStorage.setItem(`nosquad_last_read_${roomId}`, String(lastIdRef.current));
       })
       .catch((e) => {
         setError(e instanceof Error ? e.message : t(dict, "rooms.chat.loadError", "Unable to load room information"));
@@ -100,7 +98,6 @@ function ChatContent() {
         if (fresh.length) {
           setMessages((prev) => [...prev, ...fresh.map(toChatMessage)]);
           lastIdRef.current = fresh.at(-1)!.id;
-          localStorage.setItem(`nosquad_last_read_${roomId}`, String(lastIdRef.current));
         }
       } catch {
         // ignore transient polling errors; next tick retries
@@ -111,10 +108,7 @@ function ChatContent() {
   }, [roomId, user, error]);
 
   useEffect(() => {
-    if (messages.length === 0) return;
-    const behavior = isInitialLoadRef.current ? "instant" : "smooth";
-    isInitialLoadRef.current = false;
-    bottomRef.current?.scrollIntoView({ behavior });
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const sendMessage = async () => {
@@ -128,7 +122,6 @@ function ChatContent() {
       const res = await sendRoomMessage(roomId, text);
       setMessages((prev) => [...prev, toChatMessage(res.data)]);
       lastIdRef.current = Math.max(lastIdRef.current, res.data.id);
-      localStorage.setItem(`nosquad_last_read_${roomId}`, String(lastIdRef.current));
     } catch {
       // A send failure shouldn't blow away the whole chat view — just put the
       // text back so the user can retry.
@@ -341,7 +334,7 @@ function ChatContent() {
 
       {/* Input area */}
       <div className="shrink-0 border-t border-zinc-200/70 dark:border-zinc-800 bg-white/85 dark:bg-zinc-900/70 backdrop-blur px-4 py-3">
-        <div className="flex items-center gap-3 max-w-2xl mx-auto">
+        <div className="flex items-end gap-3 max-w-2xl mx-auto">
           <div className="flex-1 min-w-0 rounded-3xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-4 py-2.5 focus-within:border-purple-400 dark:focus-within:border-purple-500 transition-colors">
             <textarea
               ref={inputRef}
